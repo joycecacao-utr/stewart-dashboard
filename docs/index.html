@@ -3,532 +3,566 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Stewart AI — CX Dashboard</title>
-<script src="https://cdn.tailwindcss.com"></script>
+<title>Support &amp; Stewart AI — Weekly Command Center</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-  *, *::before, *::after { box-sizing: border-box; }
-  body { background: #070d1a; font-family: 'Inter', system-ui, sans-serif; color: #e2e8f0; }
-
-  .card { background: #0f1829; border: 1px solid #1e293b; border-radius: 14px; transition: border-color .2s; }
-  .card:hover { border-color: #334155; }
-
-  .kpi-val    { font-size: 2rem;    font-weight: 700; line-height: 1.1; letter-spacing: -.02em; }
-  .kpi-val-sm { font-size: 1.55rem; font-weight: 700; line-height: 1.1; letter-spacing: -.02em; }
-
-  .badge { display:inline-flex; align-items:center; gap:3px; font-size:.6rem; font-weight:600;
-           letter-spacing:.05em; text-transform:uppercase; padding:2px 6px; border-radius:4px; }
-  .badge-amber { background:#431407; color:#fbbf24; border:1px solid #78350f; }
-
-  .tag { font-size:.65rem; color:#64748b; margin-top:2px; }
-
-  .range-btn {
-    padding:5px 14px; border-radius:8px; font-size:.75rem; font-weight:500;
-    color:#64748b; background:transparent; border:1px solid #1e293b;
-    cursor:pointer; transition:all .15s;
+  :root {
+    --bg:#f1f5f9; --card:#fff; --ink:#0f172a; --muted:#64748b; --line:#e2e8f0;
+    --indigo:#4f46e5; --good:#16a34a; --warn:#d97706; --bad:#dc2626;
   }
-  .range-btn:hover  { color:#cbd5e1; border-color:#334155; }
-  .range-btn.active { color:#fff; background:#1d4ed8; border-color:#1d4ed8; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  .wrap{max-width:1200px;margin:0 auto;padding:24px 28px 64px;}
 
-  .spinner {
-    width:16px; height:16px; border:2px solid #1e3a5f; border-top-color:#3b82f6;
-    border-radius:50%; animation:spin .7s linear infinite; display:inline-block;
-  }
-  @keyframes spin { to { transform:rotate(360deg); } }
+  .banner{border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:20px;display:none;}
+  .banner.warn{background:#fffbeb;border:1px solid #fcd34d;color:#92400e;}
+  .banner.err {background:#fef2f2;border:1px solid #fca5a5;color:#991b1b;}
+  .banner.ok  {background:#f0fdf4;border:1px solid #86efac;color:#166534;}
 
-  .chart-wrap { position:relative; height:220px; }
-  .chart-wrap canvas { position:absolute; inset:0; width:100% !important; height:100% !important; }
+  header{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px;margin-bottom:8px;}
+  h1{font-size:22px;margin:0;letter-spacing:-.3px;}
+  .sub{color:var(--muted);font-size:13px;margin-top:4px;}
+  .weekpick{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);}
+  select{font-size:14px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;
+    background:#fff;color:var(--ink);font-weight:600;cursor:pointer;}
 
-  .skeleton {
-    background:linear-gradient(90deg,#1e293b 25%,#273549 50%,#1e293b 75%);
-    background-size:200% 100%; animation:shimmer 1.4s infinite;
-    border-radius:6px; display:inline-block; min-width:80px; height:2rem;
-  }
-  @keyframes shimmer { to { background-position:-200% 0; } }
+  .section-label{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--muted);margin:30px 0 12px;}
 
-  .alert { border-radius:10px; padding:10px 14px; font-size:.8rem; line-height:1.5;
-           display:flex; align-items:flex-start; gap:8px; }
-  .alert-amber { background:#1c1000; border:1px solid #78350f; color:#fcd34d; }
-  .alert-red   { background:#1a0000; border:1px solid #7f1d1d; color:#fca5a5; }
+  /* KPI cards */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;}
+  .kpi .label{font-size:12px;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:5px;}
+  .kpi .info{display:inline-flex;width:14px;height:14px;border-radius:50%;background:#e2e8f0;color:#64748b;
+    font-size:10px;align-items:center;justify-content:center;cursor:help;font-weight:700;flex-shrink:0;}
+  .kpi .val{font-size:28px;font-weight:700;letter-spacing:-.5px;margin-top:8px;}
+  .kpi .note{font-size:12px;color:var(--muted);margin-top:4px;}
+  .kpi .val.good{color:var(--good)}.kpi .val.warn{color:var(--warn)}.kpi .val.bad{color:var(--bad)}
+  .kpi.highlight{border-color:#4f46e5;background:#fafafe;}
 
-  code { background:rgba(255,255,255,.07); padding:1px 5px; border-radius:4px; font-size:.85em; }
-  ::-webkit-scrollbar { width:6px; height:6px; }
-  ::-webkit-scrollbar-thumb { background:#1e293b; border-radius:3px; }
+  /* Layout */
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;}
+  .card h3{margin:0 0 4px;font-size:15px;}
+  .card .hint{color:var(--muted);font-size:12px;margin:0 0 14px;}
+  .chartbox{position:relative;}
+
+  /* Cost hero */
+  .costwrap{display:grid;grid-template-columns:1fr 1fr 2fr;gap:16px;align-items:stretch;}
+  .costfig{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;
+    display:flex;flex-direction:column;justify-content:center;}
+  .costfig .label{font-size:12px;color:var(--muted);font-weight:600;}
+  .costfig .big{font-size:30px;font-weight:700;letter-spacing:-.5px;margin-top:6px;}
+  .costfig .note{font-size:12px;color:var(--muted);margin-top:4px;}
+
+  /* Tables */
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{text-align:left;color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;
+    letter-spacing:.05em;padding:8px 10px;border-bottom:1px solid var(--line);}
+  td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top;}
+  tr:last-child td{border-bottom:none;}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;white-space:nowrap;}
+  .s-bad{background:#fee2e2;color:#b91c1c}.s-mid{background:#fef3c7;color:#92400e}.s-good{background:#dcfce7;color:#166534}
+  .t-star{background:#dcfce7;color:#166534}.t-issue{background:#fee2e2;color:#b91c1c}
+  .mono{font-variant-numeric:tabular-nums;}
+  .eff{display:inline-block;width:20px;text-align:center;border-radius:5px;font-weight:700;font-size:11px;padding:1px 0;}
+  .eff.S{background:#dcfce7;color:#166534}.eff.M{background:#fef3c7;color:#92400e}.eff.L{background:#fee2e2;color:#b91c1c}
+  .lnk{color:var(--indigo);text-decoration:none;font-weight:600;}
+  .lnk:hover{text-decoration:underline;}
+  .act{color:var(--indigo);font-weight:600;}
+
+  /* Definitions */
+  .defs{columns:2;column-gap:28px;font-size:12.5px;line-height:1.55;}
+  .defs p{margin:0 0 9px;break-inside:avoid;}
+  .defs b{color:var(--ink);}
+  code{background:#f1f5f9;padding:1px 4px;border-radius:4px;font-size:.85em;}
+
+  .foot{color:var(--muted);font-size:12px;margin-top:26px;text-align:center;}
+  .spinner{display:inline-block;width:12px;height:12px;border:2px solid #e2e8f0;
+    border-top-color:var(--indigo);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px;}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  @media(max-width:880px){.grid2,.costwrap{grid-template-columns:1fr}.defs{columns:1}}
 </style>
 </head>
-<body class="min-h-screen">
+<body>
+<div class="wrap">
 
-<!-- ─── HEADER ────────────────────────────────────────── -->
-<header style="border-bottom:1px solid #1e293b;background:#070d1a;position:sticky;top:0;z-index:50;">
-  <div class="max-w-screen-xl mx-auto px-5 py-3 flex items-center justify-between gap-4 flex-wrap">
+  <div id="banner" class="banner"></div>
 
-    <div class="flex items-center gap-3">
-      <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#2563eb,#7c3aed);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;color:#fff;flex-shrink:0;">S</div>
-      <div>
-        <div class="font-semibold text-white text-base leading-tight">Stewart AI</div>
-        <div class="text-xs" style="color:#64748b;">Customer Experience Dashboard</div>
-      </div>
-    </div>
-
-    <!-- Date range filter -->
-    <div class="flex items-center gap-2 flex-wrap">
-      <button class="range-btn active" data-range="24h"  onclick="setRange('24h')">Last 24h</button>
-      <button class="range-btn"        data-range="7d"   onclick="setRange('7d')">Last 7 Days</button>
-      <button class="range-btn"        data-range="30d"  onclick="setRange('30d')">Last 30 Days</button>
-      <button class="range-btn"        data-range="year" onclick="setRange('year')">Past Year</button>
-    </div>
-
-    <div class="flex items-center gap-3 flex-shrink-0">
-      <span id="last-updated" class="text-xs" style="color:#475569;">Loading…</span>
-      <span id="spinner" class="spinner"></span>
-      <button onclick="loadData()"
-        class="px-3 py-1.5 text-xs font-medium text-white rounded-lg"
-        style="background:#1d4ed8;"
-        onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#1d4ed8'">
-        ↻ Reload
-      </button>
-    </div>
-
-  </div>
-</header>
-
-<!-- ─── ALERTS ────────────────────────────────────────── -->
-<div class="max-w-screen-xl mx-auto px-5 pt-4 space-y-2">
-  <div id="error-banner" class="alert alert-red hidden">
-    <span style="flex-shrink:0;">⛔</span>
-    <div id="error-text"></div>
-  </div>
-  <div id="deflection-notice" class="alert alert-amber hidden">
-    <span style="flex-shrink:0;">⚠️</span>
+  <header>
     <div>
-      <strong>True Deflection is estimated</strong> — sessions with no escalation keyword detected
-      are counted as deflected. For precise tracking, add a resolution End block in Voiceflow and
-      set <code>DEFLECTION_SIGNAL</code> in <code>fetch-data.js</code>.
+      <h1>Support &amp; Stewart AI — Weekly Command Center</h1>
+      <div class="sub">Freshdesk × Voiceflow · rolling 6 weeks · <span id="gen-time">loading…</span></div>
+    </div>
+    <div class="weekpick">
+      <span>Viewing week</span>
+      <select id="weekSel" onchange="renderWeek(+this.value)"></select>
+    </div>
+  </header>
+
+  <!-- ── EXECUTIVE KPIs ──────────────────────────────────────────────────── -->
+  <div class="section-label">Executive snapshot — selected week · hover ⓘ for definitions</div>
+  <div class="kpis" id="kpis"></div>
+
+  <!-- ── COST ───────────────────────────────────────────────────────────── -->
+  <div class="section-label">Stewart cost — what the bot costs to run</div>
+  <div class="costwrap">
+    <div class="costfig">
+      <div class="label">Last 7 days</div>
+      <div class="big" id="cost7">—</div>
+      <div class="note" id="cost7note"></div>
+    </div>
+    <div class="costfig">
+      <div class="label">6-week average / week</div>
+      <div class="big" id="cost6">—</div>
+      <div class="note" id="cost6note"></div>
+    </div>
+    <div class="card">
+      <h3>Stewart cost over time</h3>
+      <p class="hint" id="cprNote" style="margin-bottom:10px;"></p>
+      <div class="chartbox" style="height:170px;"><canvas id="costChart"></canvas></div>
     </div>
   </div>
-</div>
 
-<!-- ─── KPI ROW 1 ─────────────────────────────────────── -->
-<div class="max-w-screen-xl mx-auto px-5 pt-5">
-  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-
-    <div class="card p-4">
-      <div class="text-xs mb-2" style="color:#64748b;">Stewart Sessions</div>
-      <div class="kpi-val" style="color:#60a5fa;" id="val-sessions"><span class="skeleton"></span></div>
-      <div class="tag" id="sub-sessions">selected period</div>
-    </div>
-
-    <div class="card p-4">
-      <div class="flex items-center gap-1.5 mb-2">
-        <span class="text-xs" style="color:#64748b;">True Deflection</span>
-        <span class="badge badge-amber" id="deflection-badge">Est.</span>
-      </div>
-      <div class="kpi-val" style="color:#34d399;" id="val-deflection"><span class="skeleton"></span></div>
-      <div class="tag">sessions fully resolved</div>
-    </div>
-
-    <div class="card p-4">
-      <div class="text-xs mb-2" style="color:#64748b;">FCR Rate · General</div>
-      <div class="kpi-val" style="color:#a78bfa;" id="val-fcr"><span class="skeleton"></span></div>
-      <div class="tag">first-contact resolved</div>
-    </div>
-
-    <div class="card p-4">
-      <div class="text-xs mb-2" style="color:#64748b;">Avg First Response</div>
-      <div class="kpi-val" style="color:#22d3ee;" id="val-frt"><span class="skeleton"></span></div>
-      <div class="tag">General queue</div>
-    </div>
-
-    <div class="card p-4">
-      <div class="text-xs mb-2" style="color:#64748b;">Avg Handle Time</div>
-      <div class="kpi-val" style="color:#fbbf24;" id="val-aht"><span class="skeleton"></span></div>
-      <div class="tag">General queue</div>
-    </div>
-
-    <div class="card p-4">
-      <div class="text-xs mb-2" style="color:#64748b;">Repeat Contact Rate</div>
-      <div class="kpi-val" style="color:#f87171;" id="val-repeat"><span class="skeleton"></span></div>
-      <div class="tag">within 7d of close</div>
-    </div>
-
+  <!-- ── AI RESOLUTION BY TYPE ──────────────────────────────────────────── -->
+  <div class="section-label">AI resolution by chat type — what Stewart actually resolves, and how well</div>
+  <div class="card">
+    <h3>Share of each chat type resolved by Stewart with no human <span style="font-weight:400;color:var(--muted)">(6-wk)</span></h3>
+    <p class="hint">High-volume + low resolution = your automation priorities (see roadmap below). 🟢 ≥65% · 🟠 45–64% · 🔴 &lt;45%</p>
+    <div class="chartbox" style="height:300px;"><canvas id="aiResChart"></canvas></div>
   </div>
-</div>
 
-<!-- ─── KPI ROW 2 ─────────────────────────────────────── -->
-<div class="max-w-screen-xl mx-auto px-5 pt-3">
-  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-
-    <div class="card p-4">
-      <div class="text-xs mb-2" style="color:#64748b;">Stewart Chat Cost</div>
-      <div class="kpi-val-sm" style="color:#93c5fd;" id="val-cost"><span class="skeleton"></span></div>
-      <div class="tag">selected period</div>
-      <div class="text-xs mt-1" style="color:#475569;" id="cost-note"></div>
-    </div>
-
-    <div class="card p-4">
-      <div class="text-xs mb-2" style="color:#64748b;">Tickets Closed / Shift</div>
-      <div class="kpi-val-sm" style="color:#86efac;" id="val-tcs"><span class="skeleton"></span></div>
-      <div class="tag">General · 10h shift avg</div>
-    </div>
-
-    <div class="card p-4">
-      <div class="text-xs mb-2" style="color:#64748b;">Avg Customer Wait Time</div>
-      <div class="kpi-val-sm" style="color:#67e8f9;" id="val-wait"><span class="skeleton"></span></div>
-      <div class="tag">time to first human response</div>
-    </div>
-
-    <div class="card p-4">
-      <div class="text-xs mb-2" style="color:#64748b;">Escalation Rate</div>
-      <div class="kpi-val-sm" style="color:#fb923c;" id="val-escalation"><span class="skeleton"></span></div>
-      <div class="tag">% sessions escalated to human</div>
-    </div>
-
+  <!-- ── TICKET VOLUME ───────────────────────────────────────────────────── -->
+  <div class="section-label">Ticket volume &amp; demand (Freshdesk)</div>
+  <div class="card">
+    <h3>Daily ticket volume <span style="font-weight:400;color:var(--muted)">(last 42 days)</span></h3>
+    <p class="hint">Spot spikes that signal incidents or product issues. Weekend dip expected.</p>
+    <div class="chartbox" style="height:200px;"><canvas id="dailyChart"></canvas></div>
   </div>
-</div>
-
-<!-- ─── CHARTS ROW 1 ──────────────────────────────────── -->
-<div class="max-w-screen-xl mx-auto px-5 pt-3">
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-
-    <div class="card p-4">
-      <div class="text-sm font-medium mb-1" style="color:#cbd5e1;">Ticket Source Distribution</div>
-      <div class="tag mb-3">% by origin channel · selected period</div>
-      <div class="chart-wrap"><canvas id="chart-source"></canvas></div>
+  <div class="grid2" style="margin-top:16px;">
+    <div class="card">
+      <h3>Created vs. resolved &amp; backlog</h3>
+      <p class="hint">Are we keeping pace with demand? Backlog line (red) should stay flat.</p>
+      <div class="chartbox" style="height:240px;"><canvas id="crChart"></canvas></div>
     </div>
-
-    <div class="card p-4">
-      <div class="text-sm font-medium mb-1" style="color:#cbd5e1;">Ticket Volume Trend</div>
-      <div class="tag mb-3" id="vol-label">Tickets created · selected period</div>
-      <div class="chart-wrap"><canvas id="chart-volume"></canvas></div>
+    <div class="card">
+      <h3>Ticket volume by topic</h3>
+      <p class="hint">Which categories drive the queue, week over week.</p>
+      <div class="chartbox" style="height:240px;"><canvas id="topicVolChart"></canvas></div>
     </div>
-
-    <div class="card p-4">
-      <div class="text-sm font-medium mb-1" style="color:#cbd5e1;">Peak Ticket Volume by Hour</div>
-      <div class="tag mb-3">Tickets created per hour of day · selected period</div>
-      <div class="chart-wrap"><canvas id="chart-peak-hour"></canvas></div>
-    </div>
-
   </div>
-</div>
 
-<!-- ─── CHARTS ROW 2 ──────────────────────────────────── -->
-<div class="max-w-screen-xl mx-auto px-5 pt-3 pb-10">
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-
-    <div class="card p-4 md:col-span-2">
-      <div class="text-sm font-medium mb-1" style="color:#cbd5e1;">Escalation Rate Trend</div>
-      <div class="tag mb-3">% of Stewart sessions escalated to human · selected period</div>
-      <div class="chart-wrap"><canvas id="chart-escalation"></canvas></div>
+  <!-- ── AI INSIGHTS ─────────────────────────────────────────────────────── -->
+  <div class="section-label">AI-derived insights — contact topics &amp; why Stewart escalates</div>
+  <div class="grid2">
+    <div class="card">
+      <h3>Top contact topics <span style="font-weight:400;color:var(--muted)">(6-wk)</span></h3>
+      <p class="hint">Bar = share of contacts · color = keyword-inferred sentiment (🔴 negative → 🟢 positive)</p>
+      <div class="chartbox" style="height:290px;"><canvas id="topicChart"></canvas></div>
     </div>
-
-    <div class="card p-4">
-      <div class="text-sm font-medium mb-1" style="color:#cbd5e1;">Top 5 Ticket Categories</div>
-      <div class="tag mb-3">By ticket count · selected period</div>
-      <div class="chart-wrap"><canvas id="chart-categories"></canvas></div>
+    <div class="card">
+      <h3>Why Stewart escalates <span style="font-weight:400;color:var(--muted)">(6-wk)</span></h3>
+      <p class="hint">Root cause of every human handoff — inferred from transcript keyword patterns</p>
+      <div class="chartbox" style="height:290px;"><canvas id="escChart"></canvas></div>
     </div>
-
   </div>
-</div>
 
-<!-- ─── JAVASCRIPT ─────────────────────────────────────── -->
+  <!-- ── ROADMAP ─────────────────────────────────────────────────────────── -->
+  <div class="section-label">Automation roadmap — ranked by weekly volume</div>
+  <div class="card">
+    <table>
+      <thead><tr>
+        <th>Gap / unanswered question</th><th class="mono">Vol/wk</th><th class="mono">AI-res now</th>
+        <th>Recommended build</th><th>Effort</th><th>Projected impact</th>
+      </tr></thead>
+      <tbody id="roadmap"></tbody>
+    </table>
+    <p class="hint" style="margin:12px 0 0;">
+      Effort: <span class="eff S">S</span> days · <span class="eff M">M</span> 1–2 wks · <span class="eff L">L</span> 3+ wks.
+      Impact assumes $<span id="human-cost">6.00</span>/human ticket. Top 3 ≈ <strong>~$45k/yr</strong> deflectable.
+    </p>
+  </div>
+
+  <!-- ── CONVERSATIONS ───────────────────────────────────────────────────── -->
+  <div class="section-label">Conversations worth reading — standouts ★ and problems ⚠</div>
+  <div class="card">
+    <table>
+      <thead><tr><th>Type</th><th>When</th><th>Topic</th><th>Sentiment</th><th>What happened</th><th>Links</th></tr></thead>
+      <tbody id="convos"></tbody>
+    </table>
+  </div>
+
+  <!-- ── DEFINITIONS ────────────────────────────────────────────────────── -->
+  <div class="section-label">How these metrics are defined</div>
+  <div class="card">
+    <div class="defs">
+      <p><b>AI Resolution</b> — Engaged Stewart chats resolved with <em>no</em> human escalation (no agent/transfer keywords detected in transcript). Bounce sessions excluded from denominator.</p>
+      <p><b>Stewart Bypass Rate</b> — % of Freshdesk tickets from customers who never touched Stewart (no <code>Stewart_AI</code> tag). High bypass = the biggest untapped automation opportunity.</p>
+      <p><b>CSAT</b> — Freshdesk post-ticket satisfaction rating: Happy responses ÷ total rated tickets. <em>Excludes Voiceflow auto-evals.</em></p>
+      <p><b>SLA Attainment</b> — % of tickets with first response within SLA: <b>Urgent ≤1h · High ≤4h · Normal ≤8h · Low ≤24h</b> (calendar hours, approximation). Update thresholds in <code>fetch-data.js</code>.</p>
+      <p><b>Avg First Response</b> — Mean calendar hours from ticket creation to first agent reply (Freshdesk, General queue).</p>
+      <p><b>Stewart Bounce Rate</b> — Welcome-only sessions (user never sent a message) ÷ all sessions. Kept separate so bounces never inflate AI Resolution.</p>
+      <p><b>Stewart Cost</b> — Sessions × $<span id="def-cps">0.05</span>/session. Update <code>COST_PER_SESSION</code> in <code>fetch-data.js</code> to match your Voiceflow bill.</p>
+      <p><b>Cost per AI Resolution</b> — Total cost ÷ AI-resolved sessions. Shown against ~$<span id="def-htc">6.00</span>/human ticket for ROI context.</p>
+    </div>
+  </div>
+
+  <div class="foot">
+    Data refreshed hourly via GitHub Actions · definitions above ·
+    <span id="gen-foot">—</span>
+  </div>
+
+</div><!-- /wrap -->
+
 <script>
-// ── State ─────────────────────────────────────────────────
-let ALL_DATA      = null;
-let CURRENT_RANGE = '24h';
+// ─── State ────────────────────────────────────────────────────────────────
+let D = null;          // full data.json
+let weekIdx = 0;       // currently selected week index
 
-// ── Date range selector ───────────────────────────────────
-function setRange(range) {
-  CURRENT_RANGE = range;
-  document.querySelectorAll('.range-btn').forEach(b =>
-    b.classList.toggle('active', b.dataset.range === range)
-  );
-  if (ALL_DATA?.ranges?.[range]) renderAll(ALL_DATA.ranges[range]);
-}
+// ─── Formatters ───────────────────────────────────────────────────────────
+const money  = n  => '$' + Math.round(n).toLocaleString();
+const fmtN   = n  => (n != null) ? n.toLocaleString() : '—';
+const fmtPct = n  => (n != null) ? n + '%' : '—';
+const fmtHrs = n  => (n != null) ? n + 'h' : '—';
+const sentC  = s  => s < 0.45 ? 's-bad' : s < 0.6 ? 's-mid' : 's-good';
+const sentCol = s => s < 0.45 ? '#dc2626' : s < 0.6 ? '#d97706' : '#16a34a';
+const resCol  = p => p >= 65  ? '#16a34a' : p >= 45 ? '#d97706' : '#dc2626';
+const cls3   = (v, g, b) => v >= g ? 'good' : v <= b ? 'bad' : 'warn';
 
-// ── Formatting helpers ────────────────────────────────────
-function fmt(minutes) {
-  if (minutes === null || minutes === undefined || isNaN(+minutes)) return '—';
-  const m = +minutes;
-  if (m < 60) return `${Math.round(m)}m`;
-  return `${Math.floor(m / 60)}h ${Math.round(m % 60)}m`;
-}
-function pct(v) { return (v !== null && v !== undefined) ? `${(+v).toFixed(1)}%` : '—'; }
-function set(id, html) { const el = document.getElementById(id); if (el) el.innerHTML = html ?? '—'; }
-
-function rangeLabel() {
-  return { '24h': 'last 24 hours', '7d': 'last 7 days', '30d': 'last 30 days', 'year': 'past year' }[CURRENT_RANGE] ?? '';
-}
-
-// ── Chart registry ────────────────────────────────────────
-const charts = {};
-
-function mk(id, config) {
-  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
-  const el = document.getElementById(id);
-  if (!el) return;
-  charts[id] = new Chart(el, config);
-}
-
-function clearCanvas(id, msg) {
-  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
-  const el = document.getElementById(id);
-  if (!el) return;
-  const ctx = el.getContext('2d');
-  ctx.clearRect(0, 0, el.width, el.height);
-  if (msg) {
-    ctx.fillStyle = '#475569';
-    ctx.font = '13px Inter, system-ui';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(msg, el.width / 2, el.height / 2);
-  }
-}
-
-// ── Shared chart theme ────────────────────────────────────
-const GRID  = { color: 'rgba(255,255,255,0.04)' };
-const TICKS = { color: '#64748b', font: { size: 10 } };
-const TIP   = {
-  backgroundColor: '#1e293b',
-  borderColor: '#334155', borderWidth: 1,
-  titleColor: '#e2e8f0', bodyColor: '#94a3b8',
-  padding: 10, cornerRadius: 8, displayColors: true,
+// ─── KPI definitions (shown on hover) ────────────────────────────────────
+const DEFS = {
+  bypass: 'Freshdesk tickets from customers who never touched Stewart (no Stewart_AI tag). High = biggest untapped automation opportunity.',
+  ai:     'Engaged chats Stewart resolved with no human escalation. Bounce sessions excluded from denominator.',
+  csat:   'Freshdesk post-ticket satisfaction rating. Happy ÷ rated tickets. Excludes Voiceflow auto-evals.',
+  sla:    '% tickets with first response within SLA — Urgent ≤1h / High ≤4h / Normal ≤8h / Low ≤24h (calendar hrs).',
+  frt:    'Mean calendar hours from ticket creation to first agent reply, General queue.',
+  tix:    'Tickets created in Freshdesk this week across all channels.',
+  bounce: 'Welcome-only sessions (user never spoke) ÷ all sessions. Separate from AI Resolution.',
 };
-const LEGEND = { labels: { color: '#94a3b8', font: { size: 11 }, boxWidth: 12 } };
 
-// ── Build charts ──────────────────────────────────────────
-function buildCharts(d) {
-
-  // 1 ── Ticket Source Donut
-  mk('chart-source', {
-    type: 'doughnut',
-    data: {
-      labels: ['Stewart AI', 'Chat', 'Email', 'Other'],
-      datasets: [{
-        data: [d.sourceData.stewart, d.sourceData.chat, d.sourceData.email, d.sourceData.other],
-        backgroundColor: ['#3b82f6', '#06b6d4', '#8b5cf6', '#475569'],
-        borderWidth: 2, borderColor: '#0f1829', hoverOffset: 6,
-      }],
+// ─── Build KPI row ────────────────────────────────────────────────────────
+function buildKPIs(w) {
+  const cards = [
+    {
+      label: 'Stewart Bypass Rate', def: DEFS.bypass, highlight: true,
+      val:  w.bypassPct != null ? w.bypassPct + '%' : '—',
+      cls:  w.bypassPct != null ? (w.bypassPct >= 85 ? 'bad' : w.bypassPct >= 70 ? 'warn' : 'good') : '',
+      note: 'of tickets bypassed the bot',
     },
-    options: {
-      cutout: '62%',
-      plugins: {
-        legend: { ...LEGEND, position: 'bottom' },
-        tooltip: {
-          ...TIP,
-          callbacks: {
-            label: ctx => {
-              const total = d.sourceData.total || 1;
-              return ` ${ctx.label}: ${ctx.raw} (${(ctx.raw / total * 100).toFixed(1)}%)`;
-            },
-          },
-        },
-      },
+    {
+      label: 'AI Resolution', def: DEFS.ai,
+      val:  w.aiResolutionPct != null ? Math.round(w.aiResolutionPct) + '%' : '—',
+      cls:  w.aiResolutionPct != null ? cls3(w.aiResolutionPct, 50, 40) : '',
+      note: `${fmtN(w.aiResolved)} of ${fmtN(w.engagedSessions)} engaged chats`,
     },
-  });
+    {
+      label: 'CSAT', def: DEFS.csat,
+      val:  w.csat != null ? w.csat + '%' : '—',
+      cls:  w.csat != null ? cls3(+w.csat, 90, 85) : '',
+      note: 'Freshdesk satisfaction ratings',
+    },
+    {
+      label: 'SLA Attainment', def: DEFS.sla,
+      val:  fmtPct(w.slaAttainment),
+      cls:  w.slaAttainment != null ? cls3(+w.slaAttainment, 92, 88) : '',
+      note: 'first response in target',
+    },
+    {
+      label: 'Avg First Response', def: DEFS.frt,
+      val:  fmtHrs(w.avgFRTHours),
+      cls:  w.avgFRTHours != null ? (w.avgFRTHours <= 2.5 ? 'good' : w.avgFRTHours <= 3 ? 'warn' : 'bad') : '',
+      note: 'General queue, calendar hrs',
+    },
+    {
+      label: 'Tickets Created', def: DEFS.tix,
+      val:  fmtN(w.ticketsCreated),
+      cls:  'warn',
+      note: `~${w.ticketsCreated ? Math.round(w.ticketsCreated / 7) : '—'} / day`,
+    },
+    {
+      label: 'Stewart Bounce Rate', def: DEFS.bounce,
+      val:  w.bouncePct != null ? Math.round(w.bouncePct) + '%' : '—',
+      cls:  w.bouncePct != null ? (w.bouncePct <= 12 ? 'good' : 'warn') : '',
+      note: `${fmtN(w.bounces)} welcome-only sessions`,
+    },
+  ];
 
-  // 2 ── Ticket Volume Trend
-  const vl = d.ticketVolumeTrend ?? [];
-  set('vol-label', `Tickets created · ${rangeLabel()}`);
-  const thinLine = vl.length > 20;
-  mk('chart-volume', {
+  return cards.map(c => `
+    <div class="kpi${c.highlight ? ' highlight' : ''}">
+      <div class="label">${c.label}<span class="info" title="${c.def}">i</span></div>
+      <div class="val ${c.cls}">${c.val}</div>
+      <div class="note">${c.note}</div>
+    </div>`).join('');
+}
+
+function renderWeek(i) {
+  weekIdx = i;
+  document.getElementById('kpis').innerHTML = buildKPIs(D.weeks[i]);
+}
+
+// ─── Cost section ─────────────────────────────────────────────────────────
+function buildCost() {
+  const latest = D.weeks[D.weeks.length - 1];
+  const avg    = D.weeks.reduce((s, w) => s + w.cost, 0) / D.weeks.length;
+  const cpr    = latest.costPerResolution;
+
+  document.getElementById('cost7').textContent    = money(latest.cost);
+  document.getElementById('cost7note').textContent = `≈ ${money(latest.cost / 7)} / day`;
+  document.getElementById('cost6').textContent    = money(avg);
+  document.getElementById('cost6note').textContent = `≈ ${money(avg / 7)} / day`;
+  document.getElementById('cprNote').innerHTML    = cpr != null
+    ? `≈ <strong>$${cpr.toFixed(3)}</strong> per AI resolution vs ~$${(D.humanTicketCost ?? 6).toFixed(2)} per human ticket`
+    : 'Cost per resolution unavailable — check Voiceflow data';
+}
+
+// ─── Chart helpers ─────────────────────────────────────────────────────────
+const charts = {};
+function mk(id, cfg) {
+  if (charts[id]) charts[id].destroy();
+  const el = document.getElementById(id);
+  if (el) charts[id] = new Chart(el, cfg);
+}
+
+Chart.defaults.font.family = '-apple-system,"Segoe UI",Roboto,sans-serif';
+Chart.defaults.color = '#64748b';
+
+const TIP = {
+  backgroundColor: '#1e293b', titleColor: '#f8fafc', bodyColor: '#94a3b8',
+  borderColor: '#334155', borderWidth: 1, padding: 10, cornerRadius: 8,
+};
+const noLeg  = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
+const botLeg = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } } };
+
+// ─── Build all charts ──────────────────────────────────────────────────────
+function buildCharts() {
+  const weekLabels = D.weeks.map(w => w.label);
+
+  // Cost over time
+  mk('costChart', {
     type: 'line',
     data: {
-      labels: vl.map(x => x.label),
+      labels: weekLabels,
       datasets: [{
-        label: 'Tickets',
-        data: vl.map(x => x.count),
-        borderColor: '#3b82f6',
-        backgroundColor: 'rgba(59,130,246,.1)',
-        fill: true, tension: 0.35,
-        pointRadius: thinLine ? 2 : 4,
-        pointBackgroundColor: '#3b82f6',
-        pointBorderColor: '#0f1829', pointBorderWidth: 2,
+        label: 'Weekly cost',
+        data: D.weeks.map(w => w.cost),
+        borderColor: '#4f46e5', backgroundColor: 'rgba(79,70,229,.08)', fill: true, tension: .3,
       }],
     },
     options: {
-      plugins: {
-        legend: { display: false },
-        tooltip: { ...TIP, callbacks: { label: ctx => ` ${ctx.raw} tickets` } },
-      },
-      scales: {
-        x: { grid: GRID, ticks: { ...TICKS, maxTicksLimit: thinLine ? 8 : 999, maxRotation: 30 } },
-        y: { grid: GRID, ticks: TICKS, beginAtZero: true },
-      },
+      ...noLeg,
+      scales: { y: { ticks: { callback: v => '$' + v } } },
+      plugins: { ...noLeg.plugins, tooltip: { ...TIP, callbacks: { label: c => ` $${c.raw.toFixed(2)} total cost` } } },
     },
   });
 
-  // 3 ── Peak Volume by Hour
-  const peak = d.peakVolumeByHour ?? Array(24).fill(0);
-  const peakMax = Math.max(...peak, 1);
-  mk('chart-peak-hour', {
-    type: 'bar',
-    data: {
-      labels: Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, '0')}h`),
-      datasets: [{
-        label: 'Tickets',
-        data: peak,
-        backgroundColor: peak.map(v => {
-          const r = v / peakMax;
-          return r > 0.7 ? '#ef4444' : r > 0.4 ? '#f97316' : '#3b82f6';
-        }),
-        borderRadius: 3, borderSkipped: false,
-      }],
-    },
-    options: {
-      plugins: {
-        legend: { display: false },
-        tooltip: { ...TIP, callbacks: { label: ctx => ` ${ctx.raw} tickets at ${ctx.label}` } },
-      },
-      scales: {
-        x: { grid: { display: false }, ticks: { ...TICKS, maxRotation: 0 } },
-        y: { grid: GRID, ticks: TICKS, beginAtZero: true },
-      },
-    },
-  });
-
-  // 4 ── Escalation Rate Trend
-  const et = d.escalationTrend ?? [];
-  if (et.length > 0) {
-    const thinEsc = et.length > 20;
-    mk('chart-escalation', {
-      type: 'line',
-      data: {
-        labels: et.map(x => x.label),
-        datasets: [{
-          label: 'Escalation %',
-          data: et.map(x => x.rate),
-          borderColor: '#f97316',
-          backgroundColor: 'rgba(249,115,22,.08)',
-          fill: true, tension: 0.35,
-          pointRadius: thinEsc ? 2 : 4,
-          pointBackgroundColor: '#f97316',
-          pointBorderColor: '#0f1829', pointBorderWidth: 2,
-        }],
-      },
-      options: {
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            ...TIP,
-            callbacks: {
-              label: ctx => ` ${ctx.raw}% escalation rate`,
-              afterLabel: ctx => {
-                const s = et[ctx.dataIndex]?.sessions;
-                return s != null ? ` ${s} sessions in period` : '';
-              },
-            },
-          },
-        },
-        scales: {
-          x: { grid: GRID, ticks: { ...TICKS, maxTicksLimit: thinEsc ? 8 : 999, maxRotation: 30 } },
-          y: { grid: GRID, ticks: TICKS, min: 0, max: 100,
-               title: { display: true, text: '%', color: '#64748b', font: { size: 10 } } },
-        },
-      },
-    });
-  } else {
-    clearCanvas('chart-escalation', 'No Voiceflow session data for this period');
-  }
-
-  // 5 ── Top 5 Categories (horizontal bar)
-  const cats = d.topCategories ?? [];
-  if (cats.length > 0) {
-    const PURPLES = ['#6366f1', '#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe'];
-    mk('chart-categories', {
+  // AI Resolution by type (horizontal bar)
+  if (D.aiResolutionByType?.length) {
+    mk('aiResChart', {
       type: 'bar',
       data: {
-        labels: cats.map(x => x.label),
+        labels: D.aiResolutionByType.map(a => `${a.name}  (${a.volume} sessions)`),
         datasets: [{
-          label: 'Tickets',
-          data: cats.map(x => x.count),
-          backgroundColor: PURPLES.slice(0, cats.length),
-          borderRadius: 4, borderSkipped: false,
+          data: D.aiResolutionByType.map(a => a.pct),
+          backgroundColor: D.aiResolutionByType.map(a => resCol(a.pct)),
+          borderRadius: 4,
         }],
       },
       options: {
-        indexAxis: 'y',
+        indexAxis: 'y', ...noLeg,
+        plugins: { ...noLeg.plugins, tooltip: { ...TIP, callbacks: { label: c => ` ${c.raw}% resolved by Stewart (no human)` } } },
+        scales: { x: { max: 100, ticks: { callback: v => v + '%' } } },
+      },
+    });
+  }
+
+  // Daily volume
+  mk('dailyChart', {
+    type: 'line',
+    data: {
+      labels: D.daily.map(x => x.label),
+      datasets: [{
+        label: 'Tickets', data: D.daily.map(x => x.count),
+        borderColor: '#d97706', backgroundColor: 'rgba(217,119,6,.08)',
+        fill: true, tension: .25, pointRadius: 0,
+      }],
+    },
+    options: {
+      ...noLeg,
+      scales: { x: { ticks: { maxTicksLimit: 10 } }, y: { beginAtZero: true } },
+      plugins: { ...noLeg.plugins, tooltip: { ...TIP, callbacks: {
+        title: items => D.daily[items[0].dataIndex]?.label ?? '',
+        label: c => ` ${c.raw} tickets`,
+      }}},
+    },
+  });
+
+  // Created vs resolved + backlog
+  mk('crChart', {
+    type: 'bar',
+    data: {
+      labels: weekLabels,
+      datasets: [
+        { label: 'Created',  data: D.weeks.map(w => w.ticketsCreated),  backgroundColor: '#c7d2fe' },
+        { label: 'Resolved', data: D.weeks.map(w => w.ticketsResolved), backgroundColor: '#4f46e5' },
+        { label: 'Backlog',  type: 'line', data: D.weeks.map(w => w.backlog),
+          borderColor: '#dc2626', tension: .3, yAxisID: 'y1', pointRadius: 4, pointBackgroundColor: '#dc2626' },
+      ],
+    },
+    options: {
+      ...botLeg,
+      scales: {
+        y:  { beginAtZero: true },
+        y1: { position: 'right', grid: { drawOnChartArea: false }, suggestedMin: 0 },
+      },
+      plugins: { ...botLeg.plugins, tooltip: { ...TIP } },
+    },
+  });
+
+  // Topic volume stacked
+  if (D.topicVol?.series?.length) {
+    mk('topicVolChart', {
+      type: 'bar',
+      data: {
+        labels: weekLabels,
+        datasets: D.topicVol.series.map(s => ({ label: s.name, data: s.data, backgroundColor: s.color })),
+      },
+      options: {
+        ...botLeg,
+        scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } },
+        plugins: { ...botLeg.plugins, tooltip: { ...TIP } },
+      },
+    });
+  }
+
+  // Top topics horizontal bar (colored by sentiment)
+  if (D.topTopics?.length) {
+    mk('topicChart', {
+      type: 'bar',
+      data: {
+        labels: D.topTopics.map(t => t.name),
+        datasets: [{
+          data: D.topTopics.map(t => t.pct),
+          backgroundColor: D.topTopics.map(t => sentCol(t.sentiment)),
+          borderRadius: 4,
+        }],
+      },
+      options: {
+        indexAxis: 'y', ...noLeg,
+        plugins: { ...noLeg.plugins, tooltip: { ...TIP, callbacks: {
+          label: c => ` ${c.raw}% of tickets`,
+          afterLabel: c => ` sentiment score: ${D.topTopics[c.dataIndex].sentiment.toFixed(2)} (keyword-inferred)`,
+        }}},
+        scales: { x: { ticks: { callback: v => v + '%' } } },
+      },
+    });
+  }
+
+  // Escalation reasons donut
+  if (D.escalationReasons?.length) {
+    mk('escChart', {
+      type: 'doughnut',
+      data: {
+        labels: D.escalationReasons.map(e => e.name),
+        datasets: [{
+          data: D.escalationReasons.map(e => e.pct),
+          backgroundColor: ['#4f46e5', '#7c3aed', '#d97706', '#dc2626', '#0891b2'],
+          hoverOffset: 4,
+        }],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
         plugins: {
-          legend: { display: false },
-          tooltip: {
-            ...TIP,
-            callbacks: {
-              label: ctx => {
-                const total = d.sourceData.total || 1;
-                return ` ${ctx.raw} tickets (${(ctx.raw / total * 100).toFixed(1)}% of all)`;
-              },
-            },
-          },
-        },
-        scales: {
-          x: { grid: GRID, ticks: TICKS, beginAtZero: true },
-          y: { grid: { display: false }, ticks: TICKS },
+          legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } },
+          tooltip: { ...TIP, callbacks: { label: c => ` ${c.raw}% of escalations` } },
         },
       },
     });
-  } else {
-    clearCanvas('chart-categories', 'No category data for this period');
   }
 }
 
-// ── Render KPIs ───────────────────────────────────────────
-function updateKPIs(d) {
-  set('val-sessions',   d.sessionCount !== null && d.sessionCount !== undefined ? d.sessionCount : '—');
-  set('sub-sessions',   rangeLabel());
-  set('val-deflection', pct(d.deflectionRate));
-  set('val-fcr',        pct(d.fcrRate));
-  set('val-frt',        fmt(d.avgFRT));
-  set('val-aht',        fmt(d.avgAHT));
-  set('val-repeat',     pct(d.repeatRate));
-  set('val-cost',       d.cost !== null && d.cost !== undefined ? `$${d.cost}` : '—');
-  set('cost-note',      ALL_DATA ? `@ $${(+(ALL_DATA.costPerSession ?? 0.05)).toFixed(2)}/session` : '');
-  set('val-tcs',        d.ticketsPerShift ?? '—');
-  set('val-wait',       fmt(d.avgWaitTime));
-  set('val-escalation', pct(d.escalationRate));
+// ─── Tables ───────────────────────────────────────────────────────────────
+function buildTables() {
+  const FD = `https://${D.fdSubdomain}.freshdesk.com/a/tickets/`;
+
+  document.getElementById('roadmap').innerHTML = (D.roadmap ?? []).map(r => `
+    <tr>
+      <td>${r.gap}</td>
+      <td class="mono">${r.volWeek}</td>
+      <td class="mono">${r.aiResNow}</td>
+      <td><span class="act">${r.build}</span></td>
+      <td><span class="eff ${r.effort}">${r.effort}</span></td>
+      <td>${r.impact}</td>
+    </tr>`).join('');
+
+  document.getElementById('convos').innerHTML = (D.conversations ?? []).map(c => {
+    const badge = c.type === 'star'
+      ? '<span class="pill t-star">★ Standout</span>'
+      : '<span class="pill t-issue">⚠ Attention</span>';
+    const links = (c.ticketId
+      ? `<a class="lnk" href="${FD}${c.ticketId}" target="_blank">TKT-${c.ticketId} ↗</a> · `
+      : '<span style="color:#94a3b8">AI-resolved · </span>')
+      + `<a class="lnk" href="https://creator.voiceflow.com" target="_blank">▶ transcript</a>`;
+    return `<tr>
+      <td>${badge}</td>
+      <td class="mono">${c.when}</td>
+      <td>${c.topic}</td>
+      <td><span class="pill ${sentC(c.sentiment)}">${c.sentiment.toFixed(2)}</span></td>
+      <td>${c.note}</td>
+      <td>${links}</td>
+    </tr>`;
+  }).join('');
 }
 
-// ── Full render ───────────────────────────────────────────
-function renderAll(d) {
-  if (!d) return;
-  updateKPIs(d);
-  buildCharts(d);
+// ─── Load data.json ────────────────────────────────────────────────────────
+function showBanner(cls, html) {
+  const el = document.getElementById('banner');
+  el.className = `banner ${cls}`;
+  el.innerHTML = html;
+  el.style.display = 'block';
 }
 
-// ── Load data.json (written by GitHub Actions) ────────────
 async function loadData() {
-  document.getElementById('spinner').style.display = 'inline-block';
-  document.getElementById('error-banner').classList.add('hidden');
-
+  showBanner('warn', '<span class="spinner"></span>Loading live data…');
   try {
     const res = await fetch(`./data.json?t=${Date.now()}`);
     if (!res.ok) throw new Error(
-      `Could not load data.json (HTTP ${res.status}). ` +
-      `Go to Actions → "Refresh Stewart Dashboard" → Run workflow to populate it.`
+      `HTTP ${res.status} — Go to GitHub Actions → "Refresh Stewart Dashboard" → Run workflow to populate data.json.`
     );
+    D = await res.json();
 
-    ALL_DATA = await res.json();
+    // Week selector
+    const sel = document.getElementById('weekSel');
+    sel.innerHTML = '';
+    D.weeks.forEach((w, i) => {
+      const o = document.createElement('option');
+      o.value = i; o.textContent = w.label;
+      sel.appendChild(o);
+    });
+    sel.value = D.weeks.length - 1;
+    weekIdx = D.weeks.length - 1;
 
-    // Deflection notice
-    const isEst = !!ALL_DATA.deflectionIsEstimate;
-    document.getElementById('deflection-notice').classList.toggle('hidden', !isEst);
-    document.getElementById('deflection-badge').classList.toggle('hidden', !isEst);
+    // Timestamps + config values
+    const ts = new Date(D.generatedAt).toLocaleString();
+    document.getElementById('gen-time').textContent = 'data as of ' + ts;
+    document.getElementById('gen-foot').textContent = 'Generated ' + ts;
+    document.getElementById('human-cost').textContent = (D.humanTicketCost ?? 6).toFixed(2);
+    document.getElementById('def-cps').textContent = (D.costPerSession ?? 0.05).toFixed(2);
+    document.getElementById('def-htc').textContent = (D.humanTicketCost ?? 6).toFixed(2);
 
-    // Timestamp
-    if (ALL_DATA.generatedAt) {
-      set('last-updated', `Data as of ${new Date(ALL_DATA.generatedAt).toLocaleString()}`);
-    }
+    renderWeek(weekIdx);
+    buildCost();
+    buildCharts();
+    buildTables();
 
-    renderAll(ALL_DATA.ranges[CURRENT_RANGE]);
+    showBanner('ok', `✓ Live data loaded · generated ${ts}`);
+    setTimeout(() => { document.getElementById('banner').style.display = 'none'; }, 4000);
   } catch (err) {
-    document.getElementById('error-text').textContent = err.message;
-    document.getElementById('error-banner').classList.remove('hidden');
-    set('last-updated', 'Failed to load data');
-  } finally {
-    document.getElementById('spinner').style.display = 'none';
+    showBanner('err', `⛔ <strong>Could not load data:</strong> ${err.message}`);
   }
 }
 
-// Reload every 5 min — Actions refreshes hourly
 loadData();
 setInterval(loadData, 5 * 60 * 1000);
 </script>
