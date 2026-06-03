@@ -28,16 +28,11 @@
     padding: 2px 6px; border-radius: 4px;
   }
   .badge-amber { background: #431407; color: #fbbf24; border: 1px solid #78350f; }
-  .badge-blue  { background: #0c1a3a; color: #60a5fa; border: 1px solid #1e3a6a; }
 
   .tag { font-size: 0.65rem; color: #64748b; margin-top: 2px; }
 
-  .trend-up   { color: #22c55e; font-size: 0.72rem; }
-  .trend-down { color: #ef4444; font-size: 0.72rem; }
-  .trend-neu  { color: #94a3b8; font-size: 0.72rem; }
-
   .spinner {
-    width: 18px; height: 18px;
+    width: 16px; height: 16px;
     border: 2px solid #1e3a5f; border-top-color: #3b82f6;
     border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block;
   }
@@ -48,32 +43,25 @@
 
   .skeleton {
     background: linear-gradient(90deg, #1e293b 25%, #273549 50%, #1e293b 75%);
-    background-size: 200% 100%;
-    animation: shimmer 1.4s infinite;
+    background-size: 200% 100%; animation: shimmer 1.4s infinite;
     border-radius: 6px; display: inline-block; min-width: 80px; height: 2rem;
   }
   @keyframes shimmer { to { background-position: -200% 0; } }
 
-  .alert {
-    border-radius: 10px; padding: 10px 14px; font-size: 0.8rem; line-height: 1.5;
-    display: flex; align-items: flex-start; gap: 8px;
-  }
+  .alert { border-radius: 10px; padding: 10px 14px; font-size: 0.8rem; line-height: 1.5; display: flex; align-items: flex-start; gap: 8px; }
   .alert-amber { background: #1c1000; border: 1px solid #78350f; color: #fcd34d; }
   .alert-red   { background: #1a0000; border: 1px solid #7f1d1d; color: #fca5a5; }
 
   code { background: rgba(255,255,255,0.07); padding: 1px 5px; border-radius: 4px; font-size: 0.85em; }
-
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
-
-  @media (max-width: 640px) { .kpi-val { font-size: 1.5rem; } }
 </style>
 </head>
 <body class="min-h-screen">
 
 <!-- ─── HEADER ─────────────────────────────────────────── -->
-<header style="border-bottom:1px solid #1e293b; background:#070d1a;">
+<header style="border-bottom:1px solid #1e293b; background:#070d1a; position:sticky; top:0; z-index:50;">
   <div class="max-w-screen-xl mx-auto px-5 py-3 flex items-center justify-between gap-4">
     <div class="flex items-center gap-3">
       <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#2563eb,#7c3aed);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;color:#fff;flex-shrink:0;">S</div>
@@ -83,13 +71,13 @@
       </div>
     </div>
     <div class="flex items-center gap-3 flex-shrink-0">
-      <span id="last-updated" class="text-xs" style="color:#475569;">—</span>
-      <span id="loading-spinner" class="spinner hidden"></span>
-      <button onclick="refresh(true)"
+      <span id="last-updated" class="text-xs" style="color:#475569;">Loading…</span>
+      <span id="spinner" class="spinner"></span>
+      <button onclick="loadData()"
         class="px-3 py-1.5 text-xs font-medium text-white rounded-lg transition"
         style="background:#1d4ed8;"
         onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#1d4ed8'">
-        ↻ Refresh
+        ↻ Reload
       </button>
     </div>
   </div>
@@ -97,34 +85,19 @@
 
 <!-- ─── ALERTS ─────────────────────────────────────────── -->
 <div class="max-w-screen-xl mx-auto px-5 pt-4 space-y-2">
-
-  <!-- CORS error -->
-  <div id="cors-warning" class="alert alert-red hidden">
-    <span style="flex-shrink:0;">⛔</span>
-    <div>
-      <strong>CORS blocked:</strong> Your browser is preventing direct API calls.
-      Deploy to Vercel using the included <code>api/</code> proxy functions — the dashboard will work immediately.
-      For local testing, temporarily enable a CORS browser extension.
-    </div>
-  </div>
-
-  <!-- Generic error -->
   <div id="error-banner" class="alert alert-red hidden">
-    <span style="flex-shrink:0;">⚠️</span>
+    <span style="flex-shrink:0;">⛔</span>
     <div id="error-text"></div>
   </div>
-
-  <!-- True Deflection notice — always visible -->
-  <div class="alert alert-amber">
+  <div id="deflection-notice" class="alert alert-amber hidden">
     <span style="flex-shrink:0;">⚠️</span>
     <div>
-      <strong>True Deflection:</strong> No Voiceflow end-block signal is configured.
-      The deflection rate shown is an <em>estimate</em> — sessions with no detected escalation keyword.
-      For precise tracking, add a dedicated <em>End</em> block in your Voiceflow flow and set
-      <code>CONFIG.DEFLECTION_SIGNAL</code> to the intent or message it emits (e.g. <code>'resolved_by_stewart'</code>).
+      <strong>True Deflection is estimated.</strong>
+      Sessions with no escalation keyword detected are counted as deflected.
+      For precise tracking, add a resolution End block in Voiceflow and set
+      <code>DEFLECTION_SIGNAL</code> in <code>fetch-data.js</code>.
     </div>
   </div>
-
 </div>
 
 <!-- ─── KPI ROW 1 ──────────────────────────────────────── -->
@@ -134,14 +107,14 @@
     <div class="card p-4">
       <div class="text-xs mb-2" style="color:#64748b;">Stewart Sessions</div>
       <div class="kpi-val" style="color:#60a5fa;" id="val-sessions"><span class="skeleton"></span></div>
-      <div class="tag" id="sub-sessions">last 24h</div>
-      <div class="mt-1 trend-neu" id="sub-sessions-avg">— 30d avg</div>
+      <div class="tag">last 24h</div>
+      <div class="text-xs mt-1" style="color:#94a3b8;" id="sub-sessions-avg">—</div>
     </div>
 
     <div class="card p-4">
       <div class="flex items-center gap-1.5 mb-2">
         <span class="text-xs" style="color:#64748b;">True Deflection</span>
-        <span class="badge badge-amber">Est.</span>
+        <span class="badge badge-amber" id="deflection-badge">Est.</span>
       </div>
       <div class="kpi-val" style="color:#34d399;" id="val-deflection"><span class="skeleton"></span></div>
       <div class="tag">sessions fully resolved</div>
@@ -182,8 +155,8 @@
       <div class="text-xs mb-2" style="color:#64748b;">Stewart Chat Cost</div>
       <div class="kpi-val sm" style="color:#93c5fd;" id="val-cost-24h"><span class="skeleton"></span></div>
       <div class="tag">last 24h</div>
-      <div class="mt-1 trend-neu" id="sub-cost">30d avg: —</div>
-      <div class="tag mt-1" id="cost-note"></div>
+      <div class="text-xs mt-1" style="color:#94a3b8;" id="sub-cost">30d avg: —</div>
+      <div class="tag" id="cost-note"></div>
     </div>
 
     <div class="card p-4">
@@ -212,20 +185,20 @@
   <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
 
     <div class="card p-4">
-      <div class="text-sm font-medium mb-3" style="color:#cbd5e1;">Ticket Source Distribution</div>
-      <div class="tag mb-2" id="source-period">Last 30 days</div>
+      <div class="text-sm font-medium mb-1" style="color:#cbd5e1;">Ticket Source Distribution</div>
+      <div class="tag mb-3">Last 30 days · all queues</div>
       <div class="chart-wrap"><canvas id="chart-source"></canvas></div>
     </div>
 
     <div class="card p-4">
-      <div class="text-sm font-medium mb-3" style="color:#cbd5e1;">Time to First Response</div>
-      <div class="tag mb-2">Stewart AI vs. Human Agent (minutes)</div>
+      <div class="text-sm font-medium mb-1" style="color:#cbd5e1;">Time to First Response</div>
+      <div class="tag mb-3">Stewart AI vs. Human Agent (minutes)</div>
       <div class="chart-wrap"><canvas id="chart-frt"></canvas></div>
     </div>
 
     <div class="card p-4">
-      <div class="text-sm font-medium mb-3" style="color:#cbd5e1;">Handoff Rate by Hour of Day</div>
-      <div class="tag mb-2">% of sessions escalated per hour · 30d</div>
+      <div class="text-sm font-medium mb-1" style="color:#cbd5e1;">Handoff Rate by Hour of Day</div>
+      <div class="tag mb-3">% of sessions escalated per hour · 30d</div>
       <div class="chart-wrap"><canvas id="chart-handoff-hour"></canvas></div>
     </div>
 
@@ -233,7 +206,7 @@
 </div>
 
 <!-- ─── CHARTS ROW 2 ───────────────────────────────────── -->
-<div class="max-w-screen-xl mx-auto px-5 pt-3 pb-8">
+<div class="max-w-screen-xl mx-auto px-5 pt-3 pb-10">
   <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
 
     <div class="card p-4">
@@ -247,425 +220,69 @@
         <span class="text-sm font-medium" style="color:#cbd5e1;">Containment Rate by Intent</span>
         <span class="badge badge-amber">Est.</span>
       </div>
-      <div class="tag mb-3">Keyword-inferred intents · 30d · update CONFIG.INTENTS to refine</div>
+      <div class="tag mb-3">Keyword-inferred from Voiceflow transcripts · 30d</div>
       <div class="chart-wrap" style="height:200px;"><canvas id="chart-intent"></canvas></div>
     </div>
 
   </div>
 </div>
 
-<!-- ─── SCRIPT ──────────────────────────────────────────── -->
 <script>
-// ════════════════════════════════════════════════════════
-//  CONFIG — update these before deploying
-// ════════════════════════════════════════════════════════
-const CONFIG = {
-  // When DIRECT_MODE = false (default), API calls go to /api/fd and /api/vf
-  // (Vercel serverless proxies). Set to true only for local testing with a
-  // CORS browser extension — keys will be visible in browser devtools.
-  DIRECT_MODE: false,
-
-  FD_DOMAIN: 'universaltennis',
-  FD_KEY:    'yVYzvzk27Er2dUpUCA9',       // only used in DIRECT_MODE
-
-  VF_KEY:     'VF.DM.69ebdbdd003c5c7a49123a84.tpJNpT29BPPKNO1V', // only used in DIRECT_MODE
-  VF_PROJECT: '69ebdbdd003c5c7a49123a84',
-
-  STEWART_TAG:       'Stewart_AI',
-  GENERAL_GROUP_NAME: 'General',
-  SHIFT_HOURS:       10,
-  ROLLING_DAYS:      30,
-
-  // Cost per Voiceflow session in USD. Update to match your Voiceflow billing.
-  // Formula: (monthly bill) ÷ (monthly sessions)
-  COST_PER_SESSION: 0.05,
-
-  // Set this to the exact intent name or message text emitted by your Voiceflow
-  // "resolved" End block to enable true deflection tracking.
-  // e.g. DEFLECTION_SIGNAL: 'resolved_by_stewart'
-  DEFLECTION_SIGNAL: null,
-
-  // Keywords used to infer escalation in Voiceflow transcripts (case-insensitive)
-  ESCALATION_KEYWORDS: ['agent', 'human', 'transfer', 'escalat', 'handoff', 'live chat', 'representative'],
-
-  // Intent keyword map for containment-by-intent chart.
-  // Key: display label. Value: array of keywords to match in user message.
-  INTENTS: {
-    'Account / Login':   ['account', 'login', 'password', 'sign in', 'access'],
-    'Ranking / UTR':     ['ranking', 'rank', 'rating', 'utr', 'score'],
-    'Tournament':        ['tournament', 'event', 'register', 'sign up'],
-    'Billing':           ['billing', 'payment', 'charge', 'invoice', 'refund'],
-    'Technical Issue':   ['error', 'bug', 'not working', 'broken', 'problem'],
-    'Match Results':     ['match', 'result', 'win', 'loss', 'played'],
-    'Profile / Settings':['profile', 'photo', 'name', 'update', 'settings'],
-  },
-};
-
-// ════════════════════════════════════════════════════════
-//  API LAYER
-// ════════════════════════════════════════════════════════
-function fdUrl(path, params = {}) {
-  if (CONFIG.DIRECT_MODE) {
-    const u = new URL(`https://${CONFIG.FD_DOMAIN}.freshdesk.com/api/v2/${path}`);
-    Object.entries(params).forEach(([k, v]) => u.searchParams.set(k, String(v)));
-    return u.toString();
-  }
-  const u = new URL('/api/fd', location.origin);
-  u.searchParams.set('path', path);
-  Object.entries(params).forEach(([k, v]) => u.searchParams.set(k, String(v)));
-  return u.toString();
-}
-
-function vfUrl(path, params = {}) {
-  if (CONFIG.DIRECT_MODE) {
-    const u = new URL(`https://api.voiceflow.com/${path}`);
-    Object.entries(params).forEach(([k, v]) => u.searchParams.set(k, String(v)));
-    return u.toString();
-  }
-  const u = new URL('/api/vf', location.origin);
-  u.searchParams.set('path', path);
-  Object.entries(params).forEach(([k, v]) => u.searchParams.set(k, String(v)));
-  return u.toString();
-}
-
-function fdHeaders() {
-  return CONFIG.DIRECT_MODE
-    ? { Authorization: `Basic ${btoa(CONFIG.FD_KEY + ':X')}` }
-    : {};
-}
-
-function vfHeaders() {
-  return CONFIG.DIRECT_MODE
-    ? { Authorization: CONFIG.VF_KEY }
-    : {};
-}
-
-async function apiFetch(url, headers) {
-  const res = await fetch(url, { headers });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`HTTP ${res.status} — ${url.split('?')[0]} — ${text.slice(0, 120)}`);
-  }
-  return res.json();
-}
-
-async function fetchFDAll(path, params = {}, maxPages = 12) {
-  const all = [];
-  for (let page = 1; page <= maxPages; page++) {
-    const data = await apiFetch(fdUrl(path, { ...params, page, per_page: 100 }), fdHeaders());
-    if (!Array.isArray(data) || data.length === 0) break;
-    all.push(...data);
-    if (data.length < 100) break;
-  }
-  return all;
-}
-
-async function fetchVFTranscripts(hours) {
-  const start = new Date(Date.now() - hours * 3600000).toISOString();
-  try {
-    const data = await apiFetch(
-      vfUrl(`v2/transcripts/${CONFIG.VF_PROJECT}`, { 'range[start]': start }),
-      vfHeaders()
-    );
-    return Array.isArray(data) ? data : (data.data ?? data.items ?? []);
-  } catch (e) {
-    console.warn('Voiceflow transcripts error (will show N/A):', e.message);
-    return null; // null = API failed, distinct from empty []
-  }
-}
-
-// ════════════════════════════════════════════════════════
-//  HELPERS
-// ════════════════════════════════════════════════════════
-function daysAgo(n) {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return d.toISOString();
-}
-
+// ── Helpers ───────────────────────────────────────────────
 function fmt(minutes) {
-  if (minutes === null || isNaN(minutes)) return '—';
+  if (minutes === null || minutes === undefined || isNaN(minutes)) return '—';
   if (minutes < 60) return `${Math.round(minutes)}m`;
   return `${Math.floor(minutes / 60)}h ${Math.round(minutes % 60)}m`;
 }
+function pct(v) { return v !== null && v !== undefined ? `${(+v).toFixed(1)}%` : '—'; }
+function set(id, html) { const el = document.getElementById(id); if (el) el.innerHTML = html ?? '—'; }
 
-function pct(n) {
-  return n === null ? '—' : `${(+n).toFixed(1)}%`;
-}
-
-function isEscalated(transcript) {
-  const blob = JSON.stringify(transcript).toLowerCase();
-  return CONFIG.ESCALATION_KEYWORDS.some(kw => blob.includes(kw.toLowerCase()));
-}
-
-function isTrueDeflection(transcript) {
-  if (CONFIG.DEFLECTION_SIGNAL) {
-    return JSON.stringify(transcript).toLowerCase().includes(CONFIG.DEFLECTION_SIGNAL.toLowerCase());
-  }
-  // Estimate: no escalation detected
-  return !isEscalated(transcript);
-}
-
-function inferIntent(query = '') {
-  const q = query.toLowerCase();
-  for (const [label, keywords] of Object.entries(CONFIG.INTENTS)) {
-    if (keywords.some(kw => q.includes(kw))) return label;
-  }
-  return 'General Inquiry';
-}
-
-// ════════════════════════════════════════════════════════
-//  METRICS
-// ════════════════════════════════════════════════════════
-let _generalGroupId = null;
-
-async function getGeneralGroupId() {
-  if (_generalGroupId) return _generalGroupId;
-  const groups = await apiFetch(fdUrl('groups'), fdHeaders());
-  const g = groups.find(g => g.name === CONFIG.GENERAL_GROUP_NAME);
-  if (!g) throw new Error(`Freshdesk group "${CONFIG.GENERAL_GROUP_NAME}" not found. Check CONFIG.GENERAL_GROUP_NAME.`);
-  _generalGroupId = g.id;
-  return _generalGroupId;
-}
-
-async function computeMetrics() {
-  const since30 = daysAgo(CONFIG.ROLLING_DAYS);
-
-  // Parallel fetches — Freshdesk and Voiceflow simultaneously
-  const [generalGroupId, allTickets, vf24h, vf30d] = await Promise.all([
-    getGeneralGroupId(),
-    fetchFDAll('tickets', { updated_since: since30, include: 'stats' }),
-    fetchVFTranscripts(24),
-    fetchVFTranscripts(CONFIG.ROLLING_DAYS * 24),
-  ]);
-
-  // General queue tickets (filter client-side since we already have them all)
-  const generalTickets = allTickets.filter(t => t.group_id === generalGroupId);
-
-  // ── Source distribution ──────────────────────────────
-  const stewartTix = allTickets.filter(t => (t.tags || []).includes(CONFIG.STEWART_TAG));
-  // Chat source (Freshdesk source=7) excluding Stewart-tagged
-  const chatTix = allTickets.filter(t => t.source === 7 && !(t.tags || []).includes(CONFIG.STEWART_TAG));
-  const emailTix = allTickets.filter(t => t.source === 1);
-  const otherTix = allTickets.filter(t =>
-    !(t.tags || []).includes(CONFIG.STEWART_TAG) && t.source !== 7 && t.source !== 1
-  );
-  const sourceData = {
-    stewart: stewartTix.length,
-    chat:    chatTix.length,
-    email:   emailTix.length,
-    other:   otherTix.length,
-    total:   allTickets.length,
-  };
-
-  // ── Voiceflow session stats ──────────────────────────
-  const vfOk24h  = vf24h  !== null;
-  const vfOk30d  = vf30d  !== null;
-  const sessions24h = vfOk24h ? vf24h.length  : null;
-  const sessions30d = vfOk30d ? vf30d.length  : null;
-  const avgSessionsPerDay = sessions30d !== null ? (sessions30d / CONFIG.ROLLING_DAYS) : null;
-
-  // Cost
-  const cost24h    = sessions24h !== null ? (sessions24h * CONFIG.COST_PER_SESSION).toFixed(2) : null;
-  const cost30dAvg = avgSessionsPerDay !== null ? (avgSessionsPerDay * CONFIG.COST_PER_SESSION).toFixed(2) : null;
-
-  // ── Deflection & containment ─────────────────────────
-  let deflectionRate  = null;
-  let containmentRate = null;
-  let handoffRate     = null;
-  let handoffRateByHour = Array(24).fill(0).map(() => ({ sessions: 0, handoffs: 0 }));
-  let intentMap = {};
-
-  if (vfOk30d && sessions30d > 0) {
-    const deflected = vf30d.filter(isTrueDeflection);
-    const escalated = vf30d.filter(isEscalated);
-
-    deflectionRate  = (deflected.length / sessions30d * 100).toFixed(1);
-    handoffRate     = (escalated.length / sessions30d * 100).toFixed(1);
-    containmentRate = ((1 - escalated.length / sessions30d) * 100).toFixed(1);
-
-    // Handoff by hour
-    vf30d.forEach(s => {
-      const h = new Date(s.createdAt || s.updatedAt || Date.now()).getHours();
-      handoffRateByHour[h].sessions++;
-      if (isEscalated(s)) handoffRateByHour[h].handoffs++;
-    });
-
-    // Intent containment
-    vf30d.forEach(s => {
-      const turns = s.turns || [];
-      const firstUser = turns.find(t => t.type === 'request');
-      const query = firstUser?.payload?.payload?.query
-        || firstUser?.payload?.query
-        || firstUser?.payload?.message
-        || '';
-      const intent = inferIntent(query);
-      if (!intentMap[intent]) intentMap[intent] = { total: 0, contained: 0 };
-      intentMap[intent].total++;
-      if (isTrueDeflection(s)) intentMap[intent].contained++;
-    });
-  }
-
-  const handoffPctByHour = handoffRateByHour.map(h =>
-    h.sessions > 0 ? +(h.handoffs / h.sessions * 100).toFixed(1) : 0
-  );
-
-  const intentData = Object.entries(intentMap)
-    .sort((a, b) => b[1].total - a[1].total)
-    .slice(0, 8)
-    .map(([label, v]) => ({
-      label,
-      rate: v.total > 0 ? +(v.contained / v.total * 100).toFixed(1) : 0,
-      total: v.total,
-    }));
-
-  // ── FCR (General queue) ──────────────────────────────
-  const resolvedGeneral = generalTickets.filter(t => t.status === 4 || t.status === 5);
-  const fcrTickets = resolvedGeneral.filter(t => (t.stats?.reopen_count ?? 0) === 0);
-  const fcrRate = resolvedGeneral.length > 0
-    ? (fcrTickets.length / resolvedGeneral.length * 100).toFixed(1)
-    : null;
-
-  // ── First Response Time (General) ───────────────────
-  const frtSamples = generalTickets
-    .filter(t => t.stats?.first_responded_at && t.created_at)
-    .map(t => (new Date(t.stats.first_responded_at) - new Date(t.created_at)) / 60000)
-    .filter(v => v > 0 && v < 20160); // ignore outliers > 2 weeks
-  const avgFRT = frtSamples.length > 0
-    ? frtSamples.reduce((a, b) => a + b, 0) / frtSamples.length
-    : null;
-
-  // ── Handle Time (General) ────────────────────────────
-  const ahtSamples = generalTickets
-    .filter(t => t.stats?.resolved_at && t.stats?.first_responded_at)
-    .map(t => (new Date(t.stats.resolved_at) - new Date(t.stats.first_responded_at)) / 60000)
-    .filter(v => v > 0 && v < 20160);
-  const avgAHT = ahtSamples.length > 0
-    ? ahtSamples.reduce((a, b) => a + b, 0) / ahtSamples.length
-    : null;
-
-  // ── Tickets per shift (General) ──────────────────────
-  const shiftsIn30d = (CONFIG.ROLLING_DAYS * 24) / CONFIG.SHIFT_HOURS;
-  const ticketsPerShift = shiftsIn30d > 0
-    ? (resolvedGeneral.length / shiftsIn30d).toFixed(1)
-    : null;
-
-  // ── Repeat contact rate ──────────────────────────────
-  let repeatSet = new Set();
-  const closedTickets = allTickets
-    .filter(t => (t.status === 4 || t.status === 5) && t.stats?.resolved_at)
-    .map(t => ({ id: t.id, reqId: t.requester_id, closedAt: new Date(t.stats.resolved_at), reopen: t.stats?.reopen_count ?? 0 }));
-
-  closedTickets.forEach(ct => {
-    // reopened
-    if (ct.reopen > 0) { repeatSet.add(ct.id); return; }
-    // new ticket from same requester within 7 days
-    const recontact = allTickets.find(t =>
-      t.requester_id === ct.reqId &&
-      t.id !== ct.id &&
-      new Date(t.created_at) > ct.closedAt &&
-      new Date(t.created_at) <= new Date(ct.closedAt.getTime() + 7 * 86400000)
-    );
-    if (recontact) repeatSet.add(ct.id);
-  });
-  const repeatRate = closedTickets.length > 0
-    ? (repeatSet.size / closedTickets.length * 100).toFixed(1)
-    : null;
-
-  // ── Backlog trend (7 days) ───────────────────────────
-  const backlogByDay = [];
-  for (let i = 6; i >= 0; i--) {
-    const dayStart = new Date();
-    dayStart.setDate(dayStart.getDate() - i);
-    dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(dayStart.getTime() + 86400000);
-    const open = allTickets.filter(t => {
-      const created  = new Date(t.created_at);
-      const resolved = t.stats?.resolved_at ? new Date(t.stats.resolved_at) : null;
-      return created < dayEnd && (!resolved || resolved >= dayStart);
-    }).length;
-    backlogByDay.push({
-      label: dayStart.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
-      count: open,
-    });
-  }
-
-  // Stewart FRT: Voiceflow responds in ~30s on average
-  const stewartFRT = 0.5;
-
-  return {
-    sourceData, generalTickets,
-    sessions24h, avgSessionsPerDay,
-    cost24h, cost30dAvg,
-    deflectionRate, containmentRate, handoffRate,
-    fcrRate, avgFRT, avgAHT, ticketsPerShift,
-    repeatRate, handoffPctByHour,
-    backlogByDay, stewartFRT,
-    intentData,
-    vfOk24h, vfOk30d,
-  };
-}
-
-// ════════════════════════════════════════════════════════
-//  CHARTS
-// ════════════════════════════════════════════════════════
+// ── Charts ────────────────────────────────────────────────
 const charts = {};
-
-const GRID   = { color: 'rgba(255,255,255,0.04)' };
-const TICKS  = { color: '#64748b', font: { size: 10 } };
-const LEGEND = { labels: { color: '#94a3b8', font: { size: 11 }, boxWidth: 12 } };
+const GRID  = { color: 'rgba(255,255,255,0.04)' };
+const TICKS = { color: '#64748b', font: { size: 10 } };
 
 function mkChart(id, config) {
   if (charts[id]) charts[id].destroy();
-  const ctx = document.getElementById(id);
-  if (!ctx) return;
-  charts[id] = new Chart(ctx, config);
+  const el = document.getElementById(id);
+  if (el) charts[id] = new Chart(el, config);
 }
 
-function buildCharts(m) {
-  // Ticket source donut
+function buildCharts(d) {
+  // Source donut
   mkChart('chart-source', {
     type: 'doughnut',
     data: {
       labels: ['Stewart AI', 'Chat', 'Email', 'Other'],
       datasets: [{
-        data: [m.sourceData.stewart, m.sourceData.chat, m.sourceData.email, m.sourceData.other],
+        data: [d.sourceData.stewart, d.sourceData.chat, d.sourceData.email, d.sourceData.other],
         backgroundColor: ['#3b82f6', '#06b6d4', '#8b5cf6', '#475569'],
-        borderWidth: 2,
-        borderColor: '#0f1829',
-        hoverOffset: 4,
+        borderWidth: 2, borderColor: '#0f1829', hoverOffset: 4,
       }],
     },
     options: {
       cutout: '65%',
       plugins: {
-        legend: { ...LEGEND, position: 'bottom' },
-        tooltip: {
-          callbacks: {
-            label: ctx => ` ${ctx.label}: ${ctx.raw} (${(ctx.raw / m.sourceData.total * 100).toFixed(1)}%)`,
-          },
-        },
+        legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 11 }, boxWidth: 12 } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw} (${d.sourceData.total > 0 ? (ctx.raw / d.sourceData.total * 100).toFixed(1) : 0}%)` } },
       },
     },
   });
 
-  // FRT comparison (horizontal bar)
+  // FRT comparison
   mkChart('chart-frt', {
     type: 'bar',
     data: {
       labels: ['Stewart AI', 'Human Agent'],
       datasets: [{
-        data: [m.stewartFRT, m.avgFRT !== null ? +m.avgFRT.toFixed(1) : null],
+        data: [d.stewartFRT, d.avgFRT !== null ? +parseFloat(d.avgFRT).toFixed(1) : null],
         backgroundColor: ['#3b82f6', '#f97316'],
-        borderRadius: 6,
-        borderSkipped: false,
+        borderRadius: 6, borderSkipped: false,
       }],
     },
     options: {
       indexAxis: 'y',
-      plugins: { legend: { display: false }, tooltip: {
-        callbacks: { label: ctx => ` ${ctx.raw} min` },
-      }},
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.raw} min` } } },
       scales: {
         x: { grid: GRID, ticks: TICKS, title: { display: true, text: 'minutes', color: '#64748b', font: { size: 10 } } },
         y: { grid: { display: false }, ticks: TICKS },
@@ -674,22 +291,18 @@ function buildCharts(m) {
   });
 
   // Handoff by hour
-  const hourLabels = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2,'0')}h`);
   mkChart('chart-handoff-hour', {
     type: 'bar',
     data: {
-      labels: hourLabels,
+      labels: Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2,'0')}h`),
       datasets: [{
-        data: m.handoffPctByHour,
-        backgroundColor: m.handoffPctByHour.map(v => v > 50 ? '#ef4444' : v > 25 ? '#f97316' : '#fb923c'),
-        borderRadius: 3,
-        borderSkipped: false,
+        data: d.handoffPctByHour,
+        backgroundColor: d.handoffPctByHour.map(v => v > 50 ? '#ef4444' : v > 25 ? '#f97316' : '#fb923c'),
+        borderRadius: 3, borderSkipped: false,
       }],
     },
     options: {
-      plugins: { legend: { display: false }, tooltip: {
-        callbacks: { label: ctx => ` ${ctx.raw}% handoff rate` },
-      }},
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.raw}% handoff rate` } } },
       scales: {
         x: { grid: { display: false }, ticks: { ...TICKS, maxRotation: 0 } },
         y: { grid: GRID, ticks: TICKS, max: 100, title: { display: true, text: '%', color: '#64748b', font: { size: 10 } } },
@@ -701,23 +314,16 @@ function buildCharts(m) {
   mkChart('chart-backlog', {
     type: 'line',
     data: {
-      labels: m.backlogByDay.map(d => d.label),
+      labels: d.backlogByDay.map(x => x.label),
       datasets: [{
-        data: m.backlogByDay.map(d => d.count),
-        borderColor: '#8b5cf6',
-        backgroundColor: 'rgba(139,92,246,0.08)',
-        fill: true,
-        tension: 0.35,
-        pointRadius: 4,
-        pointBackgroundColor: '#8b5cf6',
-        pointBorderColor: '#0f1829',
-        pointBorderWidth: 2,
+        data: d.backlogByDay.map(x => x.count),
+        borderColor: '#8b5cf6', backgroundColor: 'rgba(139,92,246,0.08)',
+        fill: true, tension: 0.35, pointRadius: 4,
+        pointBackgroundColor: '#8b5cf6', pointBorderColor: '#0f1829', pointBorderWidth: 2,
       }],
     },
     options: {
-      plugins: { legend: { display: false }, tooltip: {
-        callbacks: { label: ctx => ` ${ctx.raw} open tickets` },
-      }},
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.raw} open tickets` } } },
       scales: {
         x: { grid: GRID, ticks: TICKS },
         y: { grid: GRID, ticks: TICKS, beginAtZero: true },
@@ -725,115 +331,87 @@ function buildCharts(m) {
     },
   });
 
-  // Intent containment (horizontal bar)
-  if (m.intentData.length > 0) {
+  // Intent containment
+  if (d.intentData && d.intentData.length > 0) {
     mkChart('chart-intent', {
       type: 'bar',
       data: {
-        labels: m.intentData.map(d => d.label),
+        labels: d.intentData.map(x => x.label),
         datasets: [{
-          data: m.intentData.map(d => d.rate),
-          backgroundColor: m.intentData.map(d => d.rate >= 75 ? '#22c55e' : d.rate >= 50 ? '#eab308' : '#ef4444'),
-          borderRadius: 4,
-          borderSkipped: false,
+          data: d.intentData.map(x => x.rate),
+          backgroundColor: d.intentData.map(x => x.rate >= 75 ? '#22c55e' : x.rate >= 50 ? '#eab308' : '#ef4444'),
+          borderRadius: 4, borderSkipped: false,
         }],
       },
       options: {
         indexAxis: 'y',
-        plugins: { legend: { display: false }, tooltip: {
-          callbacks: { label: ctx => ` ${ctx.raw}% contained (${m.intentData[ctx.dataIndex].total} sessions)` },
-        }},
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => ` ${ctx.raw}% contained (${d.intentData[ctx.dataIndex].total} sessions)` } } },
         scales: {
           x: { grid: GRID, ticks: TICKS, max: 100, title: { display: true, text: '% contained', color: '#64748b', font: { size: 10 } } },
           y: { grid: { display: false }, ticks: TICKS },
         },
       },
     });
-  } else {
-    // Not enough Voiceflow data
-    const canvas = document.getElementById('chart-intent');
-    if (canvas) {
-      const ctx2 = canvas.getContext('2d');
-      ctx2.fillStyle = '#64748b';
-      ctx2.font = '13px Inter, system-ui';
-      ctx2.textAlign = 'center';
-      ctx2.fillText('No Voiceflow session data available', canvas.width / 2, 80);
-    }
   }
 }
 
-// ════════════════════════════════════════════════════════
-//  UI UPDATES
-// ════════════════════════════════════════════════════════
-function set(id, text) {
-  const el = document.getElementById(id);
-  if (el) el.innerHTML = text ?? '—';
-}
+// ── Render ────────────────────────────────────────────────
+function render(d) {
+  // Row 1 KPIs
+  set('val-sessions',      d.sessions24h !== null ? d.sessions24h : '—');
+  set('sub-sessions-avg',  d.avgSessionsPerDay !== null ? `30d avg: ${(+d.avgSessionsPerDay).toFixed(1)}/day` : '30d avg: —');
+  set('val-deflection',    pct(d.deflectionRate));
+  set('val-fcr',           pct(d.fcrRate));
+  set('val-frt',           fmt(d.avgFRT));
+  set('val-aht',           fmt(d.avgAHT));
+  set('val-repeat',        pct(d.repeatRate));
 
-function updateKPIs(m) {
-  // Row 1
-  set('val-sessions',  m.sessions24h !== null ? m.sessions24h : '—');
-  set('sub-sessions-avg', m.avgSessionsPerDay !== null
-    ? `30d avg: ${m.avgSessionsPerDay.toFixed(1)}/day`
-    : '30d avg: —'
-  );
-  set('val-deflection', m.deflectionRate !== null ? pct(m.deflectionRate) : '—');
-  set('val-fcr',        pct(m.fcrRate));
-  set('val-frt',        fmt(m.avgFRT));
-  set('val-aht',        fmt(m.avgAHT));
-  set('val-repeat',     pct(m.repeatRate));
+  // Row 2 KPIs
+  set('val-cost-24h',   d.cost24h !== null ? `$${d.cost24h}` : '—');
+  set('sub-cost',       d.cost30dAvg !== null ? `30d avg: $${d.cost30dAvg}/day` : '30d avg: —');
+  set('cost-note',      `@ $${(+(d.costPerSession || 0.05)).toFixed(2)}/session`);
+  set('val-tcs',        d.ticketsPerShift ?? '—');
+  set('val-containment', pct(d.containmentRate));
+  set('val-handoff',    pct(d.handoffRate));
 
-  // Row 2
-  set('val-cost-24h', m.cost24h !== null ? `$${m.cost24h}` : '—');
-  set('sub-cost',     m.cost30dAvg !== null ? `30d avg: $${m.cost30dAvg}/day` : '30d avg: —');
-  set('cost-note',    `@ $${CONFIG.COST_PER_SESSION.toFixed(2)}/session — update in CONFIG`);
-  set('val-tcs',        m.ticketsPerShift ?? '—');
-  set('val-containment', m.containmentRate !== null ? pct(m.containmentRate) : '—');
-  set('val-handoff',    m.handoffRate !== null ? pct(m.handoffRate) : '—');
+  // Deflection badge / notice
+  if (d.deflectionIsEstimate) {
+    document.getElementById('deflection-notice').classList.remove('hidden');
+    document.getElementById('deflection-badge').classList.remove('hidden');
+  } else {
+    document.getElementById('deflection-notice').classList.add('hidden');
+    document.getElementById('deflection-badge').classList.add('hidden');
+  }
 
   // Timestamp
-  set('last-updated', `Updated ${new Date().toLocaleTimeString()}`);
+  const gen = new Date(d.generatedAt);
+  set('last-updated', `Data as of ${gen.toLocaleString()}`);
+
+  buildCharts(d);
 }
 
-// ════════════════════════════════════════════════════════
-//  MAIN
-// ════════════════════════════════════════════════════════
-function showLoading(on) {
-  document.getElementById('loading-spinner').classList.toggle('hidden', !on);
-}
-
-function showError(msg, isCors = false) {
-  if (isCors) {
-    document.getElementById('cors-warning').classList.remove('hidden');
-  } else {
-    const b = document.getElementById('error-banner');
-    document.getElementById('error-text').textContent = msg;
-    b.classList.remove('hidden');
-  }
-}
-
-async function refresh(manual = false) {
-  if (manual) {
-    document.getElementById('cors-warning').classList.add('hidden');
-    document.getElementById('error-banner').classList.add('hidden');
-  }
-  showLoading(true);
+// ── Load ──────────────────────────────────────────────────
+async function loadData() {
+  document.getElementById('spinner').style.display = 'inline-block';
+  document.getElementById('error-banner').classList.add('hidden');
   try {
-    const metrics = await computeMetrics();
-    updateKPIs(metrics);
-    buildCharts(metrics);
+    // Cache-bust so GitHub Pages doesn't serve stale data
+    const res = await fetch(`./data.json?t=${Date.now()}`);
+    if (!res.ok) throw new Error(`Could not load data.json (HTTP ${res.status}). Has the GitHub Actions workflow run yet?`);
+    const data = await res.json();
+    render(data);
   } catch (err) {
-    console.error(err);
-    const isCors = err instanceof TypeError && err.message.includes('fetch');
-    showError(`Data load failed: ${err.message}`, isCors);
+    document.getElementById('error-text').textContent = err.message;
+    document.getElementById('error-banner').classList.remove('hidden');
+    set('last-updated', 'Failed to load');
   } finally {
-    showLoading(false);
+    document.getElementById('spinner').style.display = 'none';
   }
 }
 
-// Auto-refresh every 5 minutes
-refresh();
-setInterval(() => refresh(), 5 * 60 * 1000);
+loadData();
+// Reload every 5 minutes — GitHub Actions refreshes data hourly
+setInterval(loadData, 5 * 60 * 1000);
 </script>
 </body>
 </html>
