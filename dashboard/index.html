@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stewart AI — CX Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  * { box-sizing: border-box; }
+  body { background: #070d1a; font-family: 'Inter', system-ui, sans-serif; color: #e2e8f0; }
+
+  .card {
+    background: #0f1829;
+    border: 1px solid #1e293b;
+    border-radius: 14px;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: #334155; }
+
+  .kpi-val { font-size: 2rem; font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; }
+  .kpi-val.sm { font-size: 1.6rem; }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 0.6rem; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 4px;
+  }
+  .badge-amber { background: #431407; color: #fbbf24; border: 1px solid #78350f; }
+
+  .tag { font-size: 0.65rem; color: #64748b; margin-top: 2px; }
+
+  .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid #1e3a5f; border-top-color: #3b82f6;
+    border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .chart-wrap { position: relative; height: 220px; }
+  .chart-wrap canvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; }
+
+  .skeleton {
+    background: linear-gradient(90deg, #1e293b 25%, #273549 50%, #1e293b 75%);
+    background-size: 200% 100%; animation: shimmer 1.4s infinite;
+    border-radius: 6px; display: inline-block; min-width: 80px; height: 2rem;
+  }
+  @keyframes shimmer { to { background-position: -200% 0; } }
+
+  .alert { border-radius: 10px; padding: 10px 14px; font-size: 0.8rem; line-height: 1.5; display: flex; align-items: flex-start; gap: 8px; }
+  .alert-amber { background: #1c1000; border: 1px solid #78350f; color: #fcd34d; }
+  .alert-red   { background: #1a0000; border: 1px solid #7f1d1d; color: #fca5a5; }
+
+  code { background: rgba(255,255,255,0.07); padding: 1px 5px; border-radius: 4px; font-size: 0.85em; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- ─── HEADER ─────────────────────────────────────────── -->
+<header style="border-bottom:1px solid #1e293b; background:#070d1a; position:sticky; top:0; z-index:50;">
+  <div class="max-w-screen-xl mx-auto px-5 py-3 flex items-center justify-between gap-4">
+    <div class="flex items-center gap-3">
+      <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#2563eb,#7c3aed);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;color:#fff;flex-shrink:0;">S</div>
+      <div>
+        <div class="font-semibold text-white text-base leading-tight">Stewart AI</div>
+        <div class="text-xs" style="color:#64748b;">Customer Experience Dashboard</div>
+      </div>
+    </div>
+    <div class="flex items-center gap-3 flex-shrink-0">
+      <span id="last-updated" class="text-xs" style="color:#475569;">Loading…</span>
+      <span id="spinner" class="spinner"></span>
+      <button onclick="loadData()"
+        class="px-3 py-1.5 text-xs font-medium text-white rounded-lg transition"
+        style="background:#1d4ed8;"
+        onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#1d4ed8'">
+        ↻ Reload
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ─── ALERTS ─────────────────────────────────────────── -->
+<div class="max-w-screen-xl mx-auto px-5 pt-4 space-y-2">
+  <div id="error-banner" class="alert alert-red hidden">
+    <span style="flex-shrink:0;">⛔</span>
+    <div id="error-text"></div>
+  </div>
+  <div id="deflection-notice" class="alert alert-amber hidden">
+    <span style="flex-shrink:0;">⚠️</span>
+    <div>
+      <strong>True Deflection is estimated.</strong>
+      Sessions with no escalation keyword detected are counted as deflected.
+      For precise tracking, add a resolution End block in Voiceflow and set
+      <code>DEFLECTION_SIGNAL</code> in <code>fetch-data.js</code>.
+    </div>
+  </div>
+</div>
+
+<!-- ─── KPI ROW 1 ──────────────────────────────────────── -->
+<div class="max-w-screen-xl mx-auto px-5 pt-5">
+  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+
+    <div class="card p-4">
+      <div class="text-xs mb-2" style="color:#64748b;">Stewart Sessions</div>
+      <div class="kpi-val" style="color:#60a5fa;" id="val-sessions"><span class="skeleton"></span></div>
+      <div class="tag">last 24h</div>
+      <div class="text-xs mt-1" style="color:#94a3b8;" id="sub-sessions-avg">—</div>
+    </div>
+
+    <div class="card p-4">
+      <div class="flex items-center gap-1.5 mb-2">
+        <span class="text-xs" style="color:#64748b;">True Deflection</span>
+        <span class="badge badge-amber" id="deflection-badge">Est.</span>
+      </div>
+      <div class="kpi-val" style="color:#34d399;" id="val-deflection"><span class="skeleton"></span></div>
+      <div class="tag">sessions fully resolved</div>
+    </div>
+
+    <div class="card p-4">
+      <div class="text-xs mb-2" style="color:#64748b;">FCR Rate · General</div>
+      <div class="kpi-val" style="color:#a78bfa;" id="val-fcr"><span class="skeleton"></span></div>
+      <div class="tag">first-contact resolved</div>
+    </div>
+
+    <div class="card p-4">
+      <div class="text-xs mb-2" style="color:#64748b;">Avg First Response</div>
+      <div class="kpi-val" style="color:#22d3ee;" id="val-frt"><span class="skeleton"></span></div>
+      <div class="tag">General queue · 30d</div>
+    </div>
+
+    <div class="card p-4">
+      <div class="text-xs mb-2" style="color:#64748b;">Avg Handle Time</div>
+      <div class="kpi-val" style="color:#fbbf24;" id="val-aht"><span class="skeleton"></span></div>
+      <div class="tag">General queue · 30d</div>
+    </div>
+
+    <div class="card p-4">
+      <div class="text-xs mb-2" style="color:#64748b;">Repeat Contact Rate</div>
+      <div class="kpi-val" style="color:#f87171;" id="val-repeat"><span class="skeleton"></span></div>
+      <div class="tag">within 7d of close</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ─── KPI ROW 2 ──────────────────────────────────────── -->
+<div class="max-w-screen-xl mx-auto px-5 pt-3">
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+
+    <div class="card p-4">
+      <div class="text-xs mb-2" style="color:#64748b;">Stewart Chat Cost</div>
+      <div class="kpi-val sm" style="color:#93c5fd;" id="val-cost-24h"><span class="skeleton"></span></div>
+      <div class="tag">last 24h</div>
+      <div class="text-xs mt-1" style="color:#94a3b8;" id="sub-cost">30d avg: —</div>
+      <div class="tag" id="cost-note"></div>
+    </div>
+
+    <div class="card p-4">
+      <div class="text-xs mb-2" style="color:#64748b;">Tickets Closed / Shift</div>
+      <div class="kpi-val sm" style="color:#86efac;" id="val-tcs"><span class="skeleton"></span></div>
+      <div class="tag">General · 10h shift avg</div>
+    </div>
+
+    <div class="card p-4">
+      <div class="text-xs mb-2" style="color:#64748b;">Stewart Containment</div>
+      <div class="kpi-val sm" style="color:#818cf8;" id="val-containment"><span class="skeleton"></span></div>
+      <div class="tag">overall 30d rate</div>
+    </div>
+
+    <div class="card p-4">
+      <div class="text-xs mb-2" style="color:#64748b;">Handoff Rate</div>
+      <div class="kpi-val sm" style="color:#fb923c;" id="val-handoff"><span class="skeleton"></span></div>
+      <div class="tag">% escalated to human</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ─── CHARTS ROW 1 ───────────────────────────────────── -->
+<div class="max-w-screen-xl mx-auto px-5 pt-3">
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+
+    <div class="card p-4">
+      <div class="text-sm font-medium mb-1" style="color:#cbd5e1;">Ticket Source Distribution</div>
+      <div class="tag mb-3">Last 30 days · all queues</div>
+      <div class="chart-wrap"><canvas id="chart-source"></canvas></div>
+    </div>
+
+    <div class="card p-4">
+      <div class="text-sm font-medium mb-1" style="color:#cbd5e1;">Time to First Response</div>
+      <div class="tag mb-3">Stewart AI vs. Human Agent (minutes)</div>
+      <div class="chart-wrap"><canvas id="chart-frt"></canvas></div>
+    </div>
+
+    <div class="card p-4">
+      <div class="text-sm font-medium mb-1" style="color:#cbd5e1;">Handoff Rate by Hour of Day</div>
+      <div class="tag mb-3">% of sessions escalated per hour · 30d</div>
+      <div class="chart-wrap"><canvas id="chart-handoff-hour"></canvas></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ─── CHARTS ROW 2 ───────────────────────────────────── -->
+<div class="max-w-screen-xl mx-auto px-5 pt-3 pb-10">
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+
+    <div class="card p-4">
+      <div class="text-sm font-medium mb-1" style="color:#cbd5e1;">7-Day Ticket Backlog Trend</div>
+      <div class="tag mb-3">Rolling open ticket count · all queues</div>
+      <div class="chart-wrap" style="height:200px;"><canvas id="chart-backlog"></canvas></div>
+    </div>
+
+    <div class="card p-4">
+      <div class="flex items-center gap-2 mb-1">
+        <span class="text-sm font-medium" style="color:#cbd5e1;">Containment Rate by Intent</span>
+        <span class="badge badge-amber">Est.</span>
+      </div>
+      <div class="tag mb-3">Keyword-inferred from Voiceflow transcripts · 30d</div>
+      <div class="chart-wrap" style="height:200px;"><canvas id="chart-intent"></canvas></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── Helpers ───────────────────────────────────────────────
+function fmt(minutes) {
+  if (minutes === null || minutes === undefined || isNaN(minutes)) return '—';
+  if (minutes < 60) return `${Math.round(minutes)}m`;
+  return `${Math.floor(minutes / 60)}h ${Math.round(minutes % 60)}m`;
+}
+function pct(v) { return v !== null && v !== undefined ? `${(+v).toFixed(1)}%` : '—'; }
+function set(id, html) { const el = document.getElementById(id); if (el) el.innerHTML = html ?? '—'; }
+
+// ── Charts ────────────────────────────────────────────────
+const charts = {};
+const GRID  = { color: 'rgba(255,255,255,0.04)' };
+const TICKS = { color: '#64748b', font: { size: 10 } };
+
+function mkChart(id, config) {
+  if (charts[id]) charts[id].destroy();
+  const el = document.getElementById(id);
+  if (el) charts[id] = new Chart(el, config);
+}
+
+function buildCharts(d) {
+  // Source donut
+  mkChart('chart-source', {
+    type: 'doughnut',
+    data: {
+      labels: ['Stewart AI', 'Chat', 'Email', 'Other'],
+      datasets: [{
+        data: [d.sourceData.stewart, d.sourceData.chat, d.sourceData.email, d.sourceData.other],
+        backgroundColor: ['#3b82f6', '#06b6d4', '#8b5cf6', '#475569'],
+        borderWidth: 2, borderColor: '#0f1829', hoverOffset: 4,
+      }],
+    },
+    options: {
+      cutout: '65%',
+      plugins: {
+        legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 11 }, boxWidth: 12 } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw} (${d.sourceData.total > 0 ? (ctx.raw / d.sourceData.total * 100).toFixed(1) : 0}%)` } },
+      },
+    },
+  });
+
+  // FRT comparison
+  mkChart('chart-frt', {
+    type: 'bar',
+    data: {
+      labels: ['Stewart AI', 'Human Agent'],
+      datasets: [{
+        data: [d.stewartFRT, d.avgFRT !== null ? +parseFloat(d.avgFRT).toFixed(1) : null],
+        backgroundColor: ['#3b82f6', '#f97316'],
+        borderRadius: 6, borderSkipped: false,
+      }],
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.raw} min` } } },
+      scales: {
+        x: { grid: GRID, ticks: TICKS, title: { display: true, text: 'minutes', color: '#64748b', font: { size: 10 } } },
+        y: { grid: { display: false }, ticks: TICKS },
+      },
+    },
+  });
+
+  // Handoff by hour
+  mkChart('chart-handoff-hour', {
+    type: 'bar',
+    data: {
+      labels: Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2,'0')}h`),
+      datasets: [{
+        data: d.handoffPctByHour,
+        backgroundColor: d.handoffPctByHour.map(v => v > 50 ? '#ef4444' : v > 25 ? '#f97316' : '#fb923c'),
+        borderRadius: 3, borderSkipped: false,
+      }],
+    },
+    options: {
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.raw}% handoff rate` } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { ...TICKS, maxRotation: 0 } },
+        y: { grid: GRID, ticks: TICKS, max: 100, title: { display: true, text: '%', color: '#64748b', font: { size: 10 } } },
+      },
+    },
+  });
+
+  // Backlog trend
+  mkChart('chart-backlog', {
+    type: 'line',
+    data: {
+      labels: d.backlogByDay.map(x => x.label),
+      datasets: [{
+        data: d.backlogByDay.map(x => x.count),
+        borderColor: '#8b5cf6', backgroundColor: 'rgba(139,92,246,0.08)',
+        fill: true, tension: 0.35, pointRadius: 4,
+        pointBackgroundColor: '#8b5cf6', pointBorderColor: '#0f1829', pointBorderWidth: 2,
+      }],
+    },
+    options: {
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.raw} open tickets` } } },
+      scales: {
+        x: { grid: GRID, ticks: TICKS },
+        y: { grid: GRID, ticks: TICKS, beginAtZero: true },
+      },
+    },
+  });
+
+  // Intent containment
+  if (d.intentData && d.intentData.length > 0) {
+    mkChart('chart-intent', {
+      type: 'bar',
+      data: {
+        labels: d.intentData.map(x => x.label),
+        datasets: [{
+          data: d.intentData.map(x => x.rate),
+          backgroundColor: d.intentData.map(x => x.rate >= 75 ? '#22c55e' : x.rate >= 50 ? '#eab308' : '#ef4444'),
+          borderRadius: 4, borderSkipped: false,
+        }],
+      },
+      options: {
+        indexAxis: 'y',
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => ` ${ctx.raw}% contained (${d.intentData[ctx.dataIndex].total} sessions)` } } },
+        scales: {
+          x: { grid: GRID, ticks: TICKS, max: 100, title: { display: true, text: '% contained', color: '#64748b', font: { size: 10 } } },
+          y: { grid: { display: false }, ticks: TICKS },
+        },
+      },
+    });
+  }
+}
+
+// ── Render ────────────────────────────────────────────────
+function render(d) {
+  // Row 1 KPIs
+  set('val-sessions',      d.sessions24h !== null ? d.sessions24h : '—');
+  set('sub-sessions-avg',  d.avgSessionsPerDay !== null ? `30d avg: ${(+d.avgSessionsPerDay).toFixed(1)}/day` : '30d avg: —');
+  set('val-deflection',    pct(d.deflectionRate));
+  set('val-fcr',           pct(d.fcrRate));
+  set('val-frt',           fmt(d.avgFRT));
+  set('val-aht',           fmt(d.avgAHT));
+  set('val-repeat',        pct(d.repeatRate));
+
+  // Row 2 KPIs
+  set('val-cost-24h',   d.cost24h !== null ? `$${d.cost24h}` : '—');
+  set('sub-cost',       d.cost30dAvg !== null ? `30d avg: $${d.cost30dAvg}/day` : '30d avg: —');
+  set('cost-note',      `@ $${(+(d.costPerSession || 0.05)).toFixed(2)}/session`);
+  set('val-tcs',        d.ticketsPerShift ?? '—');
+  set('val-containment', pct(d.containmentRate));
+  set('val-handoff',    pct(d.handoffRate));
+
+  // Deflection badge / notice
+  if (d.deflectionIsEstimate) {
+    document.getElementById('deflection-notice').classList.remove('hidden');
+    document.getElementById('deflection-badge').classList.remove('hidden');
+  } else {
+    document.getElementById('deflection-notice').classList.add('hidden');
+    document.getElementById('deflection-badge').classList.add('hidden');
+  }
+
+  // Timestamp
+  const gen = new Date(d.generatedAt);
+  set('last-updated', `Data as of ${gen.toLocaleString()}`);
+
+  buildCharts(d);
+}
+
+// ── Load ──────────────────────────────────────────────────
+async function loadData() {
+  document.getElementById('spinner').style.display = 'inline-block';
+  document.getElementById('error-banner').classList.add('hidden');
+  try {
+    // Cache-bust so GitHub Pages doesn't serve stale data
+    const res = await fetch(`./data.json?t=${Date.now()}`);
+    if (!res.ok) throw new Error(`Could not load data.json (HTTP ${res.status}). Has the GitHub Actions workflow run yet?`);
+    const data = await res.json();
+    render(data);
+  } catch (err) {
+    document.getElementById('error-text').textContent = err.message;
+    document.getElementById('error-banner').classList.remove('hidden');
+    set('last-updated', 'Failed to load');
+  } finally {
+    document.getElementById('spinner').style.display = 'none';
+  }
+}
+
+loadData();
+// Reload every 5 minutes — GitHub Actions refreshes data hourly
+setInterval(loadData, 5 * 60 * 1000);
+</script>
+</body>
+</html>
