@@ -8,8 +8,11 @@ Usage:
   export FRESHDESK_DOMAIN=universaltennis
   export FRESHDESK_API_KEY=your_key_here
   export VOICEFLOW_API_KEY=your_key_here
-  export ANTHROPIC_API_KEY=your_key_here
   python refresh_dashboard.py
+
+  ANTHROPIC_API_KEY is optional. If not set, the AI-tagging sections
+  (topics, sentiment, escalation reasons, standout conversations) keep
+  the sample data already in the dashboard.
 """
 
 import os
@@ -22,14 +25,13 @@ import sys
 from pathlib import Path
 
 import requests
-import anthropic
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
 FRESHDESK_DOMAIN = os.environ["FRESHDESK_DOMAIN"]          # e.g. "universaltennis"
 FRESHDESK_API_KEY = os.environ["FRESHDESK_API_KEY"]
 VOICEFLOW_API_KEY = os.environ["VOICEFLOW_API_KEY"]
-ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")  # optional
 
 FRESHDESK_BASE = f"https://{FRESHDESK_DOMAIN}.freshdesk.com/api/v2"
 VOICEFLOW_BASE = "https://api.voiceflow.com/v2"
@@ -205,16 +207,11 @@ def classify_sessions(sessions: list, week_tickets: list) -> dict:
 
 # ── Claude AI tagging ─────────────────────────────────────────────────────────
 
-def tag_with_claude(sessions: list, tickets: list) -> dict:
-    """
-    Ask Claude to:
-    1. Tag each topic's share of contacts + sentiment score
-    2. Classify AI-resolution rate by chat type
-    3. Tally escalation reasons
-    4. Surface standout and problem conversations
-
-    Returns a dict with keys: topics, ai_res_by_type, escalation_reasons, conversations
-    """
+def tag_with_claude(sessions: list, tickets: list) -> dict | None:
+    if not ANTHROPIC_API_KEY:
+        print("  ℹ  ANTHROPIC_API_KEY not set — skipping AI tagging (sample data kept)")
+        return None
+    import anthropic
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
     # Build a compact summary of sessions to fit in context
@@ -422,9 +419,10 @@ def main():
 
         # Run Claude tagging only for the most recent complete week (cost control)
         if week_offset == 1 and sessions:
-            print("  Running Claude AI tagging…")
-            latest_tagging = tag_with_claude(sessions, tickets)
-            print("  Tagging complete.")
+            result = tag_with_claude(sessions, tickets)
+            if result:
+                latest_tagging = result
+                print("  Tagging complete.")
 
     regenerate_dashboard(weeks_data, latest_tagging, FRESHDESK_TICKET_URL)
     print("\n✅  Done. Open stewart-support-dashboard.html in your browser.")

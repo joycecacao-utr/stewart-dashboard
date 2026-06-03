@@ -1,2 +1,2 @@
 requests>=2.31
-anthropic>=0.27
+anthropic>=0.27  # optional — only needed if ANTHROPIC_API_KEY is set
