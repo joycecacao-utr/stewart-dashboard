@@ -90,14 +90,41 @@ async function fdGetAll(path, params = {}, maxPages = 25) {
 
 // ─── VOICEFLOW ──────────────────────────────────────────────────────────────
 async function vfGetAll(hours) {
-  const start = new Date(Date.now() - hours * 3600000).toISOString();
+  const cutoff = new Date(Date.now() - hours * 3600000);
+  // Voiceflow Transcripts API — paginate until we've gone past the cutoff date.
+  // The API does not support server-side date filtering; we filter client-side.
+  const all = [];
+  let nextToken = null;
+  let page = 0;
   try {
-    const url = new URL(`https://api.voiceflow.com/v2/transcripts/${VF_PROJECT}`);
-    url.searchParams.set('range[start]', start);
-    const res = await fetch(url, { headers: { Authorization: VF_KEY } });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    return Array.isArray(data) ? data : (data.data ?? data.items ?? []);
+    do {
+      const url = new URL(`https://api.voiceflow.com/v2/transcripts/${VF_PROJECT}`);
+      url.searchParams.set('limit', '100');
+      if (nextToken) url.searchParams.set('nextToken', nextToken);
+      const res = await fetch(url, { headers: { Authorization: VF_KEY, accept: 'application/json' } });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const body = await res.json();
+
+      // Support both array response and paginated envelope
+      const items = Array.isArray(body) ? body : (body.data ?? body.items ?? body.transcripts ?? []);
+      nextToken = body.nextToken ?? null;
+
+      if (items.length === 0) break;
+
+      // Filter to within our window; stop paginating once all items are older
+      const inRange = items.filter(s => new Date(s.createdAt ?? s.updatedAt ?? 0) >= cutoff);
+      all.push(...inRange);
+
+      // If the whole page was before cutoff, we've gone far enough back
+      const allOld = items.every(s => new Date(s.createdAt ?? s.updatedAt ?? 0) < cutoff);
+      if (allOld || Array.isArray(body)) break;
+
+      page++;
+      if (page > 50) break; // safety cap: 5,000 transcripts max
+      await sleep(100);
+    } while (nextToken);
+
+    return all;
   } catch (e) {
     console.warn('Voiceflow error:', e.message);
     return null;
@@ -408,10 +435,16 @@ async function main() {
   console.log('Fetching Freshdesk CSAT ratings…');
   let csatRatings = [];
   try {
-    csatRatings = await fdGetAll('satisfaction_ratings', { created_since: since });
+    // Try paginated endpoint first; fall back to search endpoint on 404
+    csatRatings = await fdGetAll('surveys/satisfaction_ratings', { created_since: since });
     console.log(`  → ${csatRatings.length} ratings`);
-  } catch (e) {
-    console.warn('  CSAT unavailable:', e.message);
+  } catch (e1) {
+    try {
+      csatRatings = await fdGetAll('satisfaction_ratings', { created_since: since });
+      console.log(`  → ${csatRatings.length} ratings`);
+    } catch (e2) {
+      console.warn('  CSAT unavailable:', e2.message);
+    }
   }
 
   console.log(`Fetching Voiceflow transcripts (${DAYS}d)…`);
