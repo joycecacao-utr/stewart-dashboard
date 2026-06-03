@@ -25,7 +25,7 @@ jobs:
           FRESHDESK_KEY:    ${{ secrets.FRESHDESK_KEY }}
           VOICEFLOW_KEY:    ${{ secrets.VOICEFLOW_KEY }}
           FRESHDESK_DOMAIN: universaltennis
-        run: node --input-type=module < docs/fetch-data.js
+        run: node docs/fetch-data.js
 
       - name: Commit data.json
         run: |
