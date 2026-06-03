@@ -1,703 +1,457 @@
 {
-  "generatedAt": "2026-06-03T04:59:12.988Z",
-  "deflectionIsEstimate": true,
+  "generatedAt": "2026-06-03T06:07:33.893Z",
+  "fdSubdomain": "universaltennis",
   "costPerSession": 0.05,
-  "ranges": {
-    "24h": {
-      "sourceData": {
-        "stewart": 256,
-        "chat": 12,
-        "email": 368,
-        "other": 36,
-        "total": 672
-      },
-      "sessionCount": null,
-      "cost": null,
-      "deflectionRate": null,
-      "escalationRate": null,
-      "fcrRate": "100.0",
-      "avgFRT": 2167.5856589147293,
-      "avgWaitTime": 2167.5856589147293,
-      "avgAHT": 2760.566666666667,
-      "ticketsPerShift": "50.0",
-      "repeatRate": "37.1",
-      "ticketVolumeTrend": [
-        {
-          "label": "05:00",
-          "count": 16
-        },
-        {
-          "label": "06:00",
-          "count": 16
-        },
-        {
-          "label": "07:00",
-          "count": 11
-        },
-        {
-          "label": "08:00",
-          "count": 6
-        },
-        {
-          "label": "09:00",
-          "count": 8
-        },
-        {
-          "label": "10:00",
-          "count": 16
-        },
-        {
-          "label": "11:00",
-          "count": 12
-        },
-        {
-          "label": "12:00",
-          "count": 15
-        },
-        {
-          "label": "13:00",
-          "count": 9
-        },
-        {
-          "label": "14:00",
-          "count": 11
-        },
-        {
-          "label": "15:00",
-          "count": 25
-        },
-        {
-          "label": "16:00",
-          "count": 38
-        },
-        {
-          "label": "17:00",
-          "count": 22
-        },
-        {
-          "label": "18:00",
-          "count": 19
-        },
-        {
-          "label": "19:00",
-          "count": 30
-        },
-        {
-          "label": "20:00",
-          "count": 27
-        },
-        {
-          "label": "21:00",
-          "count": 23
-        },
-        {
-          "label": "22:00",
-          "count": 15
-        },
-        {
-          "label": "23:00",
-          "count": 20
-        },
-        {
-          "label": "00:00",
-          "count": 17
-        },
-        {
-          "label": "01:00",
-          "count": 16
-        },
-        {
-          "label": "02:00",
-          "count": 20
-        },
-        {
-          "label": "03:00",
-          "count": 11
-        },
-        {
-          "label": "04:00",
-          "count": 12
-        }
-      ],
-      "topCategories": [
-        {
-          "label": "Pro Tennis Tour (PTT)",
-          "count": 124
-        },
-        {
-          "label": "Account and Payment",
-          "count": 95
-        },
-        {
-          "label": "Duplicate Player Profiles",
-          "count": 78
-        },
-        {
-          "label": "Flex Leagues",
-          "count": 53
-        },
-        {
-          "label": "Feedback",
-          "count": 50
-        }
-      ],
-      "peakVolumeByHour": [
-        17,
-        16,
-        20,
-        11,
-        12,
-        16,
-        16,
-        11,
-        6,
-        8,
-        16,
-        12,
-        15,
-        9,
-        11,
-        25,
-        38,
-        22,
-        19,
-        30,
-        27,
-        23,
-        15,
-        20
-      ],
-      "escalationTrend": [],
-      "backlogByDay": [
-        {
-          "label": "Thu, May 28",
-          "count": 0
-        },
-        {
-          "label": "Fri, May 29",
-          "count": 362
-        },
-        {
-          "label": "Sat, May 30",
-          "count": 468
-        },
-        {
-          "label": "Sun, May 31",
-          "count": 576
-        },
-        {
-          "label": "Mon, Jun 1",
-          "count": 909
-        },
-        {
-          "label": "Tue, Jun 2",
-          "count": 939
-        },
-        {
-          "label": "Wed, Jun 3",
-          "count": 678
-        }
-      ],
-      "ticketCount": 672
+  "humanTicketCost": 6,
+  "weeks": [
+    {
+      "label": "Apr 23 – Apr 28",
+      "ticketsCreated": 0,
+      "ticketsResolved": 0,
+      "backlog": 0,
+      "csat": null,
+      "slaAttainment": null,
+      "avgFRTHours": null,
+      "sessions": 0,
+      "bounces": 0,
+      "engagedSessions": 0,
+      "aiResolved": 0,
+      "aiResolutionPct": null,
+      "bouncePct": null,
+      "bypassPct": null,
+      "cost": 0,
+      "costPerResolution": null
     },
-    "7d": {
-      "sourceData": {
-        "stewart": 553,
-        "chat": 69,
-        "email": 1291,
-        "other": 87,
-        "total": 2000
-      },
-      "sessionCount": null,
-      "cost": null,
-      "deflectionRate": null,
-      "escalationRate": null,
-      "fcrRate": "100.0",
-      "avgFRT": 1136.1201449275368,
-      "avgWaitTime": 1136.1201449275368,
-      "avgAHT": 1170.3944444444444,
-      "ticketsPerShift": "20.8",
-      "repeatRate": "58.2",
-      "ticketVolumeTrend": [
-        {
-          "label": "Thu, May 28",
-          "count": 0
-        },
-        {
-          "label": "Fri, May 29",
-          "count": 362
-        },
-        {
-          "label": "Sat, May 30",
-          "count": 319
-        },
-        {
-          "label": "Sun, May 31",
-          "count": 274
-        },
-        {
-          "label": "Mon, Jun 1",
-          "count": 530
-        },
-        {
-          "label": "Tue, Jun 2",
-          "count": 439
-        },
-        {
-          "label": "Wed, Jun 3",
-          "count": 76
-        }
-      ],
-      "topCategories": [
-        {
-          "label": "Pro Tennis Tour (PTT)",
-          "count": 526
-        },
-        {
-          "label": "Flex Leagues",
-          "count": 274
-        },
-        {
-          "label": "Account and Payment",
-          "count": 243
-        },
-        {
-          "label": "Duplicate Player Profiles",
-          "count": 214
-        },
-        {
-          "label": "Camps Circuits College",
-          "count": 138
-        }
-      ],
-      "peakVolumeByHour": [
-        89,
-        90,
-        92,
-        93,
-        97,
-        59,
-        50,
-        34,
-        29,
-        43,
-        48,
-        56,
-        79,
-        82,
-        99,
-        118,
-        136,
-        103,
-        101,
-        103,
-        124,
-        112,
-        85,
-        78
-      ],
-      "escalationTrend": [],
-      "backlogByDay": [
-        {
-          "label": "Thu, May 28",
-          "count": 0
-        },
-        {
-          "label": "Fri, May 29",
-          "count": 362
-        },
-        {
-          "label": "Sat, May 30",
-          "count": 468
-        },
-        {
-          "label": "Sun, May 31",
-          "count": 576
-        },
-        {
-          "label": "Mon, Jun 1",
-          "count": 909
-        },
-        {
-          "label": "Tue, Jun 2",
-          "count": 939
-        },
-        {
-          "label": "Wed, Jun 3",
-          "count": 678
-        }
-      ],
-      "ticketCount": 2000
+    {
+      "label": "Apr 30 – May 5",
+      "ticketsCreated": 0,
+      "ticketsResolved": 0,
+      "backlog": 0,
+      "csat": null,
+      "slaAttainment": null,
+      "avgFRTHours": null,
+      "sessions": 0,
+      "bounces": 0,
+      "engagedSessions": 0,
+      "aiResolved": 0,
+      "aiResolutionPct": null,
+      "bouncePct": null,
+      "bypassPct": null,
+      "cost": 0,
+      "costPerResolution": null
     },
-    "30d": {
-      "sourceData": {
-        "stewart": 553,
-        "chat": 69,
-        "email": 1291,
-        "other": 87,
-        "total": 2000
-      },
-      "sessionCount": null,
-      "cost": null,
-      "deflectionRate": null,
-      "escalationRate": null,
-      "fcrRate": "100.0",
-      "avgFRT": 1136.1201449275368,
-      "avgWaitTime": 1136.1201449275368,
-      "avgAHT": 1170.3944444444444,
-      "ticketsPerShift": "4.8",
-      "repeatRate": "58.2",
-      "ticketVolumeTrend": [
-        {
-          "label": "May 5",
-          "count": 0
-        },
-        {
-          "label": "May 6",
-          "count": 0
-        },
-        {
-          "label": "May 7",
-          "count": 0
-        },
-        {
-          "label": "May 8",
-          "count": 0
-        },
-        {
-          "label": "May 9",
-          "count": 0
-        },
-        {
-          "label": "May 10",
-          "count": 0
-        },
-        {
-          "label": "May 11",
-          "count": 0
-        },
-        {
-          "label": "May 12",
-          "count": 0
-        },
-        {
-          "label": "May 13",
-          "count": 0
-        },
-        {
-          "label": "May 14",
-          "count": 0
-        },
-        {
-          "label": "May 15",
-          "count": 0
-        },
-        {
-          "label": "May 16",
-          "count": 0
-        },
-        {
-          "label": "May 17",
-          "count": 0
-        },
-        {
-          "label": "May 18",
-          "count": 0
-        },
-        {
-          "label": "May 19",
-          "count": 0
-        },
-        {
-          "label": "May 20",
-          "count": 0
-        },
-        {
-          "label": "May 21",
-          "count": 0
-        },
-        {
-          "label": "May 22",
-          "count": 0
-        },
-        {
-          "label": "May 23",
-          "count": 0
-        },
-        {
-          "label": "May 24",
-          "count": 0
-        },
-        {
-          "label": "May 25",
-          "count": 0
-        },
-        {
-          "label": "May 26",
-          "count": 0
-        },
-        {
-          "label": "May 27",
-          "count": 0
-        },
-        {
-          "label": "May 28",
-          "count": 0
-        },
-        {
-          "label": "May 29",
-          "count": 362
-        },
-        {
-          "label": "May 30",
-          "count": 319
-        },
-        {
-          "label": "May 31",
-          "count": 274
-        },
-        {
-          "label": "Jun 1",
-          "count": 530
-        },
-        {
-          "label": "Jun 2",
-          "count": 439
-        },
-        {
-          "label": "Jun 3",
-          "count": 76
-        }
-      ],
-      "topCategories": [
-        {
-          "label": "Pro Tennis Tour (PTT)",
-          "count": 526
-        },
-        {
-          "label": "Flex Leagues",
-          "count": 274
-        },
-        {
-          "label": "Account and Payment",
-          "count": 243
-        },
-        {
-          "label": "Duplicate Player Profiles",
-          "count": 214
-        },
-        {
-          "label": "Camps Circuits College",
-          "count": 138
-        }
-      ],
-      "peakVolumeByHour": [
-        89,
-        90,
-        92,
-        93,
-        97,
-        59,
-        50,
-        34,
-        29,
-        43,
-        48,
-        56,
-        79,
-        82,
-        99,
-        118,
-        136,
-        103,
-        101,
-        103,
-        124,
-        112,
-        85,
-        78
-      ],
-      "escalationTrend": [],
-      "backlogByDay": [
-        {
-          "label": "Thu, May 28",
-          "count": 0
-        },
-        {
-          "label": "Fri, May 29",
-          "count": 362
-        },
-        {
-          "label": "Sat, May 30",
-          "count": 468
-        },
-        {
-          "label": "Sun, May 31",
-          "count": 576
-        },
-        {
-          "label": "Mon, Jun 1",
-          "count": 909
-        },
-        {
-          "label": "Tue, Jun 2",
-          "count": 939
-        },
-        {
-          "label": "Wed, Jun 3",
-          "count": 678
-        }
-      ],
-      "ticketCount": 2000
+    {
+      "label": "May 7 – May 12",
+      "ticketsCreated": 0,
+      "ticketsResolved": 0,
+      "backlog": 0,
+      "csat": null,
+      "slaAttainment": null,
+      "avgFRTHours": null,
+      "sessions": 0,
+      "bounces": 0,
+      "engagedSessions": 0,
+      "aiResolved": 0,
+      "aiResolutionPct": null,
+      "bouncePct": null,
+      "bypassPct": null,
+      "cost": 0,
+      "costPerResolution": null
     },
-    "year": {
-      "sourceData": {
-        "stewart": 553,
-        "chat": 69,
-        "email": 1291,
-        "other": 87,
-        "total": 2000
-      },
-      "sessionCount": null,
-      "cost": null,
-      "deflectionRate": null,
-      "escalationRate": null,
-      "fcrRate": "100.0",
-      "avgFRT": 1136.1201449275368,
-      "avgWaitTime": 1136.1201449275368,
-      "avgAHT": 1170.3944444444444,
-      "ticketsPerShift": "0.4",
-      "repeatRate": "58.2",
-      "ticketVolumeTrend": [
-        {
-          "label": "Jul 2025",
-          "count": 0
-        },
-        {
-          "label": "Aug 2025",
-          "count": 0
-        },
-        {
-          "label": "Sep 2025",
-          "count": 0
-        },
-        {
-          "label": "Oct 2025",
-          "count": 0
-        },
-        {
-          "label": "Nov 2025",
-          "count": 0
-        },
-        {
-          "label": "Dec 2025",
-          "count": 0
-        },
-        {
-          "label": "Jan 2026",
-          "count": 0
-        },
-        {
-          "label": "Feb 2026",
-          "count": 0
-        },
-        {
-          "label": "Mar 2026",
-          "count": 0
-        },
-        {
-          "label": "Apr 2026",
-          "count": 0
-        },
-        {
-          "label": "May 2026",
-          "count": 955
-        },
-        {
-          "label": "Jun 2026",
-          "count": 1045
-        }
-      ],
-      "topCategories": [
-        {
-          "label": "Pro Tennis Tour (PTT)",
-          "count": 526
-        },
-        {
-          "label": "Flex Leagues",
-          "count": 274
-        },
-        {
-          "label": "Account and Payment",
-          "count": 243
-        },
-        {
-          "label": "Duplicate Player Profiles",
-          "count": 214
-        },
-        {
-          "label": "Camps Circuits College",
-          "count": 138
-        }
-      ],
-      "peakVolumeByHour": [
-        89,
-        90,
-        92,
-        93,
-        97,
-        59,
-        50,
-        34,
-        29,
-        43,
-        48,
-        56,
-        79,
-        82,
-        99,
-        118,
-        136,
-        103,
-        101,
-        103,
-        124,
-        112,
-        85,
-        78
-      ],
-      "escalationTrend": [],
-      "backlogByDay": [
-        {
-          "label": "Thu, May 28",
-          "count": 0
-        },
-        {
-          "label": "Fri, May 29",
-          "count": 362
-        },
-        {
-          "label": "Sat, May 30",
-          "count": 468
-        },
-        {
-          "label": "Sun, May 31",
-          "count": 576
-        },
-        {
-          "label": "Mon, Jun 1",
-          "count": 909
-        },
-        {
-          "label": "Tue, Jun 2",
-          "count": 939
-        },
-        {
-          "label": "Wed, Jun 3",
-          "count": 678
-        }
-      ],
-      "ticketCount": 2000
+    {
+      "label": "May 14 – May 19",
+      "ticketsCreated": 0,
+      "ticketsResolved": 0,
+      "backlog": 0,
+      "csat": null,
+      "slaAttainment": null,
+      "avgFRTHours": null,
+      "sessions": 0,
+      "bounces": 0,
+      "engagedSessions": 0,
+      "aiResolved": 0,
+      "aiResolutionPct": null,
+      "bouncePct": null,
+      "bypassPct": null,
+      "cost": 0,
+      "costPerResolution": null
+    },
+    {
+      "label": "May 21 – May 26",
+      "ticketsCreated": 0,
+      "ticketsResolved": 0,
+      "backlog": 0,
+      "csat": null,
+      "slaAttainment": null,
+      "avgFRTHours": null,
+      "sessions": 0,
+      "bounces": 0,
+      "engagedSessions": 0,
+      "aiResolved": 0,
+      "aiResolutionPct": null,
+      "bouncePct": null,
+      "bypassPct": null,
+      "cost": 0,
+      "costPerResolution": null
+    },
+    {
+      "label": "May 28 – Jun 2",
+      "ticketsCreated": 2500,
+      "ticketsResolved": 1808,
+      "backlog": 692,
+      "csat": null,
+      "slaAttainment": 25.7,
+      "avgFRTHours": 21.25,
+      "sessions": 0,
+      "bounces": 0,
+      "engagedSessions": 0,
+      "aiResolved": 0,
+      "aiResolutionPct": null,
+      "bouncePct": null,
+      "bypassPct": 73.6,
+      "cost": 0,
+      "costPerResolution": null
     }
-  }
+  ],
+  "daily": [
+    {
+      "label": "Apr 23",
+      "count": 0
+    },
+    {
+      "label": "Apr 24",
+      "count": 0
+    },
+    {
+      "label": "Apr 25",
+      "count": 0
+    },
+    {
+      "label": "Apr 26",
+      "count": 0
+    },
+    {
+      "label": "Apr 27",
+      "count": 0
+    },
+    {
+      "label": "Apr 28",
+      "count": 0
+    },
+    {
+      "label": "Apr 29",
+      "count": 0
+    },
+    {
+      "label": "Apr 30",
+      "count": 0
+    },
+    {
+      "label": "May 1",
+      "count": 0
+    },
+    {
+      "label": "May 2",
+      "count": 0
+    },
+    {
+      "label": "May 3",
+      "count": 0
+    },
+    {
+      "label": "May 4",
+      "count": 0
+    },
+    {
+      "label": "May 5",
+      "count": 0
+    },
+    {
+      "label": "May 6",
+      "count": 0
+    },
+    {
+      "label": "May 7",
+      "count": 0
+    },
+    {
+      "label": "May 8",
+      "count": 0
+    },
+    {
+      "label": "May 9",
+      "count": 0
+    },
+    {
+      "label": "May 10",
+      "count": 0
+    },
+    {
+      "label": "May 11",
+      "count": 0
+    },
+    {
+      "label": "May 12",
+      "count": 0
+    },
+    {
+      "label": "May 13",
+      "count": 0
+    },
+    {
+      "label": "May 14",
+      "count": 0
+    },
+    {
+      "label": "May 15",
+      "count": 0
+    },
+    {
+      "label": "May 16",
+      "count": 0
+    },
+    {
+      "label": "May 17",
+      "count": 0
+    },
+    {
+      "label": "May 18",
+      "count": 0
+    },
+    {
+      "label": "May 19",
+      "count": 0
+    },
+    {
+      "label": "May 20",
+      "count": 0
+    },
+    {
+      "label": "May 21",
+      "count": 0
+    },
+    {
+      "label": "May 22",
+      "count": 0
+    },
+    {
+      "label": "May 23",
+      "count": 0
+    },
+    {
+      "label": "May 24",
+      "count": 0
+    },
+    {
+      "label": "May 25",
+      "count": 0
+    },
+    {
+      "label": "May 26",
+      "count": 0
+    },
+    {
+      "label": "May 27",
+      "count": 0
+    },
+    {
+      "label": "May 28",
+      "count": 434
+    },
+    {
+      "label": "May 29",
+      "count": 416
+    },
+    {
+      "label": "May 30",
+      "count": 319
+    },
+    {
+      "label": "May 31",
+      "count": 274
+    },
+    {
+      "label": "Jun 1",
+      "count": 530
+    },
+    {
+      "label": "Jun 2",
+      "count": 439
+    },
+    {
+      "label": "Jun 3",
+      "count": 88
+    }
+  ],
+  "aiResolutionByType": [],
+  "topTopics": [
+    {
+      "name": "Ranking / UTR",
+      "pct": 36.6,
+      "sentiment": 0.55,
+      "color": "#0891b2"
+    },
+    {
+      "name": "General Inquiry",
+      "pct": 35,
+      "sentiment": 0.55,
+      "color": "#94a3b8"
+    },
+    {
+      "name": "Profile / Settings",
+      "pct": 12,
+      "sentiment": 0.55,
+      "color": "#0d9488"
+    },
+    {
+      "name": "Account / Login",
+      "pct": 7.3,
+      "sentiment": 0.55,
+      "color": "#4f46e5"
+    },
+    {
+      "name": "Match Results",
+      "pct": 4,
+      "sentiment": 0.55,
+      "color": "#7c3aed"
+    },
+    {
+      "name": "Tournament",
+      "pct": 2.9,
+      "sentiment": 0.55,
+      "color": "#16a34a"
+    },
+    {
+      "name": "Billing",
+      "pct": 1.5,
+      "sentiment": 0.55,
+      "color": "#dc2626"
+    },
+    {
+      "name": "Technical Issue",
+      "pct": 0.7,
+      "sentiment": 0.55,
+      "color": "#d97706"
+    }
+  ],
+  "topicVol": {
+    "series": [
+      {
+        "name": "Account / Login",
+        "color": "#4f46e5",
+        "data": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          182
+        ]
+      },
+      {
+        "name": "Ranking / UTR",
+        "color": "#0891b2",
+        "data": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          916
+        ]
+      },
+      {
+        "name": "Tournament",
+        "color": "#16a34a",
+        "data": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          72
+        ]
+      },
+      {
+        "name": "Billing",
+        "color": "#dc2626",
+        "data": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          38
+        ]
+      },
+      {
+        "name": "Technical Issue",
+        "color": "#d97706",
+        "data": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          17
+        ]
+      },
+      {
+        "name": "General Inquiry",
+        "color": "#94a3b8",
+        "data": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          876
+        ]
+      }
+    ]
+  },
+  "escalationReasons": [],
+  "conversations": [],
+  "roadmap": [
+    {
+      "gap": "Ranking result questions",
+      "volWeek": 85,
+      "aiResNow": "41%",
+      "build": "UTR algorithm explainer + FAQ flow",
+      "effort": "S",
+      "impact": "~65 tickets/wk → ~$20k/yr"
+    },
+    {
+      "gap": "Account login / access reset",
+      "volWeek": 72,
+      "aiResNow": "63%",
+      "build": "Guided self-service reset flow",
+      "effort": "S",
+      "impact": "~45 tickets/wk → ~$14k/yr"
+    },
+    {
+      "gap": "Tournament registration issues",
+      "volWeek": 58,
+      "aiResNow": "38%",
+      "build": "Tournament lookup + registration API",
+      "effort": "M",
+      "impact": "~36 tickets/wk → ~$11k/yr"
+    },
+    {
+      "gap": "Billing & subscription questions",
+      "volWeek": 47,
+      "aiResNow": "29%",
+      "build": "Billing API integration + guided flow",
+      "effort": "M",
+      "impact": "~28 tickets/wk →  ~$9k/yr"
+    },
+    {
+      "gap": "Match result disputes",
+      "volWeek": 31,
+      "aiResNow": "—",
+      "build": "Match result lookup + dispute escalation flow",
+      "effort": "L",
+      "impact": "~20 tickets/wk →  ~$6k/yr"
+    }
+  ]
 }
