@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-03T06:07:33.893Z",
+  "generatedAt": "2026-06-03T06:31:31.248Z",
   "fdSubdomain": "universaltennis",
   "costPerSession": 0.05,
   "humanTicketCost": 6,
@@ -9,7 +9,7 @@
       "ticketsCreated": 0,
       "ticketsResolved": 0,
       "backlog": 0,
-      "csat": null,
+      "csat": 79.3,
       "slaAttainment": null,
       "avgFRTHours": null,
       "sessions": 0,
@@ -27,7 +27,7 @@
       "ticketsCreated": 0,
       "ticketsResolved": 0,
       "backlog": 0,
-      "csat": null,
+      "csat": 70,
       "slaAttainment": null,
       "avgFRTHours": null,
       "sessions": 0,
@@ -45,7 +45,7 @@
       "ticketsCreated": 0,
       "ticketsResolved": 0,
       "backlog": 0,
-      "csat": null,
+      "csat": 67.6,
       "slaAttainment": null,
       "avgFRTHours": null,
       "sessions": 0,
@@ -63,7 +63,7 @@
       "ticketsCreated": 0,
       "ticketsResolved": 0,
       "backlog": 0,
-      "csat": null,
+      "csat": 87.1,
       "slaAttainment": null,
       "avgFRTHours": null,
       "sessions": 0,
@@ -81,7 +81,7 @@
       "ticketsCreated": 0,
       "ticketsResolved": 0,
       "backlog": 0,
-      "csat": null,
+      "csat": 81,
       "slaAttainment": null,
       "avgFRTHours": null,
       "sessions": 0,
@@ -97,18 +97,18 @@
     {
       "label": "May 28 – Jun 2",
       "ticketsCreated": 2500,
-      "ticketsResolved": 1808,
-      "backlog": 692,
-      "csat": null,
-      "slaAttainment": 25.7,
-      "avgFRTHours": 21.25,
+      "ticketsResolved": 1811,
+      "backlog": 689,
+      "csat": 76.2,
+      "slaAttainment": 25.9,
+      "avgFRTHours": 20.7,
       "sessions": 0,
       "bounces": 0,
       "engagedSessions": 0,
       "aiResolved": 0,
       "aiResolutionPct": null,
       "bouncePct": null,
-      "bypassPct": 73.6,
+      "bypassPct": 73.7,
       "cost": 0,
       "costPerResolution": null
     }
@@ -256,7 +256,7 @@
     },
     {
       "label": "May 28",
-      "count": 434
+      "count": 425
     },
     {
       "label": "May 29",
@@ -280,14 +280,14 @@
     },
     {
       "label": "Jun 3",
-      "count": 88
+      "count": 97
     }
   ],
   "aiResolutionByType": [],
   "topTopics": [
     {
       "name": "Ranking / UTR",
-      "pct": 36.6,
+      "pct": 36.7,
       "sentiment": 0.55,
       "color": "#0891b2"
     },
@@ -357,7 +357,7 @@
           0,
           0,
           0,
-          916
+          918
         ]
       },
       {
@@ -405,7 +405,7 @@
           0,
           0,
           0,
-          876
+          874
         ]
       }
     ]
