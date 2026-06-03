@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-03T21:54:47.411Z",
+  "generatedAt": "2026-06-03T23:49:49.070Z",
   "fdSubdomain": "universaltennis",
   "costPerSession": 0.05,
   "humanTicketCost": 6,
@@ -97,18 +97,18 @@
     {
       "label": "May 28 – Jun 2",
       "ticketsCreated": 2500,
-      "ticketsResolved": 1835,
-      "backlog": 665,
-      "csat": 77.3,
-      "slaAttainment": 28.2,
-      "avgFRTHours": 23.82,
+      "ticketsResolved": 1825,
+      "backlog": 675,
+      "csat": 78.3,
+      "slaAttainment": 26.8,
+      "avgFRTHours": 23.95,
       "sessions": 0,
       "bounces": 0,
       "engagedSessions": 0,
       "aiResolved": 0,
       "aiResolutionPct": null,
       "bouncePct": null,
-      "bypassPct": 72.5,
+      "bypassPct": 72.6,
       "cost": 0,
       "costPerResolution": null
     }
@@ -256,7 +256,7 @@
     },
     {
       "label": "May 28",
-      "count": 143
+      "count": 111
     },
     {
       "label": "May 29",
@@ -280,7 +280,7 @@
     },
     {
       "label": "Jun 3",
-      "count": 379
+      "count": 411
     }
   ],
   "aiResolutionByType": [],
@@ -293,7 +293,7 @@
     },
     {
       "name": "Ranking / UTR",
-      "pct": 35.5,
+      "pct": 35.6,
       "sentiment": 0.55,
       "color": "#0891b2"
     },
@@ -305,7 +305,7 @@
     },
     {
       "name": "Account / Login",
-      "pct": 7.2,
+      "pct": 7.1,
       "sentiment": 0.55,
       "color": "#4f46e5"
     },
@@ -323,7 +323,7 @@
     },
     {
       "name": "Billing",
-      "pct": 1.5,
+      "pct": 1.4,
       "sentiment": 0.55,
       "color": "#dc2626"
     },
@@ -345,7 +345,7 @@
           0,
           0,
           0,
-          180
+          177
         ]
       },
       {
@@ -357,7 +357,7 @@
           0,
           0,
           0,
-          887
+          891
         ]
       },
       {
@@ -381,7 +381,7 @@
           0,
           0,
           0,
-          37
+          36
         ]
       },
       {
@@ -405,7 +405,7 @@
           0,
           0,
           0,
-          910
+          909
         ]
       }
     ]
