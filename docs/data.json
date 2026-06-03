@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-06-03T09:58:45.417Z",
+  "generatedAt": "2026-06-03T14:54:09.930Z",
   "fdSubdomain": "universaltennis",
   "costPerSession": 0.05,
   "humanTicketCost": 6,
@@ -97,18 +97,18 @@
     {
       "label": "May 28 – Jun 2",
       "ticketsCreated": 2500,
-      "ticketsResolved": 1798,
-      "backlog": 702,
+      "ticketsResolved": 1792,
+      "backlog": 708,
       "csat": 76.2,
-      "slaAttainment": 24.9,
-      "avgFRTHours": 20.42,
+      "slaAttainment": 27.5,
+      "avgFRTHours": 20.38,
       "sessions": 0,
       "bounces": 0,
       "engagedSessions": 0,
       "aiResolved": 0,
       "aiResolutionPct": null,
       "bouncePct": null,
-      "bypassPct": 73.9,
+      "bypassPct": 73.2,
       "cost": 0,
       "costPerResolution": null
     }
@@ -256,7 +256,7 @@
     },
     {
       "label": "May 28",
-      "count": 387
+      "count": 310
     },
     {
       "label": "May 29",
@@ -280,44 +280,44 @@
     },
     {
       "label": "Jun 3",
-      "count": 135
+      "count": 212
     }
   ],
   "aiResolutionByType": [],
   "topTopics": [
     {
       "name": "Ranking / UTR",
-      "pct": 36.4,
+      "pct": 36.1,
       "sentiment": 0.55,
       "color": "#0891b2"
     },
     {
       "name": "General Inquiry",
-      "pct": 35.4,
+      "pct": 35.6,
       "sentiment": 0.55,
       "color": "#94a3b8"
     },
     {
       "name": "Profile / Settings",
-      "pct": 12,
+      "pct": 12.2,
       "sentiment": 0.55,
       "color": "#0d9488"
     },
     {
       "name": "Account / Login",
-      "pct": 7.2,
+      "pct": 7.1,
       "sentiment": 0.55,
       "color": "#4f46e5"
     },
     {
       "name": "Match Results",
-      "pct": 4,
+      "pct": 3.9,
       "sentiment": 0.55,
       "color": "#7c3aed"
     },
     {
       "name": "Tournament",
-      "pct": 2.9,
+      "pct": 3,
       "sentiment": 0.55,
       "color": "#16a34a"
     },
@@ -345,7 +345,7 @@
           0,
           0,
           0,
-          180
+          177
         ]
       },
       {
@@ -357,7 +357,7 @@
           0,
           0,
           0,
-          910
+          902
         ]
       },
       {
@@ -369,7 +369,7 @@
           0,
           0,
           0,
-          73
+          74
         ]
       },
       {
@@ -405,7 +405,7 @@
           0,
           0,
           0,
-          884
+          889
         ]
       }
     ]
