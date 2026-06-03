@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Support &amp; Stewart AI — Weekly Command Center</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<style>
+  :root{
+    --bg:#f1f5f9;--card:#fff;--ink:#0f172a;--muted:#64748b;--line:#e2e8f0;
+    --indigo:#4f46e5;--good:#16a34a;--warn:#d97706;--bad:#dc2626;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  .wrap{max-width:1200px;margin:0 auto;padding:24px 28px 64px;}
+  .banner{background:#fffbeb;border:1px solid #fcd34d;color:#92400e;border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:20px;}
+  header{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px;margin-bottom:8px;}
+  h1{font-size:22px;margin:0;letter-spacing:-.3px;}
+  .sub{color:var(--muted);font-size:13px;margin-top:4px;}
+  .weekpick{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);}
+  select{font-size:14px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);font-weight:600;}
+  .section-label{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:30px 0 12px;}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;}
+  .kpi .label{font-size:12px;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:5px;}
+  .kpi .info{display:inline-flex;width:14px;height:14px;border-radius:50%;background:#e2e8f0;color:#64748b;font-size:10px;align-items:center;justify-content:center;cursor:help;font-weight:700;}
+  .kpi .val{font-size:28px;font-weight:700;letter-spacing:-.5px;margin-top:8px;}
+  .kpi .note{font-size:12px;color:var(--muted);margin-top:4px;}
+  .kpi .val.good{color:var(--good)}.kpi .val.warn{color:var(--warn)}.kpi .val.bad{color:var(--bad)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .grid3{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;}
+  .card h3{margin:0 0 4px;font-size:15px;}
+  .card .hint{color:var(--muted);font-size:12px;margin:0 0 14px;}
+  .chartbox{position:relative;height:240px;}
+  /* cost hero */
+  .costwrap{display:grid;grid-template-columns:1fr 1fr 2fr;gap:16px;align-items:stretch;}
+  .costfig{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px;display:flex;flex-direction:column;justify-content:center;}
+  .costfig .label{font-size:12px;color:var(--muted);font-weight:600;}
+  .costfig .big{font-size:30px;font-weight:700;letter-spacing:-.5px;margin-top:6px;}
+  .costfig .note{font-size:12px;color:var(--muted);margin-top:4px;}
+  /* tables */
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  th{text-align:left;color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.05em;padding:8px 10px;border-bottom:1px solid var(--line);}
+  td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top;}
+  tr:last-child td{border-bottom:none;}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;white-space:nowrap;}
+  .s-bad{background:#fee2e2;color:#b91c1c}.s-mid{background:#fef3c7;color:#92400e}.s-good{background:#dcfce7;color:#166534}
+  .t-star{background:#dcfce7;color:#166534}.t-issue{background:#fee2e2;color:#b91c1c}
+  .mono{font-variant-numeric:tabular-nums;}
+  .eff{display:inline-block;width:20px;text-align:center;border-radius:5px;font-weight:700;font-size:11px;padding:1px 0;}
+  .eff.S{background:#dcfce7;color:#166534}.eff.M{background:#fef3c7;color:#92400e}.eff.L{background:#fee2e2;color:#b91c1c}
+  .lnk{color:var(--indigo);text-decoration:none;font-weight:600;}
+  .lnk:hover{text-decoration:underline;}
+  .act{color:var(--indigo);font-weight:600;}
+  .defs{columns:2;column-gap:28px;font-size:12.5px;line-height:1.55;}
+  .defs p{margin:0 0 9px;break-inside:avoid;}
+  .defs b{color:var(--ink);}
+  .foot{color:var(--muted);font-size:12px;margin-top:26px;text-align:center;}
+  @media(max-width:880px){.grid2,.grid3,.costwrap{grid-template-columns:1fr}.defs{columns:1}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="banner">
+    <strong>⚠ SAMPLE DATA — illustrative only.</strong> Synthesized from your volumes (~3,000 tickets/wk, ~1,100 engaged Stewart chats/wk, ~140 welcome-only bounces) to show layout &amp; metrics. Connect live data to make it real.
+  </div>
+
+  <header>
+    <div>
+      <h1>Support &amp; Stewart AI — Weekly Command Center</h1>
+      <div class="sub">Freshdesk × Voiceflow · rolling 6 weeks · generated inside Claude</div>
+    </div>
+    <div class="weekpick"><span>Viewing week</span><select id="weekSel"></select></div>
+  </header>
+
+  <div class="section-label">Executive snapshot — selected week · hover ⓘ for definitions</div>
+  <div class="kpis" id="kpis"></div>
+
+  <div class="section-label">Stewart cost — what the bot costs to run</div>
+  <div class="costwrap">
+    <div class="costfig">
+      <div class="label">Last 7 days</div>
+      <div class="big" id="cost7"></div>
+      <div class="note" id="cost7d"></div>
+    </div>
+    <div class="costfig">
+      <div class="label">6-week average / week</div>
+      <div class="big" id="cost6"></div>
+      <div class="note" id="cost6d"></div>
+    </div>
+    <div class="card">
+      <h3>Stewart cost over time</h3>
+      <p class="hint" id="cprNote"></p>
+      <div class="chartbox" style="height:180px;"><canvas id="costChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="section-label">AI Resolution by chat type — what Stewart actually resolves, and how well</div>
+  <div class="card">
+    <h3>Share of each chat type resolved by Stewart with no human <span style="font-weight:400;color:var(--muted)">(6-wk)</span></h3>
+    <p class="hint">High-volume + low resolution = your automation priorities (see roadmap below). 🟢 strong · 🟠 mixed · 🔴 weak</p>
+    <div class="chartbox" style="height:320px;"><canvas id="aiResChart"></canvas></div>
+  </div>
+
+  <div class="section-label">Ticket volume &amp; demand (Freshdesk)</div>
+  <div class="card">
+    <h3>Daily ticket volume <span style="font-weight:400;color:var(--muted)">(last 6 weeks)</span></h3>
+    <p class="hint">~430/day with the expected weekend dip. Spot spikes that signal an incident.</p>
+    <div class="chartbox" style="height:220px;"><canvas id="dailyChart"></canvas></div>
+  </div>
+  <div class="grid2" style="margin-top:16px;">
+    <div class="card">
+      <h3>Created vs. resolved &amp; backlog</h3>
+      <p class="hint">Are we keeping pace with demand? Backlog line should stay flat.</p>
+      <div class="chartbox"><canvas id="crChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>Ticket volume by topic</h3>
+      <p class="hint">Which categories drive the queue, week over week.</p>
+      <div class="chartbox"><canvas id="topicVolChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="section-label">AI-derived insights — what people contact you about &amp; why Stewart gives up</div>
+  <div class="grid2">
+    <div class="card">
+      <h3>Top contact topics <span style="font-weight:400;color:var(--muted)">(6-wk, AI-tagged)</span></h3>
+      <p class="hint">Bar = share of contacts · color = sentiment (🔴 negative → 🟢 positive)</p>
+      <div class="chartbox" style="height:300px;"><canvas id="topicChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h3>Why Stewart escalates <span style="font-weight:400;color:var(--muted)">(6-wk)</span></h3>
+      <p class="hint">Root cause of every human handoff, read from transcripts</p>
+      <div class="chartbox" style="height:300px;"><canvas id="escChart"></canvas></div>
+    </div>
+  </div>
+
+  <div class="section-label">Automation roadmap — ranked by weekly volume</div>
+  <div class="card">
+    <table>
+      <thead><tr>
+        <th>Gap / unanswered question</th><th class="mono">Vol/wk</th><th class="mono">AI-res now</th>
+        <th>Recommended build</th><th>Effort</th><th>Projected impact</th>
+      </tr></thead>
+      <tbody id="roadmap"></tbody>
+    </table>
+    <p class="hint" style="margin:12px 0 0;">Effort: <span class="eff S">S</span> days · <span class="eff M">M</span> 1–2 wks · <span class="eff L">L</span> 3+ wks. Impact assumes ~$6 fully-loaded cost per human ticket (definable). Top 3 ≈ <strong>~$54k/yr</strong> deflectable.</p>
+  </div>
+
+  <div class="section-label">Conversations worth reading — standouts ★ and problems ⚠</div>
+  <div class="card">
+    <table>
+      <thead><tr><th>Type</th><th>When</th><th>Topic</th><th>Sentiment</th><th>What happened</th><th>Links</th></tr></thead>
+      <tbody id="convos"></tbody>
+    </table>
+  </div>
+
+  <div class="section-label">How these metrics are defined</div>
+  <div class="card">
+    <div class="defs">
+      <p><b>Stewart Reach</b> — % of all inbound contacts (Freshdesk tickets + Stewart sessions) that started a conversation with Stewart. Today ~14% — the biggest growth lever for AI automation.</p>
+      <p><b>AI Resolution</b> — Engaged Stewart chats resolved with <em>no</em> human ticket within 48h, net of repeat contacts. Bounces excluded from the denominator.</p>
+      <p><b>CSAT</b> — Post-ticket rating in Freshdesk + Stewart’s in-chat thumbs/survey. <em>Excludes Voiceflow auto-evals.</em></p>
+      <p><b>SLA Attainment</b> — % of tickets answered within the first-response SLA: <b>Urgent ≤1h · High ≤4h · Normal ≤8h · Low ≤24h</b> (business hours). <em>Sample policy — set to yours.</em></p>
+      <p><b>Avg First Response</b> — Mean time to first agent reply, business hours (Freshdesk).</p>
+      <p><b>Stewart bounce rate</b> — Welcome-only sessions (user never sent a message) ÷ all sessions.</p>
+      <p><b>Stewart cost</b> — Total operating cost: Voiceflow platform (amortized) + LLM/API usage + integration calls.</p>
+      <p><b>Cost per AI resolution</b> — Stewart cost ÷ AI resolutions, shown against ~$6.00 per human ticket (definable).</p>
+    </div>
+  </div>
+
+  <div class="foot">Sample dashboard generated by Claude · replace data source to go live · ask Claude to re-cut any view</div>
+</div>
+
+<script>
+const WEEKS=[
+ {label:'Apr 21–27',ticketsCreated:2980,ticketsResolved:2935,backlog:540,csat:89,sla:92,frt:2.4,sessions:1235,bounces:142,aiResolved:565,cost:442},
+ {label:'Apr 28–May 4',ticketsCreated:3020,ticketsResolved:2980,backlog:560,csat:88,sla:91,frt:2.6,sessions:1250,bounces:138,aiResolved:580,cost:451},
+ {label:'May 5–11',ticketsCreated:2950,ticketsResolved:2960,backlog:530,csat:90,sla:93,frt:2.3,sessions:1228,bounces:145,aiResolved:558,cost:438},
+ {label:'May 12–18',ticketsCreated:3060,ticketsResolved:2990,backlog:585,csat:89,sla:90,frt:2.7,sessions:1262,bounces:150,aiResolved:578,cost:466},
+ {label:'May 19–25',ticketsCreated:3010,ticketsResolved:3000,backlog:560,csat:91,sla:92,frt:2.4,sessions:1240,bounces:139,aiResolved:569,cost:449},
+ {label:'May 26–Jun 1',ticketsCreated:2990,ticketsResolved:2965,backlog:555,csat:90,sla:93,frt:2.3,sessions:1245,bounces:141,aiResolved:572,cost:452},
+];
+const D = WEEKS.map(w=>{const engaged=w.sessions-w.bounces;return{...w,engaged,
+  aiResPct:w.aiResolved/engaged*100, bouncePct:w.bounces/w.sessions*100, costPerRes:w.cost/w.aiResolved};});
+
+const AIRES=[
+ {name:'Password / login reset',pct:78},{name:'Product how-to',pct:71},
+ {name:'Order / tracking status',pct:64},{name:'Shipping & delivery',pct:58},
+ {name:'Account changes',pct:52},{name:'Billing & invoices',pct:41},
+ {name:'Returns & refunds',pct:39},{name:'Cancellations',pct:28},
+];
+const TOPICS=[
+ {name:'Billing & invoices',pct:22,sent:.44},{name:'Login & password',pct:18,sent:.61},
+ {name:'Shipping & delivery',pct:15,sent:.55},{name:'Returns & refunds',pct:12,sent:.40},
+ {name:'Product how-to',pct:10,sent:.71},{name:'Account changes',pct:8,sent:.66},
+ {name:'Cancellations',pct:7,sent:.34},{name:'Other',pct:8,sent:.58},
+];
+const TOPICVOL=[
+ {name:'Billing',share:.22,color:'#dc2626'},{name:'Login',share:.18,color:'#4f46e5'},
+ {name:'Shipping',share:.15,color:'#0891b2'},{name:'Returns',share:.12,color:'#d97706'},
+ {name:'Product how-to',share:.10,color:'#16a34a'},{name:'Other',share:.23,color:'#94a3b8'},
+];
+const ESC=[
+ {name:'No matching intent / out of scope',pct:31},{name:'Knowledge gap (no KB answer)',pct:24},
+ {name:'User asked for a human',pct:18},{name:'Low confidence / repeated fallback',pct:15},
+ {name:'Account action bot can’t perform',pct:12},
+];
+const ROADMAP=[
+ ['Refund status after a return','92','39%','KB article + <span class="act">refund-status intent</span>','S','~70 tickets/wk → ~$22k/yr'],
+ ['Change subscription plan','71','—','Guided flow + <span class="act">billing API action</span>','M','~55 tickets/wk → ~$17k/yr'],
+ ['Update payment method','63','—','Secure <span class="act">payment-update flow</span>','M','~48 tickets/wk → ~$15k/yr'],
+ ['Where is my order / tracking','58','64%','Connect <span class="act">shipping API</span> for live status','S','~30 tickets/wk → ~$9k/yr'],
+ ['Cancel subscription','47','28%','Guided <span class="act">cancel + retention</span> flow','L','~25 tickets/wk → ~$8k/yr'],
+];
+const FD='https://universaltennis.freshdesk.com/a/tickets/';
+const CONVOS=[
+ {type:'star',when:'May 30, 10:14',topic:'Billing',sent:0.96,note:'Stewart resolved a 3-part invoice dispute end-to-end; customer: “best support I’ve had.”',ticket:null},
+ {type:'star',when:'May 29, 15:48',topic:'Cancellation',sent:0.88,note:'Agent turned an at-risk cancel into a save with a retention offer (opened at 0.18).',ticket:'48177'},
+ {type:'star',when:'May 28, 12:05',topic:'Shipping',sent:0.91,note:'Stewart handled a complex international shipping question via live API lookup.',ticket:null},
+ {type:'issue',when:'May 28, 14:02',topic:'Billing',sent:0.21,note:'Knowledge gap — no refund-status answer; customer frustrated.',ticket:'48213'},
+ {type:'issue',when:'May 28, 09:41',topic:'Cancellation',sent:0.18,note:'Account action Stewart can’t perform; abrupt handoff.',ticket:'48190'},
+ {type:'issue',when:'May 27, 16:55',topic:'Login',sent:0.30,note:'Repeated fallback (3×) — user gave up.',ticket:'48121'},
+];
+
+const fmt=n=>n.toLocaleString();
+const money=n=>'$'+Math.round(n).toLocaleString();
+const sentClass=s=>s<0.45?'s-bad':s<0.6?'s-mid':'s-good';
+const sentColor=s=>s<0.45?'#dc2626':s<0.6?'#d97706':'#16a34a';
+const resColor=p=>p>=65?'#16a34a':p>=45?'#d97706':'#dc2626';
+
+const DEFS={
+  ai:'Engaged chats Stewart resolved with no human ticket within 48h, net of repeat contacts. Bounces excluded.',
+  csat:'Freshdesk post-ticket rating + Stewart in-chat survey. Excludes Voiceflow auto-evals.',
+  sla:'% answered within first-response SLA — Urgent ≤1h / High ≤4h / Normal ≤8h / Low ≤24h (business hours). Sample policy.',
+  frt:'Mean time to first agent reply, business hours (Freshdesk).',
+  tix:'Tickets created in Freshdesk this week, all channels.',
+  bounce:'Welcome-only sessions (user never spoke) ÷ all sessions.',
+  reach:'% of all inbound contacts (tickets + chats) that engaged with Stewart. ~86% currently bypass the bot — the biggest growth lever for automation.'
+};
+function kpiCards(w){
+  const cls=(v,g,b)=>v>=g?'good':v<=b?'bad':'warn';
+  const C=[
+    {k:'Stewart Reach',d:DEFS.reach,val:(w.sessions/w.ticketsCreated*100).toFixed(0)+'%',c:'warn',note:fmt(w.sessions)+' chats vs '+fmt(w.ticketsCreated)+' tickets'},
+    {k:'AI Resolution',d:DEFS.ai,val:w.aiResPct.toFixed(0)+'%',c:cls(w.aiResPct,50,40),note:fmt(w.aiResolved)+' of '+fmt(w.engaged)+' engaged chats'},
+    {k:'CSAT',d:DEFS.csat,val:w.csat+'%',c:cls(w.csat,90,85),note:'Freshdesk + in-chat survey'},
+    {k:'SLA Attainment',d:DEFS.sla,val:w.sla+'%',c:cls(w.sla,92,88),note:'first response in target'},
+    {k:'Avg First Response',d:DEFS.frt,val:w.frt.toFixed(1)+'h',c:w.frt<=2.5?'good':w.frt<=3?'warn':'bad',note:'Freshdesk, business hrs'},
+    {k:'Tickets Created',d:DEFS.tix,val:fmt(w.ticketsCreated),c:'warn',note:'~'+Math.round(w.ticketsCreated/7)+' / day'},
+    {k:'Stewart Bounce Rate',d:DEFS.bounce,val:w.bouncePct.toFixed(0)+'%',c:w.bouncePct<=12?'good':'warn',note:fmt(w.bounces)+' welcome-only'},
+  ];
+  return C.map(x=>`<div class="kpi"><div class="label">${x.k}<span class="info" title="${x.d}">i</span></div><div class="val ${x.c}">${x.val}</div><div class="note">${x.note}</div></div>`).join('');
+}
+
+function render(i){ document.getElementById('kpis').innerHTML=kpiCards(D[i]); }
+
+document.addEventListener('DOMContentLoaded',()=>{
+  const sel=document.getElementById('weekSel');
+  D.forEach((w,i)=>{const o=document.createElement('option');o.value=i;o.textContent=w.label;sel.appendChild(o);});
+  sel.value=D.length-1; sel.addEventListener('change',e=>render(+e.target.value));
+  render(D.length-1);
+
+  // cost figures
+  const last=D[D.length-1], avg=D.reduce((s,w)=>s+w.cost,0)/D.length, cpr=last.cost/last.aiResolved;
+  document.getElementById('cost7').textContent=money(last.cost);
+  document.getElementById('cost7d').textContent='≈ '+money(last.cost/7)+' / day';
+  document.getElementById('cost6').textContent=money(avg);
+  document.getElementById('cost6d').textContent='≈ '+money(avg/7)+' / day';
+  document.getElementById('cprNote').innerHTML='≈ <strong>$'+cpr.toFixed(2)+'</strong> per AI resolution vs ~$6.00 per human ticket';
+
+  // roadmap + convos
+  document.getElementById('roadmap').innerHTML=ROADMAP.map(r=>`<tr><td>${r[0]}</td><td class="mono">${r[1]}</td><td class="mono">${r[2]}</td><td>${r[3]}</td><td><span class="eff ${r[4]}">${r[4]}</span></td><td>${r[5]}</td></tr>`).join('');
+  document.getElementById('convos').innerHTML=CONVOS.map(c=>{
+    const tp=c.type==='star'?'<span class="pill t-star">★ Standout</span>':'<span class="pill t-issue">⚠ Attention</span>';
+    const links=(c.ticket?`<a class="lnk" href="${FD}${c.ticket}" target="_blank">TKT-${c.ticket} ↗</a> · `:'<span style="color:#94a3b8">AI-resolved ·</span> ')+`<a class="lnk" href="#" target="_blank">▶ transcript</a>`;
+    return `<tr><td>${tp}</td><td class="mono">${c.when}</td><td>${c.topic}</td><td><span class="pill ${sentClass(c.sent)}">${c.sent.toFixed(2)}</span></td><td>${c.note}</td><td>${links}</td></tr>`;
+  }).join('');
+
+  if(typeof Chart==='undefined') return;
+  const labels=D.map(w=>w.label);
+  Chart.defaults.font.family='-apple-system,Segoe UI,Roboto,sans-serif';
+  Chart.defaults.color='#64748b';
+  const noLegend={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}};
+  const botLegend={responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}};
+
+  new Chart(document.getElementById('costChart'),{type:'line',
+    data:{labels,datasets:[{label:'Weekly cost',data:D.map(w=>w.cost),borderColor:'#4f46e5',backgroundColor:'rgba(79,70,229,.08)',fill:true,tension:.3}]},
+    options:{...noLegend,scales:{y:{ticks:{callback:v=>'$'+v}}}}});
+
+  new Chart(document.getElementById('aiResChart'),{type:'bar',
+    data:{labels:AIRES.map(a=>a.name),datasets:[{data:AIRES.map(a=>a.pct),backgroundColor:AIRES.map(a=>resColor(a.pct))}]},
+    options:{indexAxis:'y',...noLegend,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw+'% resolved by Stewart'}}},scales:{x:{max:100,ticks:{callback:v=>v+'%'}}}}});
+
+  const wk=['Apr 21','Apr 28','May 5','May 12','May 19','May 26'];
+  const daily=[],dl=[];
+  for(let i=0;i<42;i++){const dow=i%7;const weekend=(dow===4||dow===5);daily.push((weekend?285:445)+Math.round(18*Math.sin(i*1.3)));dl.push(i%7===0?wk[i/7]:'');}
+  new Chart(document.getElementById('dailyChart'),{type:'line',
+    data:{labels:dl,datasets:[{label:'Tickets',data:daily,borderColor:'#d97706',backgroundColor:'rgba(217,119,6,.08)',fill:true,tension:.25,pointRadius:0}]},
+    options:{...noLegend,scales:{y:{beginAtZero:true}}}});
+
+  new Chart(document.getElementById('crChart'),{type:'bar',
+    data:{labels,datasets:[
+      {label:'Created',data:D.map(w=>w.ticketsCreated),backgroundColor:'#c7d2fe'},
+      {label:'Resolved',data:D.map(w=>w.ticketsResolved),backgroundColor:'#4f46e5'},
+      {label:'Backlog',type:'line',data:D.map(w=>w.backlog),borderColor:'#dc2626',tension:.3,yAxisID:'y1'},
+    ]},options:{...botLegend,scales:{y:{beginAtZero:true},y1:{position:'right',grid:{drawOnChartArea:false},suggestedMin:0,suggestedMax:1200}}}});
+
+  new Chart(document.getElementById('topicVolChart'),{type:'bar',
+    data:{labels,datasets:TOPICVOL.map(t=>({label:t.name,data:D.map(w=>Math.round(w.ticketsCreated*t.share)),backgroundColor:t.color}))},
+    options:{...botLegend,scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true}}}});
+
+  new Chart(document.getElementById('topicChart'),{type:'bar',
+    data:{labels:TOPICS.map(t=>t.name),datasets:[{data:TOPICS.map(t=>t.pct),backgroundColor:TOPICS.map(t=>sentColor(t.sent))}]},
+    options:{indexAxis:'y',...noLegend,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.raw+'% of contacts · sentiment '+TOPICS[c.dataIndex].sent.toFixed(2)}}},scales:{x:{ticks:{callback:v=>v+'%'}}}}});
+
+  new Chart(document.getElementById('escChart'),{type:'doughnut',
+    data:{labels:ESC.map(e=>e.name),datasets:[{data:ESC.map(e=>e.pct),backgroundColor:['#4f46e5','#7c3aed','#d97706','#dc2626','#0891b2']}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{boxWidth:12,font:{size:11}}}}}});
+});
+</script>
+</body>
+</html>
