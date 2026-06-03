@@ -1,0 +1,11 @@
+{
+  "rewrites": [
+    { "source": "/api/fd", "destination": "/api/fd" },
+    { "source": "/api/vf", "destination": "/api/vf" }
+  ],
+  "env": {
+    "FRESHDESK_KEY": "@freshdesk-key",
+    "FRESHDESK_DOMAIN": "universaltennis",
+    "VOICEFLOW_KEY": "@voiceflow-key"
+  }
+}
