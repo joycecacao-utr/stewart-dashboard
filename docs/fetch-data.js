@@ -1,13 +1,10 @@
 #!/usr/bin/env node
 // Runs in GitHub Actions. Fetches Freshdesk + Voiceflow data,
-// computes all dashboard metrics, and writes dashboard/data.json.
+// computes all dashboard metrics, and writes docs/data.json.
 // Node 20+ required (uses built-in fetch).
 
 import { writeFileSync } from 'fs';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
+import { join } from 'path';
 
 // ── Config ────────────────────────────────────────────────
 const FD_KEY    = process.env.FRESHDESK_KEY;
@@ -264,7 +261,7 @@ async function main() {
     intentData,
   };
 
-  const outPath = join(__dirname, 'data.json');
+  const outPath = join(process.cwd(), 'docs', 'data.json');
   writeFileSync(outPath, JSON.stringify(output, null, 2));
   console.log(`✓ Wrote ${outPath}`);
   console.log(`  Tickets: ${allTickets.length} total, ${generalTickets.length} General`);
