@@ -13,7 +13,8 @@ import { join } from 'path';
 const FD_KEY      = process.env.FRESHDESK_KEY;
 const VF_KEY      = process.env.VOICEFLOW_KEY;
 const FD_DOMAIN   = process.env.FRESHDESK_DOMAIN || 'universaltennis';
-const VF_PROJECT  = '69ebdbdd003c5c7a49123a84';
+const VF_PROJECT  = '69ebd4159a532921bd258f8d';   // Voiceflow Project ID (analytics API)
+const VF_ANALYTICS = 'https://analytics-api.voiceflow.com';
 
 const STEWART_TAG       = 'Stewart_AI';
 const GENERAL_GROUP     = 'General';
@@ -138,31 +139,42 @@ async function fdFetchTickets(sinceISO) {
   return all;
 }
 
-// ─── VOICEFLOW ──────────────────────────────────────────────────────────────
+// ─── VOICEFLOW (analytics API, July-2025) ────────────────────────────────────
+// 1) List transcripts:  POST {VF_ANALYTICS}/v1/transcript/project/{projectID}
+//    body: { startDate, endDate } (ISO 8601) → { transcripts: [...] }
+// 2) Per transcript:     GET  {VF_ANALYTICS}/v1/transcript/{id}
+//    → { transcript: { ..., logs: [...] } }  — logs hold the conversation turns
+const vfHeaders = { authorization: VF_KEY, 'content-type': 'application/json', accept: 'application/json' };
+
 async function vfGetAll(days) {
-  const cutoff = new Date(Date.now() - days * 86400000);
-  const all = [];
-  let nextToken = null;
   try {
-    for (let page = 0; page < 300; page++) {     // safety cap: 30,000 transcripts
-      const url = new URL(`https://api.voiceflow.com/v2/transcripts/${VF_PROJECT}`);
-      url.searchParams.set('limit', '100');
-      if (nextToken) url.searchParams.set('nextToken', nextToken);
-      const res = await fetch(url, { headers: { Authorization: VF_KEY, accept: 'application/json' } });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const now = Date.now();
+    const all = [];
+    // List in 7-day windows (the list endpoint accepts only startDate/endDate)
+    for (let w = 0; w < Math.ceil(days / 7); w++) {
+      const winEnd   = new Date(now - w * 7 * 86400000);
+      const winStart = new Date(Math.max(now - (w + 1) * 7 * 86400000, now - days * 86400000));
+      const res = await fetch(`${VF_ANALYTICS}/v1/transcript/project/${VF_PROJECT}`, {
+        method: 'POST', headers: vfHeaders,
+        body: JSON.stringify({ startDate: winStart.toISOString(), endDate: winEnd.toISOString() }),
+      });
+      if (!res.ok) throw new Error(`list HTTP ${res.status}`);
       const body = await res.json();
-
-      const items = Array.isArray(body) ? body : (body.data ?? body.items ?? body.transcripts ?? []);
-      nextToken = body.nextToken ?? null;
-      if (items.length === 0) break;
-
-      const inRange = items.filter(s => new Date(s.createdAt ?? s.updatedAt ?? 0) >= cutoff);
-      all.push(...inRange);
-
-      const allOld = items.every(s => new Date(s.createdAt ?? s.updatedAt ?? 0) < cutoff);
-      if (allOld || Array.isArray(body) || !nextToken) break;
-      await sleep(100);
+      all.push(...(body.transcripts ?? []));
+      await sleep(150);
     }
+
+    // Fetch the conversation turns (logs) for each transcript
+    let fetched = 0;
+    for (const t of all) {
+      try {
+        const r = await fetch(`${VF_ANALYTICS}/v1/transcript/${t.id}`, { headers: vfHeaders });
+        if (r.ok) { t.logs = (await r.json()).transcript?.logs ?? []; fetched++; }
+        else t.logs = [];
+      } catch { t.logs = []; }
+      await sleep(60);
+    }
+    console.log(`  → ${all.length} transcripts (${fetched} with turns)`);
     return all;
   } catch (e) {
     console.warn('Voiceflow error:', e.message);
@@ -170,14 +182,48 @@ async function vfGetAll(days) {
   }
 }
 
-// ─── CLASSIFICATION ─────────────────────────────────────────────────────────
-function isEscalated(s) {
-  const blob = JSON.stringify(s.turns ?? []).toLowerCase();
-  return ESCALATION_KW.some(kw => blob.includes(kw));
+// Pull the readable conversation (user messages + bot replies) out of `logs`,
+// ignoring the noisy internal trace/debug entries (which are full of the word
+// "agent" and would wreck keyword matching).
+function slateText(slate) {
+  const out = [];
+  for (const node of (slate?.content ?? [])) {
+    for (const child of (node.children ?? [])) {
+      if (typeof child.text === 'string') out.push(child.text);
+    }
+  }
+  return out.join(' ');
 }
 
+function convText(s) {
+  const parts = [];
+  for (const l of (s.logs ?? [])) {
+    if (l.type === 'action' && l.data?.type === 'text' && typeof l.data.payload === 'string') {
+      parts.push(l.data.payload);                               // user message / button
+    } else if (l.type === 'trace' && l.data?.type === 'text' && l.data?.payload?.ai) {
+      const t = slateText(l.data.payload.slate);                // bot reply
+      if (t) parts.push(t);
+    }
+  }
+  return parts.join(' ');
+}
+
+// ─── CLASSIFICATION ─────────────────────────────────────────────────────────
+// Escalation = Stewart handed off to a human by creating a Freshdesk ticket
+// (the bot's `freshdesk_create_ticket` tool). This is the reliable handoff
+// signal; keyword matching on raw logs is unusable because trace metadata is
+// saturated with the word "agent".
+function isEscalated(s) {
+  const blob = JSON.stringify(s.logs ?? []);
+  if (blob.includes('freshdesk_create_ticket')) return true;
+  // Fallback: explicit human-handoff language in the readable conversation
+  const text = convText(s).toLowerCase();
+  return ESCALATION_KW.some(kw => text.includes(kw));
+}
+
+// Bounce = user never sent a message (only the welcome/launch occurred).
 function isBounce(s) {
-  return !(s.turns ?? []).some(t => t.type === 'request');
+  return !(s.logs ?? []).some(l => l.type === 'action' && l.data?.type === 'text');
 }
 
 function getCategory(text = '') {
@@ -199,7 +245,7 @@ function sentimentScore(text = '') {
 }
 
 function getEscalationReason(s) {
-  const blob = JSON.stringify(s.turns ?? []).toLowerCase();
+  const blob = convText(s).toLowerCase();
   const fallbacks = (blob.match(/rephrase|didn't quite|not sure i understand|could you clarify/g) ?? []).length;
   if (fallbacks >= 2) return 'Repeated fallback';
   for (const r of ESC_REASONS) {
@@ -209,8 +255,8 @@ function getEscalationReason(s) {
 }
 
 function firstUserMsg(s) {
-  const req = (s.turns ?? []).find(t => t.type === 'request');
-  return req?.payload?.payload?.query ?? req?.payload?.query ?? req?.payload?.message ?? '';
+  const log = (s.logs ?? []).find(l => l.type === 'action' && l.data?.type === 'text' && typeof l.data.payload === 'string');
+  return log?.data?.payload ?? '';
 }
 
 function normalizeCsatRating(ratings = {}) {
