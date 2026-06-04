@@ -1,6 +1,10 @@
 #!/usr/bin/env node
 // fetch-data.js — runs in GitHub Actions, writes docs/data.json
 // Node 20+ (built-in fetch). Run: node docs/fetch-data.js
+//
+// Emits DAILY ROLLUPS (one row per day, raw numerators/denominators) so the
+// browser can aggregate any date range — 24h / 7d / 30d / quarter / year /
+// custom — and compute ratios live from a single dataset.
 
 import { writeFileSync } from 'fs';
 import { join } from 'path';
@@ -13,10 +17,10 @@ const VF_PROJECT  = '69ebdbdd003c5c7a49123a84';
 
 const STEWART_TAG       = 'Stewart_AI';
 const GENERAL_GROUP     = 'General';
-const SHIFT_HOURS       = 10;
 const COST_PER_SESSION  = 0.05;   // $/session — update to match your Voiceflow bill
 const HUMAN_TICKET_COST = 6.00;   // fully-loaded cost per human-handled ticket, for roadmap ROI
-const NUM_WEEKS         = 6;
+const LOOKBACK_DAYS     = 90;     // how far back to build daily rollups (caps all ranges)
+const FETCH_BUFFER_DAYS = 5;      // pull a little extra so resolved/backlog at the edge is accurate
 
 // SLA first-response thresholds (calendar hours). Update to match your Freshdesk policy.
 // Freshdesk priority: 1=Low, 2=Medium/Normal, 3=High, 4=Urgent
@@ -29,14 +33,18 @@ const ESCALATION_KW = [
 
 // Categories: keywords matched against ticket subject + tags + first VF user message
 const CATEGORIES = {
-  'Account / Login':    { kw: ['account', 'login', 'password', 'sign in', 'access', 'locked', 'forgot'], color: '#4f46e5', sentAdj:  0.00 },
-  'Ranking / UTR':      { kw: ['ranking', 'rank', 'utr', 'rating', 'score', 'algorithm'],                color: '#0891b2', sentAdj:  0.03 },
-  'Tournament':         { kw: ['tournament', 'event', 'register', 'sign up', 'draw', 'wildcard'],        color: '#16a34a', sentAdj:  0.04 },
-  'Billing':            { kw: ['billing', 'payment', 'charge', 'refund', 'invoice', 'money', 'fee'],     color: '#dc2626', sentAdj: -0.08 },
-  'Technical Issue':    { kw: ['error', 'bug', 'not working', 'broken', 'crash', 'loading', 'slow'],     color: '#d97706', sentAdj: -0.06 },
-  'Match Results':      { kw: ['match', 'result', 'score', 'win', 'loss', 'played', 'dispute'],          color: '#7c3aed', sentAdj:  0.01 },
-  'Profile / Settings': { kw: ['profile', 'photo', 'name', 'update', 'settings', 'edit'],               color: '#0d9488', sentAdj:  0.01 },
+  'Account / Login':    { kw: ['account', 'login', 'password', 'sign in', 'access', 'locked', 'forgot'], color: '#4f46e5' },
+  'Ranking / UTR':      { kw: ['ranking', 'rank', 'utr', 'rating', 'score', 'algorithm'],                color: '#0891b2' },
+  'Tournament':         { kw: ['tournament', 'event', 'register', 'sign up', 'draw', 'wildcard'],        color: '#16a34a' },
+  'Billing':            { kw: ['billing', 'payment', 'charge', 'refund', 'invoice', 'money', 'fee'],     color: '#dc2626' },
+  'Technical Issue':    { kw: ['error', 'bug', 'not working', 'broken', 'crash', 'loading', 'slow'],     color: '#d97706' },
+  'Match Results':      { kw: ['match', 'result', 'score', 'win', 'loss', 'played', 'dispute'],          color: '#7c3aed' },
+  'Profile / Settings': { kw: ['profile', 'photo', 'name', 'update', 'settings', 'edit'],               color: '#0d9488' },
 };
+const CATEGORY_LIST = [
+  ...Object.entries(CATEGORIES).map(([name, d]) => ({ name, color: d.color })),
+  { name: 'General Inquiry', color: '#94a3b8' },
+];
 
 // Escalation root-cause buckets — order matters (first match wins)
 const ESC_REASONS = [
@@ -46,6 +54,7 @@ const ESC_REASONS = [
   { name: "Account action bot can't perform",  kw: ["can't do that", "unable to", "not able to", "manual process", "team will"] },
   { name: 'Repeated fallback',                 kw: [] }, // detected structurally
 ];
+const ESC_REASON_NAMES = ESC_REASONS.map(r => r.name);
 
 // Static automation roadmap — update based on your real data insights
 const ROADMAP = [
@@ -58,8 +67,9 @@ const ROADMAP = [
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+const dayKey = v => { const d = new Date(v); return isNaN(d) ? null : d.toISOString().slice(0, 10); };
 
-function daysAgo(n) {
+function daysAgoISO(n) {
   const d = new Date();
   d.setDate(d.getDate() - n);
   return d.toISOString();
@@ -71,11 +81,21 @@ const FD_AUTH = () => 'Basic ' + Buffer.from(`${FD_KEY}:X`).toString('base64');
 async function fdGet(path, params = {}) {
   const url = new URL(`https://${FD_DOMAIN}.freshdesk.com/api/v2/${path}`);
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, String(v)));
-  const res = await fetch(url, { headers: { Authorization: FD_AUTH() } });
-  if (!res.ok) throw new Error(`Freshdesk ${path}: HTTP ${res.status}`);
-  return res.json();
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const res = await fetch(url, { headers: { Authorization: FD_AUTH() } });
+    if (res.status === 429) {                         // rate limited — honor Retry-After
+      const wait = (+(res.headers.get('retry-after') || 2) + 1) * 1000;
+      console.warn(`  rate limited on ${path}, waiting ${wait / 1000}s…`);
+      await sleep(wait);
+      continue;
+    }
+    if (!res.ok) throw new Error(`Freshdesk ${path}: HTTP ${res.status}`);
+    return res.json();
+  }
+  throw new Error(`Freshdesk ${path}: rate-limited after retries`);
 }
 
+// Simple bounded pagination (for small endpoints like satisfaction_ratings)
 async function fdGetAll(path, params = {}, maxPages = 25) {
   const all = [];
   for (let page = 1; page <= maxPages; page++) {
@@ -88,16 +108,40 @@ async function fdGetAll(path, params = {}, maxPages = 25) {
   return all;
 }
 
+// Cursor pagination over updated_since — walks the full history beyond the
+// 300-page / ~2,500-ticket list cap by advancing the cursor in time.
+async function fdFetchTickets(sinceISO) {
+  const all = [];
+  const seen = new Set();
+  let cursor = sinceISO;
+  for (let round = 0; round < 80; round++) {     // safety cap: 80 cursor advances
+    let advanced = false;
+    let lastUpdated = null;
+    for (let page = 1; page <= 50; page++) {
+      const data = await fdGet('tickets', {
+        updated_since: cursor, include: 'stats',
+        per_page: 100, page, order_by: 'updated_at', order_type: 'asc',
+      });
+      if (!Array.isArray(data) || data.length === 0) break;
+      for (const t of data) { if (!seen.has(t.id)) { seen.add(t.id); all.push(t); } }
+      lastUpdated = data[data.length - 1].updated_at;
+      if (data.length < 100) break;          // reached the end
+      if (page === 50) advanced = true;        // hit page cap → advance cursor
+      await sleep(300);
+    }
+    if (!advanced || !lastUpdated || lastUpdated === cursor) break;
+    cursor = lastUpdated;                       // continue from last seen timestamp
+  }
+  return all;
+}
+
 // ─── VOICEFLOW ──────────────────────────────────────────────────────────────
-async function vfGetAll(hours) {
-  const cutoff = new Date(Date.now() - hours * 3600000);
-  // Voiceflow Transcripts API — paginate until we've gone past the cutoff date.
-  // The API does not support server-side date filtering; we filter client-side.
+async function vfGetAll(days) {
+  const cutoff = new Date(Date.now() - days * 86400000);
   const all = [];
   let nextToken = null;
-  let page = 0;
   try {
-    do {
+    for (let page = 0; page < 300; page++) {     // safety cap: 30,000 transcripts
       const url = new URL(`https://api.voiceflow.com/v2/transcripts/${VF_PROJECT}`);
       url.searchParams.set('limit', '100');
       if (nextToken) url.searchParams.set('nextToken', nextToken);
@@ -105,25 +149,17 @@ async function vfGetAll(hours) {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const body = await res.json();
 
-      // Support both array response and paginated envelope
       const items = Array.isArray(body) ? body : (body.data ?? body.items ?? body.transcripts ?? []);
       nextToken = body.nextToken ?? null;
-
       if (items.length === 0) break;
 
-      // Filter to within our window; stop paginating once all items are older
       const inRange = items.filter(s => new Date(s.createdAt ?? s.updatedAt ?? 0) >= cutoff);
       all.push(...inRange);
 
-      // If the whole page was before cutoff, we've gone far enough back
       const allOld = items.every(s => new Date(s.createdAt ?? s.updatedAt ?? 0) < cutoff);
-      if (allOld || Array.isArray(body)) break;
-
-      page++;
-      if (page > 50) break; // safety cap: 5,000 transcripts max
+      if (allOld || Array.isArray(body) || !nextToken) break;
       await sleep(100);
-    } while (nextToken);
-
+    }
     return all;
   } catch (e) {
     console.warn('Voiceflow error:', e.message);
@@ -161,7 +197,6 @@ function sentimentScore(text = '') {
 
 function getEscalationReason(s) {
   const blob = JSON.stringify(s.turns ?? []).toLowerCase();
-  // Structural: detect repeated fallback patterns
   const fallbacks = (blob.match(/rephrase|didn't quite|not sure i understand|could you clarify/g) ?? []).length;
   if (fallbacks >= 2) return 'Repeated fallback';
   for (const r of ESC_REASONS) {
@@ -185,232 +220,124 @@ function normalizeCsatRating(ratings = {}) {
   return null;
 }
 
-// ─── WEEKLY BUCKETS ─────────────────────────────────────────────────────────
-function getWeekBuckets(n = NUM_WEEKS) {
-  const now = new Date();
-  now.setHours(23, 59, 59, 999);
-  return Array.from({ length: n }, (_, i) => {
-    const daysBack = (n - 1 - i) * 7;
-    const end   = new Date(now.getTime() - daysBack * 86400000);
-    const start = new Date(end.getTime() - 7 * 86400000 + 1000);
-    const fmt   = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    return { label: `${fmt(start)} – ${fmt(new Date(end.getTime() - 86400000))}`, start, end };
-  });
-}
+// ─── DAILY ROLLUPS ───────────────────────────────────────────────────────────
+function buildDailyRollups(tickets, sessions, csat, days, generalId) {
+  const today = new Date(); today.setUTCHours(0, 0, 0, 0);
+  const dayKeys = [];
+  for (let i = days - 1; i >= 0; i--) dayKeys.push(new Date(today.getTime() - i * 86400000).toISOString().slice(0, 10));
 
-// ─── PER-WEEK METRICS ───────────────────────────────────────────────────────
-function weekMetrics(allTickets, allSessions, csatRatings, bucket, generalId) {
-  // Ticket slices
-  const tickets = allTickets.filter(t => {
-    const d = new Date(t.created_at);
-    return d >= bucket.start && d <= bucket.end;
+  const blank = () => ({
+    ticketsCreated: 0, ticketsResolved: 0, backlog: 0,
+    csatHappy: 0, csatTotal: 0, slaHit: 0, slaEligible: 0,
+    frtSum: 0, frtCount: 0, stewartTickets: 0,
+    sessions: 0, bounces: 0, engaged: 0, aiResolved: 0,
+    topics: {}, escReasons: {},
   });
-  const resolvedInWeek = allTickets.filter(t => {
-    const d = t.stats?.resolved_at ? new Date(t.stats.resolved_at) : null;
-    return d && d >= bucket.start && d <= bucket.end;
-  });
-  const generalTix = tickets.filter(t => t.group_id === generalId);
-  const stewartTix = tickets.filter(t => (t.tags ?? []).includes(STEWART_TAG));
+  const map = {};
+  dayKeys.forEach(d => { map[d] = blank(); });
 
-  // Backlog: created before end of week, not resolved before end of week
-  const backlog = allTickets.filter(t => {
-    const created  = new Date(t.created_at);
-    const resolved = t.stats?.resolved_at ? new Date(t.stats.resolved_at) : null;
-    return created <= bucket.end && (!resolved || resolved > bucket.end);
-  }).length;
+  const topicBucket = (day, cat) => {
+    if (!map[day].topics[cat]) map[day].topics[cat] = { count: 0, sentSum: 0, aiTotal: 0, aiResolved: 0 };
+    return map[day].topics[cat];
+  };
 
-  // VF session slices
-  const sessions = (allSessions ?? []).filter(s => {
-    const d = new Date(s.createdAt ?? s.updatedAt ?? 0);
-    return d >= bucket.start && d <= bucket.end;
-  });
-  const bounces  = sessions.filter(isBounce);
-  const engaged  = sessions.filter(s => !isBounce(s));
-  const aiResolved = engaged.filter(s => !isEscalated(s));
-
-  // CSAT
-  const weekCsat = csatRatings.filter(r => {
-    const d = new Date(r.created_at);
-    return d >= bucket.start && d <= bucket.end;
-  });
-  let csat = null;
-  if (weekCsat.length > 0) {
-    const happy = weekCsat.filter(r => normalizeCsatRating(r.ratings ?? {}) === true).length;
-    csat = +(happy / weekCsat.length * 100).toFixed(1);
+  // Tickets: created volume, topic/sentiment, SLA, FRT, stewart tag, resolved volume
+  for (const t of tickets) {
+    const created = dayKey(t.created_at);
+    if (created && map[created]) {
+      const m = map[created];
+      m.ticketsCreated++;
+      if ((t.tags ?? []).includes(STEWART_TAG)) m.stewartTickets++;
+      const text = `${t.subject ?? ''} ${(t.tags ?? []).join(' ')}`;
+      const tb = topicBucket(created, getCategory(text));
+      tb.count++;
+      tb.sentSum += sentimentScore(text);
+      if (t.group_id === generalId && t.stats?.first_responded_at) {
+        const frtH = (new Date(t.stats.first_responded_at) - new Date(t.created_at)) / 3600000;
+        if (frtH > 0 && frtH < 336) { m.frtSum += frtH; m.frtCount++; }
+        m.slaEligible++;
+        if (frtH <= (SLA_HOURS[t.priority] ?? 8)) m.slaHit++;
+      }
+    }
+    const resolved = dayKey(t.stats?.resolved_at);
+    if (resolved && map[resolved]) map[resolved].ticketsResolved++;
   }
 
-  // SLA attainment
-  const slaable = generalTix.filter(t => t.stats?.first_responded_at);
-  const slaHit  = slaable.filter(t => {
-    const frtH  = (new Date(t.stats.first_responded_at) - new Date(t.created_at)) / 3600000;
-    const limit = SLA_HOURS[t.priority] ?? 8;
-    return frtH <= limit;
-  });
-  const slaAttainment = slaable.length > 0 ? +(slaHit.length / slaable.length * 100).toFixed(1) : null;
+  // Backlog snapshot: tickets open at the end of each day
+  for (const d of dayKeys) {
+    const dayEnd = new Date(d + 'T23:59:59.999Z');
+    let open = 0;
+    for (const t of tickets) {
+      if (new Date(t.created_at) > dayEnd) continue;
+      const r = t.stats?.resolved_at ? new Date(t.stats.resolved_at) : null;
+      if (!r || r > dayEnd) open++;
+    }
+    map[d].backlog = open;
+  }
 
-  // Avg FRT (hours)
-  const frtSamples = generalTix
-    .filter(t => t.stats?.first_responded_at)
-    .map(t => (new Date(t.stats.first_responded_at) - new Date(t.created_at)) / 3600000)
-    .filter(v => v > 0 && v < 336);
-  const avgFRTHours = frtSamples.length > 0 ? +(frtSamples.reduce((a, b) => a + b, 0) / frtSamples.length).toFixed(2) : null;
+  // CSAT ratings
+  for (const r of (csat ?? [])) {
+    const d = dayKey(r.created_at);
+    if (!d || !map[d]) continue;
+    map[d].csatTotal++;
+    if (normalizeCsatRating(r.ratings ?? {}) === true) map[d].csatHappy++;
+  }
 
-  // Bypass: tickets with no Stewart touchpoint / total tickets
-  const bypassPct = tickets.length > 0
-    ? +((tickets.length - stewartTix.length) / tickets.length * 100).toFixed(1)
-    : null;
+  // Voiceflow sessions
+  for (const s of (sessions ?? [])) {
+    const d = dayKey(s.createdAt ?? s.updatedAt);
+    if (!d || !map[d]) continue;
+    const m = map[d];
+    m.sessions++;
+    if (isBounce(s)) { m.bounces++; continue; }
+    m.engaged++;
+    const tb = topicBucket(d, getCategory(firstUserMsg(s)));
+    tb.aiTotal++;
+    if (isEscalated(s)) {
+      const reason = getEscalationReason(s);
+      m.escReasons[reason] = (m.escReasons[reason] || 0) + 1;
+    } else {
+      m.aiResolved++;
+      tb.aiResolved++;
+    }
+  }
 
-  const cost = sessions.length * COST_PER_SESSION;
-
-  return {
-    label: bucket.label,
-    ticketsCreated:   tickets.length,
-    ticketsResolved:  resolvedInWeek.length,
-    backlog,
-    csat,
-    slaAttainment,
-    avgFRTHours,
-    sessions:         sessions.length,
-    bounces:          bounces.length,
-    engagedSessions:  engaged.length,
-    aiResolved:       aiResolved.length,
-    aiResolutionPct:  engaged.length > 0 ? +(aiResolved.length / engaged.length * 100).toFixed(1) : null,
-    bouncePct:        sessions.length > 0 ? +(bounces.length / sessions.length * 100).toFixed(1) : null,
-    bypassPct,
-    cost:             +cost.toFixed(2),
-    costPerResolution: aiResolved.length > 0 ? +(cost / aiResolved.length).toFixed(3) : null,
-  };
-}
-
-// ─── DAILY VOLUME ────────────────────────────────────────────────────────────
-function computeDaily(allTickets, days = 42) {
-  const now = new Date();
-  return Array.from({ length: days }, (_, i) => {
-    const dayStart = new Date(now - (days - 1 - i) * 86400000);
-    dayStart.setHours(0, 0, 0, 0);
-    const dayEnd = new Date(dayStart.getTime() + 86400000);
-    return {
-      label: dayStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      count: allTickets.filter(t => { const d = new Date(t.created_at); return d >= dayStart && d < dayEnd; }).length,
-    };
-  });
-}
-
-// ─── AI RESOLUTION BY TYPE ────────────────────────────────────────────────
-function computeAiResByType(allSessions) {
-  if (!allSessions) return [];
-  const map = {};
-  allSessions.filter(s => !isBounce(s)).forEach(s => {
-    const cat = getCategory(firstUserMsg(s));
-    if (!map[cat]) map[cat] = { total: 0, resolved: 0 };
-    map[cat].total++;
-    if (!isEscalated(s)) map[cat].resolved++;
-  });
-  return Object.entries(map)
-    .filter(([, v]) => v.total >= 3)
-    .sort((a, b) => b[1].total - a[1].total)
-    .slice(0, 8)
-    .map(([name, v]) => ({ name, pct: +(v.resolved / v.total * 100).toFixed(1), volume: v.total }));
-}
-
-// ─── TOP TOPICS (with sentiment) ──────────────────────────────────────────
-function computeTopTopics(allTickets) {
-  const map = {};
-  allTickets.forEach(t => {
-    const text = `${t.subject ?? ''} ${(t.tags ?? []).join(' ')}`;
-    const cat  = getCategory(text);
-    const sent = sentimentScore(text);
-    if (!map[cat]) map[cat] = { count: 0, sentSum: 0 };
-    map[cat].count++;
-    map[cat].sentSum += sent;
-  });
-  const total = allTickets.length || 1;
-  return Object.entries(map)
-    .sort((a, b) => b[1].count - a[1].count)
-    .slice(0, 8)
-    .map(([name, v]) => ({
-      name,
-      pct:       +(v.count / total * 100).toFixed(1),
-      sentiment: +(v.sentSum / v.count).toFixed(2),
-      color:     (CATEGORIES[name]?.color ?? '#94a3b8'),
-    }));
-}
-
-// ─── TOPIC VOLUME BY WEEK ─────────────────────────────────────────────────
-function computeTopicVol(allTickets, buckets) {
-  const catNames = [...Object.keys(CATEGORIES).slice(0, 5), 'General Inquiry'];
-  return {
-    series: catNames.map(cat => ({
-      name:  cat,
-      color: CATEGORIES[cat]?.color ?? '#94a3b8',
-      data:  buckets.map(b =>
-        allTickets.filter(t => {
-          const d    = new Date(t.created_at);
-          const text = `${t.subject ?? ''} ${(t.tags ?? []).join(' ')}`;
-          return d >= b.start && d <= b.end && getCategory(text) === cat;
-        }).length
-      ),
-    })),
-  };
-}
-
-// ─── ESCALATION REASONS ───────────────────────────────────────────────────
-function computeEscReasons(allSessions) {
-  if (!allSessions) return [];
-  const escalated = allSessions.filter(s => !isBounce(s) && isEscalated(s));
-  if (escalated.length === 0) return [];
-  const counts = {};
-  escalated.forEach(s => { const r = getEscalationReason(s); counts[r] = (counts[r] || 0) + 1; });
-  const total = escalated.length;
-  return Object.entries(counts)
-    .sort((a, b) => b[1] - a[1])
-    .map(([name, n]) => ({ name, pct: +(n / total * 100).toFixed(1) }));
+  return dayKeys.map(d => ({ date: d, ...map[d] }));
 }
 
 // ─── CONVERSATIONS WORTH READING ──────────────────────────────────────────
-function computeConversations(allSessions, allTickets) {
-  if (!allSessions) return [];
-  const engaged = allSessions.filter(s => !isBounce(s));
+// Flat, dated pool — the browser filters by the selected range.
+function buildConversations(sessions, tickets) {
+  if (!sessions) return [];
+  const engaged = sessions.filter(s => !isBounce(s));
 
   const scored = engaged.map(s => {
     const msg  = firstUserMsg(s);
     const esc  = isEscalated(s);
-    const sent = sentimentScore(msg);
-    const cat  = getCategory(msg);
     const d    = new Date(s.createdAt ?? s.updatedAt ?? Date.now());
     const when = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-               + ', '
-               + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    // Try to match a ticket by tag + proximity
-    const match = esc ? allTickets.find(t => {
+               + ', ' + d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    const match = esc ? tickets.find(t => {
       const td = new Date(t.created_at);
       return (t.tags ?? []).includes(STEWART_TAG) && Math.abs(td - d) < 3600000;
     }) : null;
-    return { esc, sent, cat, when, msg, ticketId: match?.id ?? null, reason: esc ? getEscalationReason(s) : null };
-  });
+    return {
+      date: isNaN(d) ? null : d.toISOString().slice(0, 10),
+      esc, sent: sentimentScore(msg), cat: getCategory(msg), when,
+      ticketId: match?.id ?? null, reason: esc ? getEscalationReason(s) : null,
+    };
+  }).filter(x => x.date);
 
-  // Top 3 standouts (highest sentiment, not escalated)
-  const stars = scored.filter(x => !x.esc).sort((a, b) => b.sent - a.sent).slice(0, 3).map(x => ({
-    type: 'star', when: x.when, topic: x.cat, sentiment: +x.sent.toFixed(2),
-    note: 'Stewart resolved this conversation end-to-end with no human handoff.',
-    ticketId: null,
+  const stars = scored.filter(x => !x.esc).sort((a, b) => b.sent - a.sent).slice(0, 60).map(x => ({
+    date: x.date, type: 'star', when: x.when, topic: x.cat, sentiment: +x.sent.toFixed(2),
+    note: 'Stewart resolved this conversation end-to-end with no human handoff.', ticketId: null,
+  }));
+  const issues = scored.filter(x => x.esc).sort((a, b) => a.sent - b.sent).slice(0, 60).map(x => ({
+    date: x.date, type: 'issue', when: x.when, topic: x.cat, sentiment: +x.sent.toFixed(2),
+    note: x.reason + '.', ticketId: x.ticketId ? String(x.ticketId) : null,
   }));
 
-  // Top 3 problems (lowest sentiment, escalated)
-  const issues = scored.filter(x => x.esc).sort((a, b) => a.sent - b.sent).slice(0, 3).map(x => ({
-    type: 'issue', when: x.when, topic: x.cat, sentiment: +x.sent.toFixed(2),
-    note: x.reason + '.',
-    ticketId: x.ticketId ? String(x.ticketId) : null,
-  }));
-
-  // Interleave: star, issue, star, issue…
-  const out = [];
-  const maxLen = Math.max(stars.length, issues.length);
-  for (let i = 0; i < maxLen; i++) {
-    if (stars[i])  out.push(stars[i]);
-    if (issues[i]) out.push(issues[i]);
-  }
-  return out;
+  return [...stars, ...issues];
 }
 
 // ─── MAIN ────────────────────────────────────────────────────────────────────
@@ -418,9 +345,7 @@ async function main() {
   if (!FD_KEY) throw new Error('FRESHDESK_KEY env var not set');
   if (!VF_KEY) throw new Error('VOICEFLOW_KEY env var not set');
 
-  const DAYS   = NUM_WEEKS * 7;   // 42
-  const since  = daysAgo(DAYS);
-  const buckets = getWeekBuckets();
+  const since = daysAgoISO(LOOKBACK_DAYS + FETCH_BUFFER_DAYS);
 
   console.log('Fetching Freshdesk groups…');
   const groups = await fdGet('groups');
@@ -428,14 +353,13 @@ async function main() {
   if (!gen) throw new Error(`Freshdesk group "${GENERAL_GROUP}" not found`);
   const generalId = gen.id;
 
-  console.log(`Fetching Freshdesk tickets (${DAYS}d)…`);
-  const allTickets = await fdGetAll('tickets', { updated_since: since, include: 'stats' });
+  console.log(`Fetching Freshdesk tickets (${LOOKBACK_DAYS}d, cursor-paginated)…`);
+  const allTickets = await fdFetchTickets(since);
   console.log(`  → ${allTickets.length} tickets`);
 
   console.log('Fetching Freshdesk CSAT ratings…');
   let csatRatings = [];
   try {
-    // Try paginated endpoint first; fall back to search endpoint on 404
     csatRatings = await fdGetAll('surveys/satisfaction_ratings', { created_since: since });
     console.log(`  → ${csatRatings.length} ratings`);
   } catch (e1) {
@@ -447,40 +371,34 @@ async function main() {
     }
   }
 
-  console.log(`Fetching Voiceflow transcripts (${DAYS}d)…`);
-  const allSessions = await vfGetAll(DAYS * 24);
+  console.log(`Fetching Voiceflow transcripts (${LOOKBACK_DAYS}d)…`);
+  const allSessions = await vfGetAll(LOOKBACK_DAYS);
   console.log(`  → ${allSessions?.length ?? 'n/a'} sessions`);
 
-  console.log('Computing metrics…');
-  const weeks              = buckets.map(b => weekMetrics(allTickets, allSessions, csatRatings, b, generalId));
-  const daily              = computeDaily(allTickets, DAYS);
-  const aiResolutionByType = computeAiResByType(allSessions);
-  const topTopics          = computeTopTopics(allTickets);
-  const topicVol           = computeTopicVol(allTickets, buckets);
-  const escalationReasons  = computeEscReasons(allSessions);
-  const conversations      = computeConversations(allSessions, allTickets);
+  console.log('Computing daily rollups…');
+  const daily         = buildDailyRollups(allTickets, allSessions, csatRatings, LOOKBACK_DAYS, generalId);
+  const conversations = buildConversations(allSessions, allTickets);
 
   const out = {
-    generatedAt:       new Date().toISOString(),
-    fdSubdomain:       FD_DOMAIN,
-    costPerSession:    COST_PER_SESSION,
-    humanTicketCost:   HUMAN_TICKET_COST,
-    weeks,
+    generatedAt:     new Date().toISOString(),
+    fdSubdomain:     FD_DOMAIN,
+    costPerSession:  COST_PER_SESSION,
+    humanTicketCost: HUMAN_TICKET_COST,
+    lookbackDays:    LOOKBACK_DAYS,
+    categories:      CATEGORY_LIST,
+    escReasonNames:  ESC_REASON_NAMES,
     daily,
-    aiResolutionByType,
-    topTopics,
-    topicVol,
-    escalationReasons,
     conversations,
-    roadmap: ROADMAP,
+    roadmap:         ROADMAP,
   };
 
   const path = join(process.cwd(), 'docs', 'data.json');
-  writeFileSync(path, JSON.stringify(out, null, 2));
+  writeFileSync(path, JSON.stringify(out));
 
-  const latest = weeks[weeks.length - 1];
+  const totalTix = daily.reduce((s, d) => s + d.ticketsCreated, 0);
+  const totalSes = daily.reduce((s, d) => s + d.sessions, 0);
   console.log(`\n✓ Wrote ${path}`);
-  console.log(`  Latest week (${latest.label}): ${latest.ticketsCreated} tickets · ${latest.sessions} sessions · ${latest.aiResolutionPct ?? '—'}% AI resolution · bypass ${latest.bypassPct ?? '—'}%`);
+  console.log(`  ${daily.length} days · ${totalTix} tickets · ${totalSes} sessions · ${conversations.length} flagged convos`);
 }
 
 main().catch(err => { console.error('FATAL:', err.message); process.exit(1); });
