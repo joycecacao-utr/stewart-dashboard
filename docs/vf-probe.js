@@ -1,66 +1,43 @@
 #!/usr/bin/env node
-// vf-probe.js — TEMPORARY. Tests the NEW Voiceflow analytics transcripts API
-// (July 2025). Prints the raw list response, then probes candidate endpoints
-// for a single transcript's turns. Delete after we confirm the shapes.
+// vf-probe.js — TEMPORARY. Round 2: confirm where conversation turns live and
+// check list pagination on the new Voiceflow analytics API. Delete after.
 
 const VF_KEY = process.env.VOICEFLOW_KEY;
 const PID    = '69ebd4159a532921bd258f8d';
 if (!VF_KEY) { console.error('VOICEFLOW_KEY not set'); process.exit(1); }
 
 const BASE = 'https://analytics-api.voiceflow.com';
+const H = { authorization: VF_KEY, 'content-type': 'application/json', accept: 'application/json' };
 const end   = new Date().toISOString();
 const start = new Date(Date.now() - 7 * 86400000).toISOString();
-console.log('Key prefix:', VF_KEY.slice(0, 6), '· range', start, '→', end);
 
-// ── 1. List transcripts (POST) ────────────────────────────────────────────
-const listUrl = `${BASE}/v1/transcript/project/${PID}`;
-console.log('\n=== LIST: POST', listUrl, '===');
-let transcripts = [];
-try {
-  const res = await fetch(listUrl, {
-    method: 'POST',
-    headers: { authorization: VF_KEY, 'content-type': 'application/json', accept: 'application/json' },
-    body: JSON.stringify({ startDate: start, endDate: end }),
-  });
-  const text = await res.text();
-  console.log('HTTP', res.status);
-  console.log('raw (first 1200 chars):', text.slice(0, 1200));
+async function show(label, url, opts) {
   try {
-    const j = JSON.parse(text);
-    transcripts = j.transcripts ?? (Array.isArray(j) ? j : []);
-    console.log('\nparsed: transcripts count =', transcripts.length);
-    if (transcripts[0]) console.log('first transcript keys:', Object.keys(transcripts[0]).join(','));
-    if (transcripts[0]) console.log('first transcript:', JSON.stringify(transcripts[0]).slice(0, 500));
-  } catch { console.log('(non-JSON body)'); }
-} catch (e) { console.log('THREW:', e.message); }
+    const res = await fetch(url, opts);
+    const text = await res.text();
+    console.log(`\n${label}\n  ${opts.method} ${url}\n  HTTP ${res.status}\n  ${text.slice(0, 1800)}`);
+    try { return JSON.parse(text); } catch { return null; }
+  } catch (e) { console.log(`\n${label} THREW: ${e.message}`); return null; }
+}
 
-// ── 2. Probe single-transcript turns endpoints ─────────────────────────────
-if (transcripts[0]) {
-  const t = transcripts[0];
-  const id = t.id ?? t._id ?? t.transcriptID;
-  const sid = t.sessionID ?? t.sessionId;
-  console.log('\n=== TURNS probes for transcript id =', id, '· sessionID =', sid, '===');
-  const candidates = [
-    { m: 'GET',  u: `${BASE}/v1/transcript/project/${PID}/transcript/${id}` },
-    { m: 'GET',  u: `${BASE}/v1/transcript/project/${PID}/${id}` },
-    { m: 'GET',  u: `${BASE}/v1/transcript/${id}` },
-    { m: 'GET',  u: `${BASE}/v1/transcript/project/${PID}/transcript/${id}/dialog` },
-    { m: 'GET',  u: `${BASE}/v1/transcript/project/${PID}/session/${sid}` },
-    { m: 'POST', u: `${BASE}/v1/transcript/project/${PID}/transcript/${id}` },
-  ];
-  for (const c of candidates) {
-    try {
-      const opts = { method: c.m, headers: { authorization: VF_KEY, accept: 'application/json' } };
-      if (c.m === 'POST') { opts.headers['content-type'] = 'application/json'; opts.body = '{}'; }
-      const res = await fetch(c.u, opts);
-      const text = await res.text();
-      let shape = '(non-JSON)';
-      try {
-        const j = JSON.parse(text);
-        if (Array.isArray(j)) shape = `array[${j.length}]` + (j[0] ? ' itemKeys=' + Object.keys(j[0]).join(',') : '');
-        else shape = 'object keys=' + Object.keys(j).join(',');
-      } catch {}
-      console.log(`\n${c.m} ${c.u}\n  HTTP ${res.status} · ${shape}\n  raw: ${text.slice(0, 400)}`);
-    } catch (e) { console.log(`\n${c.m} ${c.u}\n  THREW: ${e.message}`); }
-  }
+// ── LIST: top-level shape + pagination probing ─────────────────────────────
+const list = await show('LIST default', `${BASE}/v1/transcript/project/${PID}`,
+  { method: 'POST', headers: H, body: JSON.stringify({ startDate: start, endDate: end }) });
+if (list) console.log('\nLIST top-level keys:', Object.keys(list).join(','), '· transcripts:', (list.transcripts ?? []).length);
+
+// Try a big take/limit to see if more than 25 come back
+await show('LIST take=1000', `${BASE}/v1/transcript/project/${PID}`,
+  { method: 'POST', headers: H, body: JSON.stringify({ startDate: start, endDate: end, take: 1000, limit: 1000 }) });
+
+// ── TURNS: full single-transcript dump + candidate turn endpoints ──────────
+const first = (list?.transcripts ?? [])[0];
+if (first) {
+  const id = first.id;
+  console.log('\n\n========== TURN ENDPOINTS for id =', id, '==========');
+  await show('A single (full dump)', `${BASE}/v1/transcript/${id}`, { method: 'GET', headers: H });
+  await show('B /dialog',  `${BASE}/v1/transcript/${id}/dialog`,  { method: 'GET', headers: H });
+  await show('C /turns',   `${BASE}/v1/transcript/${id}/turns`,   { method: 'GET', headers: H });
+  await show('D /messages',`${BASE}/v1/transcript/${id}/messages`,{ method: 'GET', headers: H });
+  await show('E /interactions', `${BASE}/v1/transcript/${id}/interactions`, { method: 'GET', headers: H });
+  await show('F project/dialog', `${BASE}/v1/transcript/project/${PID}/transcript/${id}/dialog`, { method: 'GET', headers: H });
 }
