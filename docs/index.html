@@ -226,7 +226,7 @@
       <p><b>Stewart Bounce Rate</b> — Welcome-only sessions (user never sent a message) ÷ all sessions. Kept separate so bounces never inflate AI Resolution.</p>
       <p><b>Stewart Cost</b> — Sessions × $<span id="def-cps">0.05</span>/session. Update <code>COST_PER_SESSION</code> in <code>fetch-data.js</code> to match your Voiceflow bill.</p>
       <p><b>Cost per AI Resolution</b> — Total cost ÷ AI-resolved sessions. Shown against ~$<span id="def-htc">6.00</span>/human ticket for ROI context.</p>
-      <p><b>Date ranges</b> — All metrics aggregate from daily rollups over the selected window. Data is retained for the last <span id="def-lookback">90</span> days; longer ranges show all available days.</p>
+      <p><b>Date ranges</b> — All metrics aggregate from daily rollups over the selected window. Data is retained for the last <span id="def-lookback">60</span> days; longer ranges show all available days.</p>
     </div>
   </div>
 
@@ -631,7 +631,7 @@ async function loadData() {
     );
     D = await res.json();
     if (!D.daily?.length || !D.daily[0]?.date) {
-      showBanner('warn', '<span class="spinner"></span>The new daily-rollup data refresh is still running (the 90-day pull takes ~15–25 min). This will populate automatically — no action needed.');
+      showBanner('warn', '<span class="spinner"></span>The new daily-rollup data refresh is still running (the 60-day pull takes a few minutes). This will populate automatically — no action needed.');
       return;
     }
 
