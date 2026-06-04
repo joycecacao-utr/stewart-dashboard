@@ -1,8 +1,7 @@
 #!/usr/bin/env node
-// fc-probe.js — TEMPORARY. Round 3: POST /v2/reports/raw is the right endpoint
-// (Freshchat async Raw Data Export API). Structure is accepted; we just need a
-// valid `event` name (round 2 returned error_code 5 "No matching event name").
-// Probe candidate event names + the async job/link response shape.
+// fc-probe.js — TEMPORARY. Round 4: stop guessing event names — try to ENUMERATE
+// valid ones. GET /reports/raw (and variants) often returns the allowed event
+// list or a usage hint. Also retry exact documented names + a no-event POST.
 // Reads FRESHCHAT_KEY from env. Delete after we confirm shapes.
 
 const KEY = process.env.FRESHCHAT_KEY;
@@ -14,23 +13,30 @@ const end   = new Date().toISOString();
 const start = new Date(Date.now() - 7 * 86400000).toISOString();
 console.log('BASE', BASE, '· range', start, '→', end);
 
-async function probe(label, body) {
-  const url = `${BASE}/reports/raw`;
+async function probe(label, method, path, body) {
+  const url = path.startsWith('http') ? path : `${BASE}${path}`;
   try {
-    const res = await fetch(url, { method: 'POST', headers: H, body: JSON.stringify(body) });
+    const opts = { method, headers: H };
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(url, opts);
     const text = await res.text();
-    console.log(`\n=== ${label} ===\nPOST ${url}\nbody ${JSON.stringify(body)}\nHTTP ${res.status}\n${text.slice(0, 1200)}`);
-    try { return { status: res.status, json: JSON.parse(text) }; } catch { return { status: res.status, json: null }; }
-  } catch (e) { console.log(`\n=== ${label} ===\nTHREW ${e.message}`); return {}; }
+    console.log(`\n=== ${label} ===\n${method} ${url}\nHTTP ${res.status}\n${text.slice(0, 1800)}`);
+  } catch (e) { console.log(`\n=== ${label} ===\nTHREW ${e.message}`); }
 }
 
-// Candidate event names from Freshchat Raw Data Export API docs.
-const candidates = [
-  'Conversations', 'Conversation', 'Messages', 'Message',
-  'Conversation Created', 'Conversation Resolved', 'Conversation Reopened',
-  'Agent Activity', 'Agent Availability', 'Agent Intelliassign Activities',
-  'CSAT', 'Conversation CSAT', 'CSAT Response', 'Customer Satisfaction',
-];
-for (const ev of candidates) {
-  await probe(ev, { event: ev, format: 'json', start, end });
+// 1) Discovery: ask the API which events it supports
+await probe('GET reports/raw (usage?)',     'GET',  '/reports/raw');
+await probe('GET reports/raw/events',        'GET',  '/reports/raw/events');
+await probe('GET reports/events',            'GET',  '/reports/events');
+await probe('GET reports/raw/metrics',       'GET',  '/reports/raw/metrics');
+await probe('POST reports/raw (no event)',   'POST', '/reports/raw', { start, end });
+
+// 2) A few more exact documented names with single-word + plural variants
+for (const ev of ['Group', 'Groups', 'IntelliAssign', 'Conversation Lifecycle',
+                  'Conversation Properties', 'Customer', 'Customers', 'Billing']) {
+  await probe(ev, 'POST', '/reports/raw', { event: ev, format: 'json', start, end });
 }
+
+// 3) Maybe the field is `event_name` not `event`
+await probe('event_name=Conversations', 'POST', '/reports/raw',
+  { event_name: 'Conversations', format: 'json', start, end });
