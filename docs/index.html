@@ -172,6 +172,26 @@
     </div>
   </div>
 
+  <!-- ── FRESHCHAT (COACH / PROVIDER) ────────────────────────────────────── -->
+  <div class="section-label">Freshchat — Coach/Provider Channel · coaches/providers only (via Freshchat)</div>
+  <div class="grid2">
+    <div class="card">
+      <h3>Peak Freshchat volume <span style="font-weight:400;color:var(--muted)">coaches/providers only (via Freshchat)</span></h3>
+      <p class="hint">Highest single-day count of Freshchat conversations in the selected range. Separate support channel — not connected to Stewart or the main Freshdesk queue.</p>
+      <div class="kpi highlight" style="margin-top:10px;">
+        <div class="label">Peak Freshchat Volume<span class="info" title="Highest single-day count of Freshchat coach/provider conversations (auto-converted to Freshdesk tickets whose subject starts with &quot;Conversation&quot;) over the selected range.">i</span></div>
+        <div class="val" id="fcPeakVal">—</div>
+        <div class="note" id="fcPeakNote">—</div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Daily Freshchat volume <span style="font-weight:400;color:var(--muted)">coaches/providers only (via Freshchat)</span></h3>
+      <p class="hint">Freshchat conversations auto-converted to Freshdesk tickets (subject starts with “Conversation”).</p>
+      <div class="chartbox" style="height:200px;"><canvas id="fcChart"></canvas></div>
+      <div class="empty" id="fcEmpty" style="display:none;">No Freshchat tickets for this range.</div>
+    </div>
+  </div>
+
   <!-- ── AI INSIGHTS ─────────────────────────────────────────────────────── -->
   <div class="section-label">AI-derived insights — contact topics &amp; why Stewart escalates</div>
   <div class="grid2">
@@ -223,6 +243,7 @@
       <p><b>CSAT</b> — Freshdesk post-ticket satisfaction rating: Happy responses ÷ total rated tickets. <em>Excludes Voiceflow auto-evals.</em></p>
       <p><b>SLA Attainment</b> — % of tickets with first response within SLA: <b>Urgent ≤1h · High ≤4h · Normal ≤8h · Low ≤24h</b> (calendar hours, approximation). Update thresholds in <code>fetch-data.js</code>.</p>
       <p><b>Avg First Response</b> — Mean calendar hours from ticket creation to first agent reply (Freshdesk, General queue).</p>
+      <p><b>Freshchat volume (coaches/providers only)</b> — Freshchat is a separate support channel for coaches &amp; club providers, not connected to Stewart or the main Freshdesk queue. These conversations are auto-converted into Freshdesk tickets whose subject starts with <code>Conversation</code>; we count those per day. <b>Peak Freshchat Volume</b> is the highest single-day count in the selected range.</p>
       <p><b>Stewart Bounce Rate</b> — Welcome-only sessions (user never sent a message) ÷ all sessions. Kept separate so bounces never inflate AI Resolution.</p>
       <p><b>Stewart Cost</b> — Sessions × $<span id="def-cps">0.05</span>/session. Update <code>COST_PER_SESSION</code> in <code>fetch-data.js</code> to match your Voiceflow bill.</p>
       <p><b>Cost per AI Resolution</b> — Total cost ÷ AI-resolved sessions. Shown against ~$<span id="def-htc">6.00</span>/human ticket for ROI context.</p>
@@ -293,6 +314,7 @@ function agg(days) {
   return {
     nDays: days.length,
     ticketsCreated: tickets, ticketsResolved: sum('ticketsResolved'), backlog,
+    fcTickets: sum('fcTickets'),
     bypassPct:       tickets  ? +((tickets - stewart) / tickets * 100).toFixed(1) : null,
     aiResolutionPct: engaged  ? +(aiRes / engaged * 100).toFixed(1) : null,
     aiResolved: aiRes, engagedSessions: engaged,
@@ -459,6 +481,27 @@ function render() {
       scales: { x: { ticks: { maxTicksLimit: 12 } }, y: { beginAtZero: true } },
       plugins: { ...noLeg.plugins, tooltip: { ...TIP, callbacks: { label: c => ` ${c.raw} tickets` } } } },
   });
+
+  // Freshchat (coach/provider) — peak single-day volume + daily volume
+  const fcPeak = days.reduce((best, d) => ((d.fcTickets || 0) > best.n ? { n: d.fcTickets || 0, date: d.date } : best), { n: 0, date: null });
+  document.getElementById('fcPeakVal').textContent  = fcPeak.n ? fmtN(fcPeak.n) : '—';
+  document.getElementById('fcPeakNote').textContent = fcPeak.date
+    ? `on ${fmtDate(fcPeak.date)} · coaches/providers only`
+    : 'no Freshchat tickets in range';
+  const fcTotal = days.reduce((s, d) => s + (d.fcTickets || 0), 0);
+  if (fcTotal > 0) {
+    show('fcEmpty', false);
+    mk('fcChart', {
+      type: 'line',
+      data: { labels: buckets.map(b => b.label), datasets: [{
+        label: 'Freshchat tickets', data: buckets.map(b => agg(b.days).fcTickets),
+        borderColor: '#0891b2', backgroundColor: 'rgba(8,145,178,.08)', fill: true, tension: .25, pointRadius: buckets.length > 31 ? 0 : 2,
+      }] },
+      options: { ...noLeg,
+        scales: { x: { ticks: { maxTicksLimit: 12 } }, y: { beginAtZero: true } },
+        plugins: { ...noLeg.plugins, tooltip: { ...TIP, callbacks: { label: c => ` ${c.raw} Freshchat tickets` } } } },
+    });
+  } else { if (charts.fcChart) charts.fcChart.destroy(); show('fcEmpty', true); }
 
   // Created vs resolved + backlog
   mk('crChart', {
