@@ -19,7 +19,7 @@ const STEWART_TAG       = 'Stewart_AI';
 const GENERAL_GROUP     = 'General';
 const COST_PER_SESSION  = 0.05;   // $/session — update to match your Voiceflow bill
 const HUMAN_TICKET_COST = 6.00;   // fully-loaded cost per human-handled ticket, for roadmap ROI
-const LOOKBACK_DAYS     = 90;     // how far back to build daily rollups (caps all ranges)
+const LOOKBACK_DAYS     = 60;     // how far back to build daily rollups (caps all ranges)
 const FETCH_BUFFER_DAYS = 5;      // pull a little extra so resolved/backlog at the edge is accurate
 
 // SLA first-response thresholds (calendar hours). Update to match your Freshdesk policy.
