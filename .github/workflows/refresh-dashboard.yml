@@ -32,14 +32,19 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/data.json
-          git diff --staged --quiet && { echo "no changes"; exit 0; }
-          git commit -m "chore: refresh dashboard data [$(date -u '+%Y-%m-%d %H:%M UTC')]"
-          # Retry with rebase in case another push (e.g. a merge) landed during the run
+          # data.json is a generated artifact — never merge it. On each attempt,
+          # reset hard onto the latest main and re-stamp our freshly-built file
+          # on top, so a moving main can never cause a rebase conflict.
+          cp docs/data.json /tmp/data.json
           for i in 1 2 3 4 5; do
-            git push && exit 0
-            echo "push rejected — rebasing onto latest main (attempt $i)…"
-            git pull --rebase origin main || true
+            git fetch origin main
+            git reset --hard origin/main
+            cp /tmp/data.json docs/data.json
+            git add docs/data.json
+            git diff --staged --quiet && { echo "no changes"; exit 0; }
+            git commit -m "chore: refresh dashboard data [$(date -u '+%Y-%m-%d %H:%M UTC')]"
+            git push origin HEAD:main && exit 0
+            echo "push rejected — retrying onto latest main (attempt $i)…"
             sleep 3
           done
           echo "::error::failed to push data.json after 5 attempts"; exit 1
