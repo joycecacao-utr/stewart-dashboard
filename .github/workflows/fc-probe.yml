@@ -11,7 +11,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Probe Freshchat API
+      - name: Count Conversation tickets
         env:
-          FRESHCHAT_KEY: ${{ secrets.FRESHCHAT_KEY }}
-        run: node docs/fc-probe.js
+          FRESHDESK_KEY:    ${{ secrets.FRESHDESK_KEY }}
+          FRESHDESK_DOMAIN: universaltennis
+        run: node docs/fd-count.js
