@@ -630,7 +630,10 @@ async function loadData() {
       `HTTP ${res.status} — Go to GitHub Actions → "Refresh Stewart Dashboard" → Run workflow to populate data.json.`
     );
     D = await res.json();
-    if (!D.daily?.length) throw new Error('data.json has no daily rollups yet — run the GitHub Action.');
+    if (!D.daily?.length || !D.daily[0]?.date) {
+      showBanner('warn', '<span class="spinner"></span>The new daily-rollup data refresh is still running (the 90-day pull takes ~15–25 min). This will populate automatically — no action needed.');
+      return;
+    }
 
     // Config values
     const ts = new Date(D.generatedAt).toLocaleString();
