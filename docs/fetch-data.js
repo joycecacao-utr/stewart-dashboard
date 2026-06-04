@@ -114,9 +114,10 @@ async function fdFetchTickets(sinceISO) {
   const all = [];
   const seen = new Set();
   let cursor = sinceISO;
-  for (let round = 0; round < 80; round++) {     // safety cap: 80 cursor advances
+  for (let round = 0; round < 40; round++) {     // safety cap: 40 cursor advances
     let advanced = false;
     let lastUpdated = null;
+    const before = seen.size;
     for (let page = 1; page <= 50; page++) {
       const data = await fdGet('tickets', {
         updated_since: cursor, include: 'stats',
@@ -129,7 +130,9 @@ async function fdFetchTickets(sinceISO) {
       if (page === 50) advanced = true;        // hit page cap → advance cursor
       await sleep(300);
     }
-    if (!advanced || !lastUpdated || lastUpdated === cursor) break;
+    // Stop if no advance needed, cursor stalled, or this round added nothing new
+    // (guards against Freshdesk ignoring the asc sort and re-scanning the window).
+    if (!advanced || !lastUpdated || lastUpdated === cursor || seen.size === before) break;
     cursor = lastUpdated;                       // continue from last seen timestamp
   }
   return all;
