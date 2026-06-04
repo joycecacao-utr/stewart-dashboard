@@ -2,7 +2,7 @@ name: Refresh Stewart Dashboard
 
 on:
   schedule:
-    - cron: '0 6,18 * * *'   # twice daily at 06:00 & 18:00 UTC (60-day pull; manual run available anytime)
+    - cron: '0 17 * * *'   # once daily at 17:00 UTC = 9:00am PST (10:00am during PDT; cron can't auto-shift for DST). Manual run available anytime.
   workflow_dispatch:          # allows manual trigger from GitHub Actions tab
 
 jobs:
