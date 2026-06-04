@@ -173,11 +173,10 @@
   </div>
 
   <!-- ── FRESHCHAT (COACH / PROVIDER) ────────────────────────────────────── -->
-  <div class="section-label">Freshchat — Coach/Provider Channel · coaches/providers only (via Freshchat)</div>
+  <div class="section-label">Freshchat — Coach/Provider Channel</div>
   <div class="grid2">
     <div class="card">
-      <h3>Peak Freshchat volume <span style="font-weight:400;color:var(--muted)">coaches/providers only (via Freshchat)</span></h3>
-      <p class="hint">Highest single-day count of Freshchat conversations in the selected range. Separate support channel — not connected to Stewart or the main Freshdesk queue.</p>
+      <h3>Peak Freshchat volume</h3>
       <div class="kpi highlight" style="margin-top:10px;">
         <div class="label">Peak Freshchat Volume<span class="info" title="Highest single-day count of Freshchat coach/provider conversations (auto-converted to Freshdesk tickets whose subject starts with &quot;Conversation&quot;) over the selected range.">i</span></div>
         <div class="val" id="fcPeakVal">—</div>
@@ -185,8 +184,7 @@
       </div>
     </div>
     <div class="card">
-      <h3>Daily Freshchat volume <span style="font-weight:400;color:var(--muted)">coaches/providers only (via Freshchat)</span></h3>
-      <p class="hint">Freshchat conversations auto-converted to Freshdesk tickets (subject starts with “Conversation”).</p>
+      <h3>Daily Freshchat volume</h3>
       <div class="chartbox" style="height:200px;"><canvas id="fcChart"></canvas></div>
       <div class="empty" id="fcEmpty" style="display:none;">No Freshchat tickets for this range.</div>
     </div>
@@ -243,7 +241,9 @@
       <p><b>CSAT</b> — Freshdesk post-ticket satisfaction rating: Happy responses ÷ total rated tickets. <em>Excludes Voiceflow auto-evals.</em></p>
       <p><b>SLA Attainment</b> — % of tickets with first response within SLA: <b>Urgent ≤1h · High ≤4h · Normal ≤8h · Low ≤24h</b> (calendar hours, approximation). Update thresholds in <code>fetch-data.js</code>.</p>
       <p><b>Avg First Response</b> — Mean calendar hours from ticket creation to first agent reply (Freshdesk, General queue).</p>
-      <p><b>Freshchat volume (coaches/providers only)</b> — Freshchat is a separate support channel for coaches &amp; club providers, not connected to Stewart or the main Freshdesk queue. These conversations are auto-converted into Freshdesk tickets whose subject starts with <code>Conversation</code>; we count those per day. <b>Peak Freshchat Volume</b> is the highest single-day count in the selected range.</p>
+      <p><b>Freshchat — Coach/Provider Channel</b> — Coaches/providers only (via Freshchat). A separate support channel for coaches &amp; club providers, not connected to Stewart or the main Freshdesk queue. These conversations are auto-converted to Freshdesk tickets whose subject starts with <code>Conversation</code>; we count those per day.</p>
+      <p><b>Peak Freshchat Volume</b> — Highest single-day count of Freshchat conversations in the selected range.</p>
+      <p><b>Daily Freshchat volume</b> — Freshchat conversations (auto-converted to Freshdesk tickets, subject starts with “Conversation”) per day over the selected range.</p>
       <p><b>Stewart Bounce Rate</b> — Welcome-only sessions (user never sent a message) ÷ all sessions. Kept separate so bounces never inflate AI Resolution.</p>
       <p><b>Stewart Cost</b> — Sessions × $<span id="def-cps">0.05</span>/session. Update <code>COST_PER_SESSION</code> in <code>fetch-data.js</code> to match your Voiceflow bill.</p>
       <p><b>Cost per AI Resolution</b> — Total cost ÷ AI-resolved sessions. Shown against ~$<span id="def-htc">6.00</span>/human ticket for ROI context.</p>
