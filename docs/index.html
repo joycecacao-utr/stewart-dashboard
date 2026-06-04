@@ -45,7 +45,12 @@
   .kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;}
   .kpi .label{font-size:12px;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:5px;}
   .kpi .info{display:inline-flex;width:14px;height:14px;border-radius:50%;background:#e2e8f0;color:#64748b;
-    font-size:10px;align-items:center;justify-content:center;cursor:help;font-weight:700;flex-shrink:0;}
+    font-size:10px;align-items:center;justify-content:center;cursor:pointer;font-weight:700;flex-shrink:0;position:relative;}
+  .info[data-tip]::after{content:attr(data-tip);position:absolute;left:50%;bottom:calc(100% + 8px);transform:translateX(-50%);
+    width:230px;max-width:60vw;background:#1e293b;color:#f8fafc;font-size:11px;font-weight:400;line-height:1.45;text-align:left;
+    padding:9px 11px;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.2);white-space:normal;z-index:60;pointer-events:none;
+    opacity:0;visibility:hidden;transition:opacity .12s;}
+  .info[data-tip]:hover::after,.info[data-tip].show::after{opacity:1;visibility:visible;}
   .kpi .val{font-size:28px;font-weight:700;letter-spacing:-.5px;margin-top:8px;}
   .kpi .note{font-size:12px;color:var(--muted);margin-top:4px;}
   .kpi .val.good{color:var(--good)}.kpi .val.warn{color:var(--warn)}.kpi .val.bad{color:var(--bad)}
@@ -178,7 +183,7 @@
     <div class="card">
       <h3>Peak Freshchat volume</h3>
       <div class="kpi highlight" style="margin-top:10px;">
-        <div class="label">Peak Freshchat Volume<span class="info" title="Highest single-day count of Freshchat coach/provider conversations (auto-converted to Freshdesk tickets whose subject starts with &quot;Conversation&quot;) over the selected range.">i</span></div>
+        <div class="label">Peak Freshchat Volume<span class="info" tabindex="0" data-tip="Highest single-day count of Freshchat coach/provider conversations (auto-converted to Freshdesk tickets whose subject starts with &quot;Conversation&quot;) over the selected range.">i</span></div>
         <div class="val" id="fcPeakVal">—</div>
         <div class="note" id="fcPeakNote">—</div>
       </div>
@@ -392,7 +397,7 @@ function buildKPIs(w) {
   ];
   return cards.map(c => `
     <div class="kpi${c.highlight ? ' highlight' : ''}">
-      <div class="label">${c.label}<span class="info" title="${c.def}">i</span></div>
+      <div class="label">${c.label}<span class="info" tabindex="0" data-tip="${c.def}">i</span></div>
       <div class="val ${c.cls}">${c.val}</div>
       <div class="note">${c.note}</div>
     </div>`).join('');
@@ -409,6 +414,13 @@ function show(id, on) { const el = document.getElementById(id); if (el) el.style
 
 Chart.defaults.font.family = '-apple-system,"Segoe UI",Roboto,sans-serif';
 Chart.defaults.color = '#64748b';
+
+// Info icons: show definition on click/tap (and on focus), in addition to hover.
+document.addEventListener('click', (e) => {
+  const info = e.target.closest('.info[data-tip]');
+  document.querySelectorAll('.info.show').forEach(el => { if (el !== info) el.classList.remove('show'); });
+  if (info) { e.stopPropagation(); info.classList.toggle('show'); }
+});
 
 const TIP = {
   backgroundColor: '#1e293b', titleColor: '#f8fafc', bodyColor: '#94a3b8',
