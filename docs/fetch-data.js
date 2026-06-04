@@ -18,6 +18,10 @@ const VF_ANALYTICS = 'https://analytics-api.voiceflow.com';
 
 const STEWART_TAG       = 'Stewart_AI';
 const GENERAL_GROUP     = 'General';
+// Freshchat (coach/provider) conversations are auto-converted to Freshdesk
+// tickets whose subject starts with "Conversation". We detect them here so the
+// dashboard can report the coach/provider channel separately.
+const isFreshchat = t => (t.subject ?? '').trim().toLowerCase().startsWith('conversation');
 const COST_PER_SESSION  = 0.05;   // $/session — update to match your Voiceflow bill
 const HUMAN_TICKET_COST = 6.00;   // fully-loaded cost per human-handled ticket, for roadmap ROI
 const LOOKBACK_DAYS     = 60;     // how far back to build daily rollups (caps all ranges)
@@ -279,6 +283,7 @@ function buildDailyRollups(tickets, sessions, csat, days, generalId) {
     ticketsCreated: 0, ticketsResolved: 0, backlog: 0,
     csatHappy: 0, csatTotal: 0, slaHit: 0, slaEligible: 0,
     frtSum: 0, frtCount: 0, stewartTickets: 0,
+    fcTickets: 0,                                  // Freshchat (coach/provider) tickets
     sessions: 0, bounces: 0, engaged: 0, aiResolved: 0,
     topics: {}, escReasons: {},
   });
@@ -297,6 +302,7 @@ function buildDailyRollups(tickets, sessions, csat, days, generalId) {
       const m = map[created];
       m.ticketsCreated++;
       if ((t.tags ?? []).includes(STEWART_TAG)) m.stewartTickets++;
+      if (isFreshchat(t)) { t.source = 'freshchat'; m.fcTickets++; }
       const text = `${t.subject ?? ''} ${(t.tags ?? []).join(' ')}`;
       const tb = topicBucket(created, getCategory(text));
       tb.count++;
