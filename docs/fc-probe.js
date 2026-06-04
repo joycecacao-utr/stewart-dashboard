@@ -5,7 +5,7 @@
 
 const KEY = process.env.FRESHCHAT_KEY;
 if (!KEY) { console.error('FRESHCHAT_KEY not set'); process.exit(1); }
-const BASE = process.env.FRESHCHAT_URL || 'https://api.freshchat.com/v2';
+const BASE = process.env.FRESHCHAT_URL || 'https://universaltennis.freshchat.com/v2';
 const H = { Authorization: `Bearer ${KEY}`, 'Content-Type': 'application/json', Accept: 'application/json' };
 
 const end   = new Date().toISOString();
