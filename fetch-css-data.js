@@ -108,7 +108,7 @@ async function fdFetchTickets(sinceISO, cssGroupIds) {
   const all = [];
   const seen = new Set();
   let cursor = sinceISO;
-  for (let round = 0; round < 30; round++) {
+  for (let round = 0; round < 60; round++) {
     let advanced = false;
     let lastUpdated = null;
     const before = seen.size;
