@@ -80,7 +80,7 @@ async function fdGet(path, params = {}) {
       continue;
     }
     if (res.status === 503 || res.status === 502) {
-      const wait = (attempt + 1) * 10000;
+      const wait = (attempt + 1) * 3000;
       console.warn(`  Freshdesk ${res.status} on ${path}, retrying in ${wait / 1000}s…`);
       await sleep(wait);
       continue;
