@@ -13,7 +13,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // ─── CONFIG ─────────────────────────────────────────────────────────────────
 const FD_KEY          = process.env.FRESHDESK_KEY;
 const VF_KEY          = process.env.VOICEFLOW_KEY;
-const SHEETS_KEY      = process.env.GOOGLE_SHEETS_API_KEY;
+const SHEETS_KEY      = process.env.GOOGLE_SHEETS_API_KEY || 'AIzaSyB3IzdUSQKG5NPrfdr5y4x-KmZkmeZDb0o';
 const VF_COST         = parseFloat(process.env.VF_COST_PER_SESSION || '0.05');
 const FD_DOMAIN       = process.env.FRESHDESK_DOMAIN || 'universaltennis';
 const VF_PROJECT      = '69ebd4159a532921bd258f8d';
