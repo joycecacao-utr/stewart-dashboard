@@ -423,7 +423,7 @@ async function pickInteractionExamples(sessions) {
 
 // ─── DAILY ROLLUPS ───────────────────────────────────────────────────────────
 function buildDailyRollups(tickets, sessions, csat, days) {
-  const today = new Date(DATA_END); today.setUTCHours(0, 0, 0, 0);
+  const today = new Date(); today.setUTCHours(0, 0, 0, 0);
   const dayKeys = [];
   for (let i = days - 1; i >= 0; i--)
     dayKeys.push(new Date(today.getTime() - i * 86400000).toISOString().slice(0, 10));
@@ -624,8 +624,7 @@ async function main() {
   if (!FD_KEY) throw new Error('FRESHDESK_KEY env var not set');
   if (!VF_KEY) throw new Error('VOICEFLOW_KEY env var not set');
 
-  const sinceDate = new Date(DATA_END.getTime() - (LOOKBACK_DAYS + 5) * 86400000);
-  const since = sinceDate.toISOString();
+  const since = daysAgoISO(LOOKBACK_DAYS + 5);
 
   console.log('Fetching Freshdesk groups…');
   const allGroups  = await fdGet('groups');

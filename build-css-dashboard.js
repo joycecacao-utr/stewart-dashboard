@@ -32,8 +32,7 @@ const chartJs = loadChartJs();
 
 // ─── PERIOD HELPERS ──────────────────────────────────────────────────────────
 const monthly = data.monthly ?? {};
-// Use data end date as reporting reference so column headers reflect actual data
-const now = data.dataEndDate ? new Date(data.dataEndDate) : new Date();
+const now = new Date();
 
 function moKey(d) { return d.toISOString().slice(0, 7); }
 
