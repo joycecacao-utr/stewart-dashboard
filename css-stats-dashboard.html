@@ -204,15 +204,14 @@
   .tag { font-size: 12px; font-weight: 600; border-radius: 20px; padding: 2px 10px; }
   .tag.resolved { background: rgba(34,197,94,0.12); color: var(--green); }
   .tag.escalated { background: rgba(239,68,68,0.12); color: var(--red); }
-  .turns { padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
-  .turn { display: flex; gap: 10px; font-size: 15px; line-height: 1.5; }
-  .turn-label {
+  .example-summary { padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+  .summary-row { display: flex; gap: 10px; font-size: 14px; line-height: 1.5; }
+  .summary-label {
     font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
-    flex-shrink: 0; padding-top: 3px; min-width: 28px;
+    flex-shrink: 0; padding-top: 2px; min-width: 64px; color: var(--muted);
   }
-  .turn.user .turn-label { color: var(--blue); }
-  .turn.ai   .turn-label { color: var(--cyan); }
-  .turn-text { color: var(--ink); }
+  .summary-text { color: var(--ink); }
+  .summary-meta { font-size: 12px; color: var(--muted); padding-top: 4px; }
   .transcript-link {
     margin-left: auto; font-size: 12px; font-weight: 600;
     color: var(--cyan); text-decoration: none; white-space: nowrap;
@@ -315,7 +314,7 @@
         </tr>
       </thead>
       <tbody>
-        <tr><td class="label">AI Resolution %</td><td class="cur">0.0%</td><td>1.3%</td><td>5.2%</td><td class="na">N/A</td></tr>
+        <tr><td class="label">AI Resolution %</td><td class="cur">0.0%</td><td>1.2%</td><td>5.2%</td><td class="na">N/A</td></tr>
         <tr><td class="label">Sessions</td><td class="cur">50</td><td>100</td><td>175</td><td>0</td></tr>
         <tr><td class="label">AI Cost</td><td class="cur">$2.50</td><td>$5.00</td><td>$8.75</td><td>$0.00</td></tr>
       </tbody>
@@ -394,9 +393,9 @@
         <tr><th>Metric</th><th>June 2026 (MTD)</th><th>May 2026</th><th>YTD</th><th>June 2025</th></tr>
       </thead>
       <tbody>
-        <tr><td class="label">Ticket Volume</td><td class="cur">0</td><td>4,722</td><td>21,331</td><td>3,966</td></tr>
-        <tr><td class="label">First Response Time — Low</td><td class="cur">N/A</td><td>N/A</td><td>117.4h</td><td>29.1h</td></tr><tr><td class="label">First Response Time — Medium</td><td class="cur">N/A</td><td>N/A</td><td>N/A</td><td class="na">N/A</td></tr><tr><td class="label">First Response Time — High</td><td class="cur">N/A</td><td>N/A</td><td>10.1h</td><td class="na">N/A</td></tr><tr><td class="label">First Response Time — Urgent</td><td class="cur">N/A</td><td>N/A</td><td>21.0h</td><td class="na">N/A</td></tr>
-        <tr><td class="label">First Contact Resolution</td><td class="cur">N/A</td><td>N/A</td><td>73.2%</td><td>0.0%</td></tr>
+        <tr><td class="label">Ticket Volume</td><td class="cur">530</td><td>4,722</td><td>21,331</td><td>3,966</td></tr>
+        <tr><td class="label">First Response Time — Low</td><td class="cur">68.0h</td><td>214.8h</td><td>123.1h</td><td class="na">N/A</td></tr><tr><td class="label">First Response Time — Medium</td><td class="cur">N/A</td><td>322.2h</td><td>322.2h</td><td class="na">N/A</td></tr><tr><td class="label">First Response Time — High</td><td class="cur">127.0h</td><td>168.4h</td><td>139.8h</td><td class="na">N/A</td></tr><tr><td class="label">First Response Time — Urgent</td><td class="cur">66.1h</td><td>N/A</td><td>66.1h</td><td class="na">N/A</td></tr>
+        <tr><td class="label">First Contact Resolution</td><td class="cur">88.4%</td><td>63.6%</td><td>82.4%</td><td class="na">N/A</td></tr>
         <tr><td class="label">CSAT</td><td class="cur">71.8%</td><td>91.0%</td><td>93.6%</td><td>91.0%</td></tr>
       </tbody>
     </table>
@@ -434,7 +433,7 @@
     
     <div class="persona-card">
       <div class="persona-name">Club customers</div>
-      <div class="persona-summary">&ldquo;Club contacts were generally feeling well taken care of this period. Most common topics: Match and Profile.&rdquo;</div>
+      <div class="persona-summary">&ldquo;Club contacts were generally feeling well taken care of this period. Most common topics: Match and Email.&rdquo;</div>
     </div>
     <div class="persona-card">
       <div class="persona-name">Power subscribers</div>
@@ -465,167 +464,57 @@
           <span class="example-num">Example 1</span>
           <span class="example-date">May 27</span>
           <span class="tag escalated">Escalated</span>
-          <a class="transcript-link" href="https://creator.voiceflow.com/project/69ebd4159a532921bd258f8d/transcripts/6a175460bb65c600088ce1d8" target="_blank" rel="noopener">View in Voiceflow ↗</a>
+          <a class="transcript-link" href="https://creator.voiceflow.com/project/69ebd4159a532921bd258f8d/transcripts/6a175460bb65c600088ce1d8" target="_blank" rel="noopener">View transcript ↗</a>
         </div>
-        <div class="turns">
-          <div class="turn user">
-            <span class="turn-label">User</span>
-            <span class="turn-text">please submit my account for review </span>
+        <div class="example-summary">
+          <div class="summary-row">
+            <span class="summary-label">User asked</span>
+            <span class="summary-text">please submit my account for review</span>
           </div>
-          <div class="turn ai">
-            <span class="turn-label">AI</span>
-            <span class="turn-text">I'd like to help you get your account reviewed. To clarify — what specifically needs to be reviewed? For example:
-
-- **Account access issue** (can't log in, password reset, email verification)
-- **Profile information** (incorrect name, spelling, location, school, or date of birth)
-- **Duplicate account** (you have two profiles or logins)
-- **Billing or subscription** (charge dispute, refund request, or upgrade issue)
-- **Something else** (feedback, a bug, or a different concern)
-
-Once I understand what you need, I can get you to the right team or create a ticket for you.</span>
+          <div class="summary-row">
+            <span class="summary-label">AI replied</span>
+            <span class="summary-text">Great — here help with your UTR rating. Before we dive in, I want to introduce you to **[Rally](https://app.utrsports.net/power-perks?utm…</span>
           </div>
-          <div class="turn user">
-            <span class="turn-label">User</span>
-            <span class="turn-text">something else my utr is wrong</span>
-          </div>
-          <div class="turn ai">
-            <span class="turn-label">AI</span>
-            <span class="turn-text">Got it — your UTR rating seems off. Let me transfer you to our rating specialist team who can look into what's happening with your rating and help get it sorted.</span>
-          </div>
-          <div class="turn ai">
-            <span class="turn-label">AI</span>
-            <span class="turn-text">Great — here help with your UTR rating. Before we dive in, I want to introduce you to **[Rally](https://app.utrsports.net/power-perks?utm_source=stewart&amp;utm_medium=chat&amp;utm_campaign=power_perks&amp;utm_content=stewart_power)**, UTR Sports' 24/7 AI rating assistant. Rally provides personalized insights into how your matches are impacting your rating and shows you how your rating changes over time — it's the best tool available for detailed rating analysis.
-
-Now, let's figure out what's going on with your rating. Can you tell me:
-
-1. **What do you think your rating should be?** (or what was it before?)
-2. **What is it showing now?**
-3. **Do you have a specific match or recent result you think is affecting it incorrectly?**</span>
-          </div></div>
+          <div class="summary-meta">5 messages total</div>
+        </div>
       </div>
       <div class="example-card">
         <div class="example-header">
           <span class="example-num">Example 2</span>
-          <span class="example-date">May 13</span>
+          <span class="example-date">Jun 10</span>
           <span class="tag escalated">Escalated</span>
-          <a class="transcript-link" href="https://creator.voiceflow.com/project/69ebd4159a532921bd258f8d/transcripts/6a04df0d3c82800009a78ef9" target="_blank" rel="noopener">View in Voiceflow ↗</a>
+          <a class="transcript-link" href="https://creator.voiceflow.com/project/69ebd4159a532921bd258f8d/transcripts/6a29c3d6dec41400067bf73a" target="_blank" rel="noopener">View transcript ↗</a>
         </div>
-        <div class="turns">
-          <div class="turn user">
-            <span class="turn-label">User</span>
-            <span class="turn-text">Please cancel my subscription. Susan Roll</span>
+        <div class="example-summary">
+          <div class="summary-row">
+            <span class="summary-label">User asked</span>
+            <span class="summary-text">Could Paradise HS (https://app.utrsports.net/schools/693432) be changed to a Mixed gender team to match the rest of us Texas HS teams?</span>
           </div>
-          <div class="turn ai">
-            <span class="turn-label">AI</span>
-            <span class="turn-text">I understand you'd like to cancel your subscription, Susan. I can certainly help get a ticket created for our support team to process this for you. 
-
-To make sure we locate the correct account, could you please provide:
-1. The email address associated with your UTR account
-2. Your UTR profile link (if you have it handy)
-3. Whether you are on a monthly or annual plan</span>
+          <div class="summary-row">
+            <span class="summary-label">AI replied</span>
+            <span class="summary-text">Sounds good, Gregger! Have a great day! 👋</span>
           </div>
-          <div class="turn user">
-            <span class="turn-label">User</span>
-            <span class="turn-text">[email] </span>
-          </div>
-          <div class="turn ai">
-            <span class="turn-label">AI</span>
-            <span class="turn-text">Thank you, Susan. 
-
-Just to confirm, are you on a monthly or annual subscription plan? And if you have your UTR profile link, that would be helpful as well.</span>
-          </div>
-          <div class="turn user">
-            <span class="turn-label">User</span>
-            <span class="turn-text">Annual plan</span>
-          </div>
-          <div class="turn ai">
-            <span class="turn-label">AI</span>
-            <span class="turn-text">Got it, thank you. Here is a summary of the details I have for your cancellation request:
-
-- Name: Susan Roll
-- Email: [email]
-- Issue: Cancel annual subscription
-
-Is there anything else you need help with today, or should I go ahead and submit this to our support team?</span>
-          </div>
-          <div class="turn user">
-            <span class="turn-label">User</span>
-            <span class="turn-text">Thank you, that is all.</span>
-          </div>
-          <div class="turn ai">
-            <span class="turn-label">AI</span>
-            <span class="turn-text">Your support ticket has been submitted successfully — your ticket number is #830656. 
-
-Our support team will review your request and follow up with you via email. Is there anything else I can help you with today?</span>
-          </div></div>
+          <div class="summary-meta">9 messages total</div>
+        </div>
       </div>
       <div class="example-card">
         <div class="example-header">
           <span class="example-num">Example 3</span>
-          <span class="example-date">May 27</span>
+          <span class="example-date">May 20</span>
           <span class="tag escalated">Escalated</span>
-          <a class="transcript-link" href="https://creator.voiceflow.com/project/69ebd4159a532921bd258f8d/transcripts/6a17483daa3a940006a21c1c" target="_blank" rel="noopener">View in Voiceflow ↗</a>
+          <a class="transcript-link" href="https://creator.voiceflow.com/project/69ebd4159a532921bd258f8d/transcripts/6a0e2054b1443200075255a4" target="_blank" rel="noopener">View transcript ↗</a>
         </div>
-        <div class="turns">
-          <div class="turn user">
-            <span class="turn-label">User</span>
-            <span class="turn-text">My results are not actualized  for many time</span>
+        <div class="example-summary">
+          <div class="summary-row">
+            <span class="summary-label">User asked</span>
+            <span class="summary-text">Where is the camp waiver located</span>
           </div>
-          <div class="turn ai">
-            <span class="turn-label">AI</span>
-            <span class="turn-text">I can help with that! It sounds like some of your match results aren't showing up on your UTR profile.
-
-To point you in the right direction, could you let me know **where the results are coming from**? For example:
-- USTA Tournaments or Leagues
-- ITF
-- Tennis Europe
-- High School / MaxPreps
-- College
-- Another organization</span>
+          <div class="summary-row">
+            <span class="summary-label">AI replied</span>
+            <span class="summary-text">Thank you for that detail! So you're already registered and the system is directing you to print the waiver from the event provider's sec…</span>
           </div>
-          <div class="turn user">
-            <span class="turn-label">User</span>
-            <span class="turn-text">Tenis europa</span>
-          </div>
-          <div class="turn ai">
-            <span class="turn-label">AI</span>
-            <span class="turn-text">Got it — Tennis Europe results that haven't appeared on your profile.
-
-A few quick questions to help investigate:
-
-1. **What is your UTR profile link?** (e.g., https://app.utrsports.net/profiles/12345)
-2. **Which tournament(s) are missing?** Please share the event name and match date(s).
-3. **Do you have a link to the results on the Tennis Europe website?**</span>
-          </div>
-          <div class="turn user">
-            <span class="turn-label">User</span>
-            <span class="turn-text">Faltan mucjos torneos</span>
-          </div>
-          <div class="turn ai">
-            <span class="turn-label">AI</span>
-            <span class="turn-text">Entendido — faltan resultados de varios torneos de Tennis Europe en tu perfil.
-
-Para poder investigar esto, necesito algunos detalles:
-
-1. **¿Cuál es el enlace a tu perfil de UTR?** (ej. https://app.utrsports.net/profiles/12345)
-2. **¿Puedes mencionar algunos de los torneos que faltan?** (nombre del torneo y fecha aproximada)
-3. **¿Tienes algún enlace a los resultados en el sitio de Tennis Europe?**</span>
-          </div>
-          <div class="turn user">
-            <span class="turn-label">User</span>
-            <span class="turn-text">No tengo enlace pero hace varios meses que nio se actualiza ningun resultado</span>
-          </div>
-          <div class="turn ai">
-            <span class="turn-label">AI</span>
-            <span class="turn-text">Entendido. Dado que llevan varios meses sin actualizarse, esto definitivamente necesita revisión por parte del equipo de soporte.
-
-Para crear un ticket, necesito los siguientes datos:
-
-1. **Tu nombre completo**
-2. **Tu correo electrónico**
-3. **El enlace a tu perfil de UTR** (ej. https://app.utrsports.net/profiles/12345)
-4. **Algunos ejemplos de torneos que faltan** (nombre del torneo y fecha aproximada)</span>
-          </div></div>
+          <div class="summary-meta">11 messages total</div>
+        </div>
       </div>
   </div>
 </section>
@@ -655,7 +544,7 @@ Para crear un ticket, necesito los siguientes datos:
   const GRID        = '#e2e4e7';
   const TICK        = '#6b7280';
 
-  const ALL = {"aiRes":{"labels":["Jul 24","Aug 24","Sep 24","Oct 24","Nov 24","Dec 24","Jan 25","Feb 25","Mar 25","Apr 25","May 25","Jun 25","Jul 25","Aug 25","Sep 25","Oct 25","Nov 25","Dec 25","Jan 26","Feb 26","Mar 26","Apr 26","May 26","Jun 26"],"values":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,66.7,1.3,0]},"sessions":{"labels":["Jul 24","Aug 24","Sep 24","Oct 24","Nov 24","Dec 24","Jan 25","Feb 25","Mar 25","Apr 25","May 25","Jun 25","Jul 25","Aug 25","Sep 25","Oct 25","Nov 25","Dec 25","Jan 26","Feb 26","Mar 26","Apr 26","May 26","Jun 26"],"values":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,100,50]},"ticketCsat":{"labels":["Jul 24","Aug 24","Sep 24","Oct 24","Nov 24","Dec 24","Jan 25","Feb 25","Mar 25","Apr 25","May 25","Jun 25","Jul 25","Aug 25","Sep 25","Oct 25","Nov 25","Dec 25","Jan 26","Feb 26","Mar 26","Apr 26","May 26","Jun 26"],"ticketValues":[null,9133,9420,7080,4425,3061,4948,5085,5671,4779,4385,3966,3871,3420,3496,3770,3478,2311,3109,3516,4365,5619,4722,null],"csatValues":[null,null,null,null,null,null,81,96,84,82,97,91,90,94,91,97,97,95,93,96,92,96,91,null]}};
+  const ALL = {"aiRes":{"labels":["Jul 24","Aug 24","Sep 24","Oct 24","Nov 24","Dec 24","Jan 25","Feb 25","Mar 25","Apr 25","May 25","Jun 25","Jul 25","Aug 25","Sep 25","Oct 25","Nov 25","Dec 25","Jan 26","Feb 26","Mar 26","Apr 26","May 26","Jun 26"],"values":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,66.7,1.2,0]},"sessions":{"labels":["Jul 24","Aug 24","Sep 24","Oct 24","Nov 24","Dec 24","Jan 25","Feb 25","Mar 25","Apr 25","May 25","Jun 25","Jul 25","Aug 25","Sep 25","Oct 25","Nov 25","Dec 25","Jan 26","Feb 26","Mar 26","Apr 26","May 26","Jun 26"],"values":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,100,50]},"ticketCsat":{"labels":["Jul 24","Aug 24","Sep 24","Oct 24","Nov 24","Dec 24","Jan 25","Feb 25","Mar 25","Apr 25","May 25","Jun 25","Jul 25","Aug 25","Sep 25","Oct 25","Nov 25","Dec 25","Jan 26","Feb 26","Mar 26","Apr 26","May 26","Jun 26"],"ticketValues":[null,9133,9420,7080,4425,3061,4948,5085,5671,4779,4385,3966,3871,3420,3496,3770,3478,2311,3109,3516,4365,5619,4722,null],"csatValues":[null,null,null,null,null,null,81,96,84,82,97,91,90,94,91,97,97,95,93,96,92,96,91,null]}};
 
   function slice(series, n) {
     return { labels: series.labels.slice(-n), values: series.values.slice(-n) };
