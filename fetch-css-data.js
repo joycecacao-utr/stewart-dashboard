@@ -101,11 +101,11 @@ async function fdFetchTickets(sinceISO, cssGroupIds) {
   const all = [];
   const seen = new Set();
   let cursor = sinceISO;
-  for (let round = 0; round < 50; round++) {
+  for (let round = 0; round < 30; round++) {
     let advanced = false;
     let lastUpdated = null;
     const before = seen.size;
-    for (let page = 1; page <= 50; page++) {
+    for (let page = 1; page <= 10; page++) {  // Freshdesk caps at page 10
       const data = await fdGet('tickets', {
         updated_since: cursor, include: 'stats',
         per_page: 100, page, order_by: 'updated_at', order_type: 'asc',
@@ -118,9 +118,10 @@ async function fdFetchTickets(sinceISO, cssGroupIds) {
       }
       lastUpdated = data[data.length - 1].updated_at;
       if (data.length < 100) break;
-      if (page === 50) advanced = true;
-      await sleep(MIN_SLEEP_MS);
+      if (page === 10) advanced = true;
+      await sleep(200);  // Freshdesk allows ~500 req/hr; 200ms = safe ~300 req/hr
     }
+    if (round % 5 === 0 && round > 0) console.log(`  … ${seen.size} seen, ${all.length} CSS tickets so far`);
     if (!advanced || !lastUpdated || lastUpdated === cursor || seen.size === before) break;
     cursor = lastUpdated;
   }
