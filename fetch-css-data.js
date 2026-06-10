@@ -139,11 +139,24 @@ async function fdFetchTickets(sinceISO, cssGroupIds) {
   // Pass 1: full historical sweep (ascending) — up to 120k total tickets
   await fdFetchPass(sinceISO, cssGroupIds, allById, seen, 120);
 
-  // Pass 2: recent 90-day sweep — guarantees the last 90 days are always captured
-  // regardless of whether pass 1 hit the round cap before reaching recent data
+  // Pass 2: descending sweep of last 90 days — newest tickets come back first,
+  // so page 1 always has today's CSS tickets regardless of total ticket volume.
+  // No cursor advancement needed — 10 pages × 100 = 1000 most-recently-updated tickets.
   const recentSince = new Date(Date.now() - 90 * 86400000).toISOString();
-  const recentSeen = new Set();
-  await fdFetchPass(recentSince, cssGroupIds, allById, recentSeen, 10);
+  console.log('  Pass 2 (desc, last 90d)…');
+  for (let page = 1; page <= 10; page++) {
+    const data = await fdGet('tickets', {
+      updated_since: recentSince, include: 'stats',
+      per_page: 100, page, order_by: 'updated_at', order_type: 'desc',
+    });
+    if (!Array.isArray(data) || data.length === 0) break;
+    for (const t of data) {
+      if (cssGroupIds.has(t.group_id)) allById.set(t.id, t);
+    }
+    if (data.length < 100) break;
+    await sleep(MIN_SLEEP_MS);
+  }
+  console.log(`  → ${allById.size} CSS tickets total after pass 2`);
 
   return [...allById.values()];
 }
