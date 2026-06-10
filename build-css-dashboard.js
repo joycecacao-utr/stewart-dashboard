@@ -379,8 +379,7 @@ function buildVolumeResponse() {
         <tr><th>Metric</th><th>${curMoLabel} (MTD)</th><th>${prevMoLabel}</th><th>YTD</th><th>${pyMoLabel}</th></tr>
       </thead>
       <tbody>
-        ${metricRow('Chat Volume (sessions)',   sessM(curMo),  sessM(prevMo),  ytdSess, sessM(pyMo))}
-        ${metricRow('Avg Session Duration',     durM(curMo),   durM(prevMo),   ytdDur,  durM(pyMo))}
+        ${metricRow('Chat Volume (Freshchat)',   num(curMo?.fcTickets),  num(prevMo?.fcTickets),  num(ytd.fcTickets), num(pyMo?.fcTickets))}
         ${metricRow('CSAT',                     csatM(curMo),  csatM(prevMo),  ytdCsat, csatM(pyMo))}
       </tbody>
     </table>
