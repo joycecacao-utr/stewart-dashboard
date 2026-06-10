@@ -23,6 +23,7 @@ const SHEETS_ID       = '19g2G3dlSNba5U5b4Xf6k_jRlMI9S2TVI3Kg7_MLGWGA';
 const CSS_GROUP_NAMES = ['General', 'Campaigns'];
 const STEWART_TAG     = 'Stewart_AI';
 const LOOKBACK_DAYS    = 730;   // 24 months rolling — Freshdesk tickets
+const DATA_END        = new Date('2024-08-09T23:59:59Z'); // last date with CSS group ticket data
 const VF_LOOKBACK_DAYS = parseInt(process.env.VF_LOOKBACK_DAYS || '90', 10); // bot launched May 2026
 const MIN_SLEEP_MS     = 400;   // ~150 req/min = ~30% of a 500 req/hr limit (Freshdesk)
 const VF_SLEEP_MS      = 80;    // Voiceflow rate limits are much more lenient
@@ -422,7 +423,7 @@ async function pickInteractionExamples(sessions) {
 
 // ─── DAILY ROLLUPS ───────────────────────────────────────────────────────────
 function buildDailyRollups(tickets, sessions, csat, days) {
-  const today = new Date(); today.setUTCHours(0, 0, 0, 0);
+  const today = new Date(DATA_END); today.setUTCHours(0, 0, 0, 0);
   const dayKeys = [];
   for (let i = days - 1; i >= 0; i--)
     dayKeys.push(new Date(today.getTime() - i * 86400000).toISOString().slice(0, 10));
@@ -623,7 +624,8 @@ async function main() {
   if (!FD_KEY) throw new Error('FRESHDESK_KEY env var not set');
   if (!VF_KEY) throw new Error('VOICEFLOW_KEY env var not set');
 
-  const since = daysAgoISO(LOOKBACK_DAYS + 5);
+  const sinceDate = new Date(DATA_END.getTime() - (LOOKBACK_DAYS + 5) * 86400000);
+  const since = sinceDate.toISOString();
 
   console.log('Fetching Freshdesk groups…');
   const allGroups  = await fdGet('groups');
@@ -686,6 +688,7 @@ async function main() {
 
   const out = {
     generatedAt:         new Date().toISOString(),
+    dataEndDate:         DATA_END.toISOString(),
     lookbackDays:        LOOKBACK_DAYS,
     vfCostPerSession:    VF_COST,
     cssGroups:           CSS_GROUP_NAMES,
