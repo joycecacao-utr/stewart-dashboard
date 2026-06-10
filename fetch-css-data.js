@@ -487,9 +487,16 @@ function buildDailyRollups(tickets, sessions, csat, days) {
       if ((t.tags ?? []).includes(STEWART_TAG)) m.stewartTickets++;
       if ((t.subject ?? '').trim().toLowerCase().startsWith('conversation')) m.fcTickets++;
 
-      // FCR: resolved and never reopened
-      m.fcrEligible++;
-      if (t.stats?.resolved_at && !t.stats?.reopened_at) m.fcrResolved++;
+      // FCR: resolved without a customer follow-up reply within 24 hours
+      if (t.stats?.resolved_at) {
+        m.fcrEligible++;
+        const resolvedAt = new Date(t.stats.resolved_at);
+        const requesterReplied = t.stats?.requester_responded_at
+          ? new Date(t.stats.requester_responded_at)
+          : null;
+        const noFollowUp = !requesterReplied || (requesterReplied - resolvedAt) > 86400000;
+        if (noFollowUp) m.fcrResolved++;
+      }
 
       if (t.stats?.first_responded_at) {
         const frtH = (new Date(t.stats.first_responded_at) - new Date(t.created_at)) / 3600000;
