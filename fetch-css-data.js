@@ -103,48 +103,48 @@ async function fdGetAll(path, params = {}, maxPages = 25) {
   return all;
 }
 
-// Cursor-paginated ticket fetch for a single group ID
-async function fdFetchGroupTickets(sinceISO, groupId) {
-  const all = [];
-  const seen = new Set();
+// Single cursor-paginated pass over all tickets (no group filter — Freshdesk doesn't support it)
+async function fdFetchPass(sinceISO, cssGroupIds, allById, seen, maxRounds) {
   let cursor = sinceISO;
-  for (let round = 0; round < 60; round++) {
+  for (let round = 0; round < maxRounds; round++) {
     let advanced = false;
     let lastUpdated = null;
     const before = seen.size;
-    for (let page = 1; page <= 10; page++) {  // Freshdesk caps at page 10
+    for (let page = 1; page <= 10; page++) {
       const data = await fdGet('tickets', {
         updated_since: cursor, include: 'stats',
         per_page: 100, page, order_by: 'updated_at', order_type: 'asc',
-        group_id: groupId,
       });
       if (!Array.isArray(data) || data.length === 0) break;
       for (const t of data) {
         if (seen.has(t.id)) continue;
         seen.add(t.id);
-        all.push(t);
+        if (cssGroupIds.has(t.group_id)) allById.set(t.id, t);
       }
       lastUpdated = data[data.length - 1].updated_at;
       if (data.length < 100) break;
       if (page === 10) advanced = true;
       await sleep(MIN_SLEEP_MS);
     }
-    if (round % 5 === 0 && round > 0) console.log(`  … group ${groupId}: ${all.length} tickets so far`);
+    if (round % 5 === 0 && round > 0) console.log(`  … ${seen.size} seen, ${allById.size} CSS tickets so far`);
     if (!advanced || !lastUpdated || lastUpdated === cursor || seen.size === before) break;
     cursor = lastUpdated;
   }
-  return all;
 }
 
-// Fetch tickets for all CSS groups combined
 async function fdFetchTickets(sinceISO, cssGroupIds) {
   const allById = new Map();
-  for (const groupId of cssGroupIds) {
-    console.log(`  Fetching group ${groupId}…`);
-    const tickets = await fdFetchGroupTickets(sinceISO, groupId);
-    console.log(`  → ${tickets.length} tickets for group ${groupId}`);
-    for (const t of tickets) allById.set(t.id, t);
-  }
+  const seen = new Set();
+
+  // Pass 1: full historical sweep (ascending) — up to 120k total tickets
+  await fdFetchPass(sinceISO, cssGroupIds, allById, seen, 120);
+
+  // Pass 2: recent 90-day sweep — guarantees the last 90 days are always captured
+  // regardless of whether pass 1 hit the round cap before reaching recent data
+  const recentSince = new Date(Date.now() - 90 * 86400000).toISOString();
+  const recentSeen = new Set();
+  await fdFetchPass(recentSince, cssGroupIds, allById, recentSeen, 10);
+
   return [...allById.values()];
 }
 
