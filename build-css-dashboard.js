@@ -81,6 +81,35 @@ const prevMo = getM(PREV_MO);
 const pyMo   = getM(PY_MO);
 const ytd    = sumMonths(ytdKeys());
 
+// ─── CSS SHEET METRICS HELPERS (Ticket Volume + CSAT from Google Sheet) ──────
+const cssSheet        = data.cssSheetMetrics?.monthly ?? {};
+function getSheet(key) { return cssSheet[key] ?? null; }
+
+// YTD: sum ticket volumes / average CSAT across completed months in current year
+function cssSheetYTD() {
+  const keys = ytdKeys().filter(k => k !== CUR_MO); // exclude current month — not in sheet yet
+  let totalTickets = 0, csatSum = 0, csatCount = 0;
+  for (const k of keys) {
+    const m = cssSheet[k];
+    if (!m) continue;
+    if (m.ticketVolume != null) totalTickets += m.ticketVolume;
+    if (m.csat        != null) { csatSum += m.csat; csatCount++; }
+  }
+  return { ticketVolume: totalTickets || null, csat: csatCount ? csatSum / csatCount : null };
+}
+const cssYTD = cssSheetYTD();
+
+function fmtSheetTick(key) {
+  if (key === 'ytd') return cssYTD.ticketVolume != null ? cssYTD.ticketVolume.toLocaleString() : 'N/A';
+  const m = getSheet(key);
+  return m?.ticketVolume != null ? m.ticketVolume.toLocaleString() : 'N/A';
+}
+function fmtSheetCsat(key) {
+  if (key === 'ytd') return cssYTD.csat != null ? cssYTD.csat.toFixed(1) + '%' : 'N/A';
+  const m = getSheet(key);
+  return m?.csat != null ? m.csat.toFixed(1) + '%' : 'N/A';
+}
+
 // ─── REVENUE RECOVERY HELPERS ────────────────────────────────────────────────
 const rr        = data.revenueRecovery ?? null;
 const rrMonthly = rr?.monthly ?? {};
@@ -355,10 +384,10 @@ function buildVolumeResponse() {
         <tr><th>Metric</th><th>${curMoLabel} (MTD)</th><th>${prevMoLabel}</th><th>YTD</th><th>${pyMoLabel}</th></tr>
       </thead>
       <tbody>
-        ${metricRow('Ticket Volume',            tickM(curMo),  tickM(prevMo),  ytdTick, tickM(pyMo))}
+        ${metricRow('Ticket Volume',            tickM(curMo),          fmtSheetTick(PREV_MO), fmtSheetTick('ytd'), fmtSheetTick(PY_MO))}
         ${frtPriRows}
         ${metricRow('First Contact Resolution', fcrM(curMo),   fcrM(prevMo),   ytdFcr,  fcrM(pyMo))}
-        ${metricRow('CSAT',                     csatM(curMo),  csatM(prevMo),  ytdCsat, csatM(pyMo))}
+        ${metricRow('CSAT',                     csatM(curMo),  fmtSheetCsat(PREV_MO), fmtSheetCsat('ytd'), fmtSheetCsat(PY_MO))}
       </tbody>
     </table>
   </div>

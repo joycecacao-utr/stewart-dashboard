@@ -556,6 +556,33 @@ function buildMonthlyRollups(daily) {
   return byMonth;
 }
 
+// ─── GOOGLE SHEETS — CSS METRICS (Ticket Volume + CSAT) ─────────────────────
+async function fetchCSSMetrics() {
+  if (!SHEETS_KEY) return null;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}/values/Dashboard!A1:Z30?key=${SHEETS_KEY}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Google Sheets CSS metrics: HTTP ${res.status}`);
+  const rows = (await res.json()).values ?? [];
+
+  // Row 2 (index 1): month headers — "May 2026", "% Change…", "SAME MONTH PY…", "Goals", "April 2026", …
+  const headerRow = rows[1] ?? [];
+  const csatRow   = rows.find(r => r[0] === 'CSS Controllable CSAT') ?? [];
+  const tickRow   = rows.find(r => r[0] === 'Total Ticket Volume')   ?? [];
+
+  const monthly = {};
+  for (let col = 1; col < headerRow.length; col++) {
+    const key = parseMonthKey(headerRow[col]); // skips non-month headers like "% Change", "Goals"
+    if (!key) continue;
+    const rawCsat   = csatRow[col];
+    const rawTicket = tickRow[col];
+    monthly[key] = {
+      csat:         parsePct(rawCsat),
+      ticketVolume: rawTicket ? parseFloat(String(rawTicket).replace(/,/g, '')) || null : null,
+    };
+  }
+  return { monthly };
+}
+
 // ─── GOOGLE SHEETS — REVENUE RECOVERY ───────────────────────────────────────
 const MONTH_NAMES = ['January','February','March','April','May','June',
                      'July','August','September','October','November','December'];
@@ -646,9 +673,6 @@ async function main() {
   const tickets = await fdFetchTickets(since, cssGroupIds);
   const tCreated = tickets.map(t => t.created_at).filter(Boolean).sort();
   console.log(`  → ${tickets.length} tickets, created ${tCreated[0]?.slice(0,10) ?? 'n/a'} – ${tCreated[tCreated.length-1]?.slice(0,10) ?? 'n/a'}`);
-  // DEBUG: print stats fields from 3 sample tickets to verify FRT/FCR fields
-  const samples = tickets.filter(t => t.stats).slice(0, 3);
-  samples.forEach((t, i) => console.log(`  sample[${i}] stats: ${JSON.stringify(t.stats)} priority=${t.priority}`));
 
   console.log('Fetching Freshdesk CSAT…');
   let csat = [];
@@ -660,6 +684,15 @@ async function main() {
       csat = await fdGetAll('satisfaction_ratings', { created_since: since });
       console.log(`  → ${csat.length} ratings`);
     } catch (e) { console.warn('  CSAT unavailable:', e.message); }
+  }
+
+  console.log('Fetching CSS metrics from Google Sheets…');
+  let cssSheetMetrics = null;
+  try {
+    cssSheetMetrics = await fetchCSSMetrics();
+    console.log(`  → ${Object.keys(cssSheetMetrics?.monthly ?? {}).length} months of CSS metrics`);
+  } catch (e) {
+    console.warn('  CSS metrics fetch failed:', e.message);
   }
 
   console.log('Fetching Revenue Recovery from Google Sheets…');
@@ -707,6 +740,7 @@ async function main() {
     personaSentiment,
     interactionExamples,
     revenueRecovery,
+    cssSheetMetrics,
   };
 
   const outPath = join(__dirname, 'css-data.json');
