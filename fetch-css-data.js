@@ -103,8 +103,8 @@ async function fdGetAll(path, params = {}, maxPages = 25) {
   return all;
 }
 
-// Cursor-paginated ticket fetch, filtered to CSS group IDs
-async function fdFetchTickets(sinceISO, cssGroupIds) {
+// Cursor-paginated ticket fetch for a single group ID
+async function fdFetchGroupTickets(sinceISO, groupId) {
   const all = [];
   const seen = new Set();
   let cursor = sinceISO;
@@ -116,23 +116,36 @@ async function fdFetchTickets(sinceISO, cssGroupIds) {
       const data = await fdGet('tickets', {
         updated_since: cursor, include: 'stats',
         per_page: 100, page, order_by: 'updated_at', order_type: 'asc',
+        group_id: groupId,
       });
       if (!Array.isArray(data) || data.length === 0) break;
       for (const t of data) {
         if (seen.has(t.id)) continue;
         seen.add(t.id);
-        if (cssGroupIds.has(t.group_id)) all.push(t);
+        all.push(t);
       }
       lastUpdated = data[data.length - 1].updated_at;
       if (data.length < 100) break;
       if (page === 10) advanced = true;
-      await sleep(200);  // Freshdesk allows ~500 req/hr; 200ms = safe ~300 req/hr
+      await sleep(MIN_SLEEP_MS);
     }
-    if (round % 5 === 0 && round > 0) console.log(`  … ${seen.size} seen, ${all.length} CSS tickets so far`);
+    if (round % 5 === 0 && round > 0) console.log(`  … group ${groupId}: ${all.length} tickets so far`);
     if (!advanced || !lastUpdated || lastUpdated === cursor || seen.size === before) break;
     cursor = lastUpdated;
   }
   return all;
+}
+
+// Fetch tickets for all CSS groups combined
+async function fdFetchTickets(sinceISO, cssGroupIds) {
+  const allById = new Map();
+  for (const groupId of cssGroupIds) {
+    console.log(`  Fetching group ${groupId}…`);
+    const tickets = await fdFetchGroupTickets(sinceISO, groupId);
+    console.log(`  → ${tickets.length} tickets for group ${groupId}`);
+    for (const t of tickets) allById.set(t.id, t);
+  }
+  return [...allById.values()];
 }
 
 // ─── VOICEFLOW ──────────────────────────────────────────────────────────────
