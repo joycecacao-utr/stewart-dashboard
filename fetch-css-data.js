@@ -627,16 +627,18 @@ async function main() {
 
   console.log('Fetching Freshdesk groups…');
   const allGroups  = await fdGet('groups');
+  console.log(`  All groups: ${allGroups.map(g => `"${g.name}" (${g.id})`).join(', ')}`);
   const cssGroupIds = new Set(
     allGroups.filter(g => CSS_GROUP_NAMES.includes(g.name)).map(g => g.id)
   );
   if (cssGroupIds.size === 0)
     throw new Error(`No CSS groups found matching: ${CSS_GROUP_NAMES.join(', ')}`);
-  console.log(`  → matched ${cssGroupIds.size} group(s)`);
+  console.log(`  → matched ${cssGroupIds.size} group(s): ${allGroups.filter(g => CSS_GROUP_NAMES.includes(g.name)).map(g => `"${g.name}" (${g.id})`).join(', ')}`);
 
   console.log(`Fetching Freshdesk tickets (${LOOKBACK_DAYS}d, CSS groups)…`);
   const tickets = await fdFetchTickets(since, cssGroupIds);
-  console.log(`  → ${tickets.length} tickets`);
+  const tCreated = tickets.map(t => t.created_at).filter(Boolean).sort();
+  console.log(`  → ${tickets.length} tickets, created ${tCreated[0]?.slice(0,10) ?? 'n/a'} – ${tCreated[tCreated.length-1]?.slice(0,10) ?? 'n/a'}`);
 
   console.log('Fetching Freshdesk CSAT…');
   let csat = [];
