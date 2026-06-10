@@ -22,8 +22,10 @@ const SHEETS_ID       = '19g2G3dlSNba5U5b4Xf6k_jRlMI9S2TVI3Kg7_MLGWGA';
 
 const CSS_GROUP_NAMES = ['General', 'Bug Captains', 'Campaigns'];
 const STEWART_TAG     = 'Stewart_AI';
-const LOOKBACK_DAYS   = 730;   // 24 months rolling
-const MIN_SLEEP_MS    = 400;   // ~150 req/min = ~30% of a 500 req/hr limit
+const LOOKBACK_DAYS    = 730;   // 24 months rolling — Freshdesk tickets
+const VF_LOOKBACK_DAYS = parseInt(process.env.VF_LOOKBACK_DAYS || '90', 10); // bot launched May 2026
+const MIN_SLEEP_MS     = 400;   // ~150 req/min = ~30% of a 500 req/hr limit (Freshdesk)
+const VF_SLEEP_MS      = 80;    // Voiceflow rate limits are much more lenient
 
 // Priority labels (Freshdesk: 1=Low 2=Medium 3=High 4=Urgent)
 const PRIORITY_NAMES  = { 1: 'Low', 2: 'Medium', 3: 'High', 4: 'Urgent' };
@@ -130,28 +132,41 @@ const vfHeaders = () => ({ authorization: VF_KEY, 'content-type': 'application/j
 
 async function vfGetAll(days) {
   const now = Date.now();
+  const numWindows = Math.ceil(days / 7);
+
+  // Fetch weekly windows in parallel batches of 8
+  const BATCH = 8;
   const all = [];
-  for (let w = 0; w < Math.ceil(days / 7); w++) {
-    const winEnd   = new Date(now - w * 7 * 86400000);
-    const winStart = new Date(Math.max(now - (w + 1) * 7 * 86400000, now - days * 86400000));
-    const res = await fetch(`${VF_ANALYTICS}/v1/transcript/project/${VF_PROJECT}`, {
-      method: 'POST', headers: vfHeaders(),
-      body: JSON.stringify({ startDate: winStart.toISOString(), endDate: winEnd.toISOString() }),
-    });
-    if (!res.ok) throw new Error(`VF list HTTP ${res.status}`);
-    const body = await res.json();
-    all.push(...(body.transcripts ?? []));
-    await sleep(MIN_SLEEP_MS);
+  for (let b = 0; b < numWindows; b += BATCH) {
+    const batch = [];
+    for (let w = b; w < Math.min(b + BATCH, numWindows); w++) {
+      const winEnd   = new Date(now - w * 7 * 86400000);
+      const winStart = new Date(Math.max(now - (w + 1) * 7 * 86400000, now - days * 86400000));
+      batch.push(
+        fetch(`${VF_ANALYTICS}/v1/transcript/project/${VF_PROJECT}`, {
+          method: 'POST', headers: vfHeaders(),
+          body: JSON.stringify({ startDate: winStart.toISOString(), endDate: winEnd.toISOString() }),
+        }).then(r => r.ok ? r.json() : null).then(body => body?.transcripts ?? [])
+      );
+    }
+    const results = await Promise.all(batch);
+    for (const list of results) all.push(...list);
+    await sleep(VF_SLEEP_MS);
   }
 
+  // Fetch individual transcript logs in parallel batches of 10
   let fetched = 0;
-  for (const t of all) {
-    try {
-      const r = await fetch(`${VF_ANALYTICS}/v1/transcript/${t.id}`, { headers: vfHeaders() });
-      if (r.ok) { t.logs = (await r.json()).transcript?.logs ?? []; fetched++; }
-      else t.logs = [];
-    } catch { t.logs = []; }
-    await sleep(80);
+  const LOG_BATCH = 10;
+  for (let i = 0; i < all.length; i += LOG_BATCH) {
+    const chunk = all.slice(i, i + LOG_BATCH);
+    await Promise.all(chunk.map(async t => {
+      try {
+        const r = await fetch(`${VF_ANALYTICS}/v1/transcript/${t.id}`, { headers: vfHeaders() });
+        if (r.ok) { t.logs = (await r.json()).transcript?.logs ?? []; fetched++; }
+        else t.logs = [];
+      } catch { t.logs = []; }
+    }));
+    await sleep(VF_SLEEP_MS);
   }
   console.log(`  → ${all.length} transcripts (${fetched} with turns)`);
   return all;
@@ -614,10 +629,10 @@ async function main() {
     console.warn('  Revenue Recovery fetch failed:', e.message);
   }
 
-  console.log(`Fetching Voiceflow transcripts (${LOOKBACK_DAYS}d)…`);
+  console.log(`Fetching Voiceflow transcripts (${VF_LOOKBACK_DAYS}d)…`);
   let sessions = [];
   try {
-    sessions = await vfGetAll(LOOKBACK_DAYS);
+    sessions = await vfGetAll(VF_LOOKBACK_DAYS);
   } catch (e) {
     console.warn('  Voiceflow fetch failed:', e.message);
   }
