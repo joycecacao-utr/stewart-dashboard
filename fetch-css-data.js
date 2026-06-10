@@ -20,7 +20,7 @@ const VF_PROJECT      = '69ebd4159a532921bd258f8d';
 const VF_ANALYTICS    = 'https://analytics-api.voiceflow.com';
 const SHEETS_ID       = '19g2G3dlSNba5U5b4Xf6k_jRlMI9S2TVI3Kg7_MLGWGA';
 
-const CSS_GROUP_NAMES = ['General', 'Bug Captains', 'Campaigns'];
+const CSS_GROUP_NAMES = ['General', 'Bug Captain', 'Campaigns'];
 const STEWART_TAG     = 'Stewart_AI';
 const LOOKBACK_DAYS    = 730;   // 24 months rolling — Freshdesk tickets
 const VF_LOOKBACK_DAYS = parseInt(process.env.VF_LOOKBACK_DAYS || '90', 10); // bot launched May 2026
