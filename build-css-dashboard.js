@@ -396,10 +396,10 @@ function buildVolumeResponse() {
         <tr><th>Metric</th><th>${curMoLabel} (MTD)</th><th>${prevMoLabel}</th><th>YTD</th><th>${pyMoLabel}</th></tr>
       </thead>
       <tbody>
-        ${metricRow('Ticket Volume',            tickM(curMo),          fmtSheetTick(PREV_MO), fmtSheetTick('ytd'), fmtSheetTick(PY_MO))}
+        ${metricRow('Ticket Volume',            fmtSheetTick(CUR_MO) !== 'N/A' ? fmtSheetTick(CUR_MO) : (curMo ? tickM(curMo) : '0'), fmtSheetTick(PREV_MO), fmtSheetTick('ytd'), fmtSheetTick(PY_MO))}
         ${frtPriRows}
         ${metricRow('First Contact Resolution', fcrM(curMo),   fcrM(prevMo),   ytdFcr,  fcrM(pyMo))}
-        ${metricRow('CSAT',                     csatM(curMo),  fmtSheetCsat(PREV_MO), fmtSheetCsat('ytd'), fmtSheetCsat(PY_MO))}
+        ${metricRow('CSAT',                     fmtSheetCsat(CUR_MO) !== 'N/A' ? fmtSheetCsat(CUR_MO) : csatM(curMo), fmtSheetCsat(PREV_MO), fmtSheetCsat('ytd'), fmtSheetCsat(PY_MO))}
       </tbody>
     </table>
   </div>
