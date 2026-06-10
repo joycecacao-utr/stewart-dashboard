@@ -177,20 +177,32 @@ function buildSeries(metric) {
     const key = moKey(d);
     labels.push(d.toLocaleString('default', { month: 'short', year: '2-digit' }));
     const m = monthly[key];
-    // Volume metrics (bar charts): use 0 for missing months so bars render with a label
-    // Rate metrics (line chart): use null so line has a gap rather than a misleading 0%
     if (!m) { values.push(metric === 'aiRes' ? null : 0); continue; }
     if (metric === 'aiRes')    values.push(m.engaged > 0 ? +(m.aiResolved / m.engaged * 100).toFixed(1) : null);
-    if (metric === 'tickets')  values.push(m.ticketsCreated ?? 0);
     if (metric === 'sessions') values.push(m.sessions ?? 0);
   }
   return { labels, values };
 }
 
+// Ticket volume + CSAT from Google Sheet for the ticket correlation chart
+function buildTicketCsatSeries() {
+  const labels = [], ticketValues = [], csatValues = [];
+  for (let i = 23; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(1); d.setMonth(d.getMonth() - i);
+    const key = moKey(d);
+    labels.push(d.toLocaleString('default', { month: 'short', year: '2-digit' }));
+    const s = cssSheet[key];
+    ticketValues.push(s?.ticketVolume ?? null);
+    csatValues.push(s?.csat ?? null);
+  }
+  return { labels, ticketValues, csatValues };
+}
+
 const allChartData = {
-  aiRes:    buildSeries('aiRes'),
-  tickets:  buildSeries('tickets'),
-  sessions: buildSeries('sessions'),
+  aiRes:      buildSeries('aiRes'),
+  sessions:   buildSeries('sessions'),
+  ticketCsat: buildTicketCsatSeries(),
 };
 
 // ─── DATE LABELS ─────────────────────────────────────────────────────────────
@@ -497,6 +509,77 @@ const chartInitJs = `
   function slice(series, n) {
     return { labels: series.labels.slice(-n), values: series.values.slice(-n) };
   }
+  function sliceTicketCsat(series, n) {
+    return {
+      labels:       series.labels.slice(-n),
+      ticketValues: series.ticketValues.slice(-n),
+      csatValues:   series.csatValues.slice(-n),
+    };
+  }
+  function makeTicketCsatChart(id, series) {
+    const el = document.getElementById(id);
+    if (!el) return null;
+    return new Chart(el, {
+      type: 'bar',
+      data: {
+        labels: series.labels,
+        datasets: [
+          {
+            type: 'bar',
+            label: 'Ticket Volume',
+            data: series.ticketValues,
+            backgroundColor: BLUE,
+            yAxisID: 'yTickets',
+            order: 2,
+          },
+          {
+            type: 'line',
+            label: 'CSAT %',
+            data: series.csatValues,
+            borderColor: CYAN,
+            backgroundColor: CYAN_FAINT,
+            borderWidth: 2.5,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            fill: false,
+            tension: 0.3,
+            spanGaps: true,
+            yAxisID: 'yCsat',
+            order: 1,
+          },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: true,
+        plugins: {
+          legend: { display: true, labels: { color: TICK, font: { size: 12 } } },
+          tooltip: {
+            callbacks: {
+              label: ctx => ctx.dataset.label === 'CSAT %'
+                ? (ctx.parsed.y != null ? ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(1) + '%' : 'N/A')
+                : (ctx.parsed.y != null ? ctx.dataset.label + ': ' + ctx.parsed.y.toLocaleString() : 'N/A'),
+            },
+          },
+        },
+        scales: {
+          x: { grid: { color: GRID }, ticks: { color: TICK, font: { size: 13 } } },
+          yTickets: {
+            type: 'linear', position: 'left',
+            grid: { color: GRID }, ticks: { color: TICK, font: { size: 13 } },
+            suggestedMin: 0,
+            title: { display: true, text: 'Ticket Volume', color: TICK, font: { size: 11 } },
+          },
+          yCsat: {
+            type: 'linear', position: 'right',
+            grid: { drawOnChartArea: false },
+            ticks: { color: TICK, font: { size: 13 }, callback: v => v + '%' },
+            min: 0, max: 100,
+            title: { display: true, text: 'CSAT %', color: TICK, font: { size: 11 } },
+          },
+        },
+      },
+    });
+  }
 
   const RANGES = { '1mo': 1, '3mo': 3, '6mo': 6, '12mo': 12, '24mo': 24 };
   let activeRange = '24mo';
@@ -555,7 +638,7 @@ const chartInitJs = `
     });
     charts.aiResChart   = makeLineChart('aiResChart',   slice(ALL.aiRes,    n), '%',  CYAN, CYAN_FAINT);
     charts.sessionChart = makeBarChart( 'sessionChart', slice(ALL.sessions, n), CYAN);
-    charts.ticketChart  = makeBarChart( 'ticketChart',  slice(ALL.tickets,  n), BLUE);
+    charts.ticketChart  = makeTicketCsatChart('ticketChart', sliceTicketCsat(ALL.ticketCsat, n));
   }
 
   document.querySelectorAll('.range-btn').forEach(btn => {
