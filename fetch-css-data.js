@@ -646,6 +646,9 @@ async function main() {
   const tickets = await fdFetchTickets(since, cssGroupIds);
   const tCreated = tickets.map(t => t.created_at).filter(Boolean).sort();
   console.log(`  → ${tickets.length} tickets, created ${tCreated[0]?.slice(0,10) ?? 'n/a'} – ${tCreated[tCreated.length-1]?.slice(0,10) ?? 'n/a'}`);
+  // DEBUG: print stats fields from 3 sample tickets to verify FRT/FCR fields
+  const samples = tickets.filter(t => t.stats).slice(0, 3);
+  samples.forEach((t, i) => console.log(`  sample[${i}] stats: ${JSON.stringify(t.stats)} priority=${t.priority}`));
 
   console.log('Fetching Freshdesk CSAT…');
   let csat = [];
