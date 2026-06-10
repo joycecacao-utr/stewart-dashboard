@@ -657,10 +657,81 @@ Could you please provide me with:
   const GRID        = '#e2e4e7';
   const TICK        = '#6b7280';
 
-  const ALL = {"aiRes":{"labels":["Jul 24","Aug 24","Sep 24","Oct 24","Nov 24","Dec 24","Jan 25","Feb 25","Mar 25","Apr 25","May 25","Jun 25","Jul 25","Aug 25","Sep 25","Oct 25","Nov 25","Dec 25","Jan 26","Feb 26","Mar 26","Apr 26","May 26","Jun 26"],"values":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,71.4,1.4,0]},"tickets":{"labels":["Jul 24","Aug 24","Sep 24","Oct 24","Nov 24","Dec 24","Jan 25","Feb 25","Mar 25","Apr 25","May 25","Jun 25","Jul 25","Aug 25","Sep 25","Oct 25","Nov 25","Dec 25","Jan 26","Feb 26","Mar 26","Apr 26","May 26","Jun 26"],"values":[7737,1984,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]},"sessions":{"labels":["Jul 24","Aug 24","Sep 24","Oct 24","Nov 24","Dec 24","Jan 25","Feb 25","Mar 25","Apr 25","May 25","Jun 25","Jul 25","Aug 25","Sep 25","Oct 25","Nov 25","Dec 25","Jan 26","Feb 26","Mar 26","Apr 26","May 26","Jun 26"],"values":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,100,50]}};
+  const ALL = {"aiRes":{"labels":["Jul 24","Aug 24","Sep 24","Oct 24","Nov 24","Dec 24","Jan 25","Feb 25","Mar 25","Apr 25","May 25","Jun 25","Jul 25","Aug 25","Sep 25","Oct 25","Nov 25","Dec 25","Jan 26","Feb 26","Mar 26","Apr 26","May 26","Jun 26"],"values":[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,71.4,1.4,0]},"sessions":{"labels":["Jul 24","Aug 24","Sep 24","Oct 24","Nov 24","Dec 24","Jan 25","Feb 25","Mar 25","Apr 25","May 25","Jun 25","Jul 25","Aug 25","Sep 25","Oct 25","Nov 25","Dec 25","Jan 26","Feb 26","Mar 26","Apr 26","May 26","Jun 26"],"values":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,25,100,50]},"ticketCsat":{"labels":["Jul 24","Aug 24","Sep 24","Oct 24","Nov 24","Dec 24","Jan 25","Feb 25","Mar 25","Apr 25","May 25","Jun 25","Jul 25","Aug 25","Sep 25","Oct 25","Nov 25","Dec 25","Jan 26","Feb 26","Mar 26","Apr 26","May 26","Jun 26"],"ticketValues":[null,9133,9420,7080,4425,3061,4948,5085,5671,4779,4385,3966,3871,3420,3496,3770,3478,2311,3109,3516,4365,5619,4722,null],"csatValues":[null,null,null,null,null,null,81,96,84,82,97,91,90,94,91,97,97,95,93,96,92,96,91,null]}};
 
   function slice(series, n) {
     return { labels: series.labels.slice(-n), values: series.values.slice(-n) };
+  }
+  function sliceTicketCsat(series, n) {
+    return {
+      labels:       series.labels.slice(-n),
+      ticketValues: series.ticketValues.slice(-n),
+      csatValues:   series.csatValues.slice(-n),
+    };
+  }
+  function makeTicketCsatChart(id, series) {
+    const el = document.getElementById(id);
+    if (!el) return null;
+    return new Chart(el, {
+      type: 'bar',
+      data: {
+        labels: series.labels,
+        datasets: [
+          {
+            type: 'bar',
+            label: 'Ticket Volume',
+            data: series.ticketValues,
+            backgroundColor: BLUE,
+            yAxisID: 'yTickets',
+            order: 2,
+          },
+          {
+            type: 'line',
+            label: 'CSAT %',
+            data: series.csatValues,
+            borderColor: CYAN,
+            backgroundColor: CYAN_FAINT,
+            borderWidth: 2.5,
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            fill: false,
+            tension: 0.3,
+            spanGaps: true,
+            yAxisID: 'yCsat',
+            order: 1,
+          },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: true,
+        plugins: {
+          legend: { display: true, labels: { color: TICK, font: { size: 12 } } },
+          tooltip: {
+            callbacks: {
+              label: ctx => ctx.dataset.label === 'CSAT %'
+                ? (ctx.parsed.y != null ? ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(1) + '%' : 'N/A')
+                : (ctx.parsed.y != null ? ctx.dataset.label + ': ' + ctx.parsed.y.toLocaleString() : 'N/A'),
+            },
+          },
+        },
+        scales: {
+          x: { grid: { color: GRID }, ticks: { color: TICK, font: { size: 13 } } },
+          yTickets: {
+            type: 'linear', position: 'left',
+            grid: { color: GRID }, ticks: { color: TICK, font: { size: 13 } },
+            suggestedMin: 0,
+            title: { display: true, text: 'Ticket Volume', color: TICK, font: { size: 11 } },
+          },
+          yCsat: {
+            type: 'linear', position: 'right',
+            grid: { drawOnChartArea: false },
+            ticks: { color: TICK, font: { size: 13 }, callback: v => v + '%' },
+            min: 0, max: 100,
+            title: { display: true, text: 'CSAT %', color: TICK, font: { size: 11 } },
+          },
+        },
+      },
+    });
   }
 
   const RANGES = { '1mo': 1, '3mo': 3, '6mo': 6, '12mo': 12, '24mo': 24 };
@@ -720,7 +791,7 @@ Could you please provide me with:
     });
     charts.aiResChart   = makeLineChart('aiResChart',   slice(ALL.aiRes,    n), '%',  CYAN, CYAN_FAINT);
     charts.sessionChart = makeBarChart( 'sessionChart', slice(ALL.sessions, n), CYAN);
-    charts.ticketChart  = makeBarChart( 'ticketChart',  slice(ALL.tickets,  n), BLUE);
+    charts.ticketChart  = makeTicketCsatChart('ticketChart', sliceTicketCsat(ALL.ticketCsat, n));
   }
 
   document.querySelectorAll('.range-btn').forEach(btn => {
