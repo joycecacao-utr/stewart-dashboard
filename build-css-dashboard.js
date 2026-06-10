@@ -174,6 +174,10 @@ const pyMoLabel   = new Date(now.getFullYear() - 1, now.getMonth(), 1)
   .toLocaleString('default', { month: 'long', year: 'numeric' });
 
 // ─── HTML HELPERS ─────────────────────────────────────────────────────────────
+function escHtml(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 function metricRow(label, cur, prev, ytdVal, py) {
   const pyCell = py === NA ? `<td class="na">N/A</td>` : `<td>${py}</td>`;
   return `<tr><td class="label">${label}</td><td class="cur">${cur}</td><td>${prev}</td><td>${ytdVal}</td>${pyCell}</tr>`;
@@ -213,10 +217,15 @@ function buildChurn() {
 }
 
 function buildAiResolution() {
+  const heroVal = aiResM(curMo);
   return `
 <section id="s2">
   ${sectionHeader('02', 'AI Resolution')}
   <p class="definition">"Interactions where AI fully solved or answered the user's inquiry"</p>
+  <div class="ai-hero">
+    <div class="ai-hero-number">${heroVal}</div>
+    <div class="ai-hero-label">AI Resolution Rate &mdash; ${curMoLabel} MTD</div>
+  </div>
   <div class="table-wrap">
     <table class="metrics-table">
       <thead>
@@ -368,7 +377,7 @@ function buildHappyThoughts() {
         <blockquote>${q.quote}</blockquote>
         <div class="quote-context">${q.context ?? ''}</div>
       </div>`).join('')
-    : `<p class="empty-state">No happy thought data available yet — run fetch-css-data.js with ANTHROPIC_API_KEY set.</p>`;
+    : `<p class="empty-state">No 5-star CSAT comments found in this period.</p>`;
 
   return `
 <section id="s6">
@@ -400,6 +409,8 @@ function buildPersonaSentiment() {
 </section>`;
 }
 
+const VF_PROJECT_ID = '69ebd4159a532921bd258f8d';
+
 function buildInteractionExamples() {
   const examples = data.interactionExamples ?? [];
   const cards = examples.length > 0
@@ -408,10 +419,16 @@ function buildInteractionExamples() {
         const status = ex.resolved
           ? `<span class="tag resolved">AI Resolved</span>`
           : `<span class="tag escalated">Escalated</span>`;
+        const vfUrl = ex.transcriptId
+          ? `https://creator.voiceflow.com/project/${VF_PROJECT_ID}/transcripts/${ex.transcriptId}`
+          : null;
+        const transcriptLink = vfUrl
+          ? `<a class="transcript-link" href="${vfUrl}" target="_blank" rel="noopener">View in Voiceflow ↗</a>`
+          : '';
         const turns = (ex.turns ?? []).slice(0, 8).map(t => `
           <div class="turn ${t.role}">
             <span class="turn-label">${t.role === 'user' ? 'User' : 'AI'}</span>
-            <span class="turn-text">${t.text}</span>
+            <span class="turn-text">${escHtml(t.text)}</span>
           </div>`).join('');
         return `
       <div class="example-card">
@@ -419,11 +436,12 @@ function buildInteractionExamples() {
           <span class="example-num">Example ${i + 1}</span>
           ${date ? `<span class="example-date">${date}</span>` : ''}
           ${status}
+          ${transcriptLink}
         </div>
         <div class="turns">${turns}</div>
       </div>`;
       }).join('')
-    : `<p class="empty-state">No interaction examples available yet — run fetch-css-data.js with ANTHROPIC_API_KEY set.</p>`;
+    : `<p class="empty-state">No Voiceflow transcripts found for this period.</p>`;
 
   return `
 <section id="s8">
@@ -451,7 +469,7 @@ const chartInitJs = `
     return { labels: series.labels.slice(-n), values: series.values.slice(-n) };
   }
 
-  const RANGES = { '3mo': 3, '6mo': 6, '12mo': 12, '24mo': 24 };
+  const RANGES = { '1mo': 1, '3mo': 3, '6mo': 6, '12mo': 12, '24mo': 24 };
   let activeRange = '24mo';
   const charts = {};
 
@@ -606,6 +624,19 @@ const css = `
     -webkit-text-fill-color: var(--muted);
   }
 
+  /* AI Resolution hero number */
+  .ai-hero { text-align: center; padding: 28px 0 40px; }
+  .ai-hero-number {
+    font-size: clamp(88px, 14vw, 144px); font-weight: 900; line-height: 1;
+    background: var(--gradient); -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent; background-clip: text;
+    margin-bottom: 10px;
+  }
+  .ai-hero-label {
+    font-size: 13px; font-weight: 700; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 1.2px;
+  }
+
   .definition {
     font-size: 15px; color: var(--muted); font-style: italic;
     border-left: 2px solid var(--cyan); padding-left: 14px;
@@ -628,7 +659,7 @@ const css = `
   }
   .metrics-table td { padding: 14px 16px; border-bottom: 1px solid var(--border); color: var(--ink); }
   .metrics-table tr:last-child td { border-bottom: none; }
-  .metrics-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .metrics-table tr:hover td:not(.cur) { background: rgba(255,255,255,0.02); }
   .metrics-table td.label { font-weight: 500; color: var(--muted); font-size: 15px; }
   .metrics-table td.cur {
     font-weight: 800; font-size: 20px;
@@ -720,6 +751,11 @@ const css = `
   .turn.user .turn-label { color: var(--blue); }
   .turn.ai   .turn-label { color: var(--cyan); }
   .turn-text { color: var(--ink); }
+  .transcript-link {
+    margin-left: auto; font-size: 12px; font-weight: 600;
+    color: var(--cyan); text-decoration: none; white-space: nowrap;
+  }
+  .transcript-link:hover { text-decoration: underline; }
 
   .empty-state { color: var(--muted); font-style: italic; padding: 24px 0; }
 
@@ -773,6 +809,7 @@ const html = `<!DOCTYPE html>
     <div class="logo-wordmark">UTR Sports — CSS Stats<span>Customer Success &amp; Support</span></div>
   </div>
   <div class="range-selector">
+    <button class="range-btn" data-range="1mo">1 mo</button>
     <button class="range-btn" data-range="3mo">3 mo</button>
     <button class="range-btn" data-range="6mo">6 mo</button>
     <button class="range-btn" data-range="12mo">12 mo</button>

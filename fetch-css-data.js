@@ -352,6 +352,7 @@ async function pickInteractionExamples(sessions) {
 
   if (withTurns.length === 0) {
     return engaged.slice(0, 3).map(s => ({
+      transcriptId: s.id,
       turns: extractTurns(s),
       date: s.createdAt ?? s.updatedAt,
       resolved: !isEscalated(s),
@@ -367,6 +368,7 @@ async function pickInteractionExamples(sessions) {
     Math.floor(n * 0.75),
   ];
   return indices.map(i => ({
+    transcriptId: withTurns[i].s.id,
     turns: withTurns[i].turns,
     date: withTurns[i].s.createdAt ?? withTurns[i].s.updatedAt,
     resolved: withTurns[i].resolved,
