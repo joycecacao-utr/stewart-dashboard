@@ -463,6 +463,7 @@ function buildDailyRollups(tickets, sessions, csat, days) {
   const blank = () => ({
     ticketsCreated: 0, ticketsResolved: 0, backlog: 0,
     csatHappy: 0, csatTotal: 0,
+    fcCsatHappy: 0, fcCsatTotal: 0,
     slaHit: 0, slaEligible: 0,
     frtSum: 0,  frtCount: 0,
     frt1Sum: 0, frt1Count: 0,   // Low
@@ -538,11 +539,20 @@ function buildDailyRollups(tickets, sessions, csat, days) {
     if (v >= 99 && v <= 103) return v >= 101;
     return null;
   };
+  const fcTicketIds = new Set(
+    tickets.filter(t => (t.subject ?? '').trim().toLowerCase().startsWith('conversation with'))
+           .map(t => t.id)
+  );
   for (const r of (csat ?? [])) {
     const d = dayKey(r.created_at);
     if (!d || !map[d]) continue;
+    const happy = normCsat(r) === true;
     map[d].csatTotal++;
-    if (normCsat(r) === true) map[d].csatHappy++;
+    if (happy) map[d].csatHappy++;
+    if (fcTicketIds.has(r.ticket_id)) {
+      map[d].fcCsatTotal++;
+      if (happy) map[d].fcCsatHappy++;
+    }
   }
 
   // Voiceflow sessions
@@ -569,6 +579,7 @@ function buildMonthlyRollups(daily) {
     if (!byMonth[mk]) byMonth[mk] = {
       ticketsCreated: 0, ticketsResolved: 0, backlog: 0,
       csatHappy: 0,   csatTotal: 0,
+      fcCsatHappy: 0, fcCsatTotal: 0,
       slaHit: 0,      slaEligible: 0,
       frtSum: 0,      frtCount: 0,
       frt1Sum: 0, frt1Count: 0,

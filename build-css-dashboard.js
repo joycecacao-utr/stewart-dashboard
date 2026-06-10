@@ -380,7 +380,7 @@ function buildVolumeResponse() {
       </thead>
       <tbody>
         ${metricRow('Chat Volume (Freshchat)',   num(curMo?.fcTickets),  num(prevMo?.fcTickets),  num(ytd.fcTickets), num(pyMo?.fcTickets))}
-        ${metricRow('CSAT',                     csatM(curMo),  csatM(prevMo),  ytdCsat, csatM(pyMo))}
+        ${metricRow('CSAT',                     pct(curMo?.fcCsatHappy, curMo?.fcCsatTotal),  pct(prevMo?.fcCsatHappy, prevMo?.fcCsatTotal),  pct(ytd.fcCsatHappy, ytd.fcCsatTotal), pct(pyMo?.fcCsatHappy, pyMo?.fcCsatTotal))}
       </tbody>
     </table>
   </div>
