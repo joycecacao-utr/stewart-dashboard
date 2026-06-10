@@ -315,28 +315,57 @@ function topN(counts, n) {
     .map(([w]) => w);
 }
 
+// Maps raw keywords to readable phrases for natural-sounding summaries
+const POS_PHRASES = {
+  'thank': 'feeling well taken care of', 'thanks': 'feeling well taken care of',
+  'helpful': 'finding support helpful', 'resolved': 'getting issues resolved quickly',
+  'fixed': 'getting issues resolved quickly', 'solved': 'getting issues resolved quickly',
+  'quick': 'appreciating fast response times', 'easy': 'finding the process easy',
+  'great': 'satisfied with the experience', 'awesome': 'satisfied with the experience',
+  'amazing': 'satisfied with the experience', 'excellent': 'satisfied with the experience',
+  'smooth': 'experiencing smooth interactions', 'clear': 'finding answers clear and direct',
+};
+const NEG_PHRASES = {
+  'frustrated': 'expressing frustration', 'confused': 'experiencing confusion',
+  'slow': 'waiting longer than expected', "can't": 'running into blockers',
+  'unable': 'running into blockers', 'broken': 'encountering broken features',
+  'error': 'hitting errors', 'bug': 'hitting errors',
+  'problem': 'needing multiple contacts to resolve issues',
+  'issue': 'needing multiple contacts to resolve issues',
+  'unclear': 'finding information hard to locate',
+};
+
 function buildPersonaSummary(name, texts) {
   if (texts.length < 3) return 'Not enough data from this period.';
-  const posCounts = countWords(texts, POS_WORDS);
-  const negCounts = countWords(texts, NEG_WORDS);
+  const posCounts   = countWords(texts, POS_WORDS);
+  const negCounts   = countWords(texts, NEG_WORDS);
   const topicCounts = countWords(texts, TOPIC_WORDS);
 
-  const posTotal = Object.values(posCounts).reduce((a, b) => a + b, 0);
-  const negTotal = Object.values(negCounts).reduce((a, b) => a + b, 0);
-  const topTopics = topN(topicCounts, 3);
-  const topPos    = topN(posCounts, 2);
-  const topNeg    = topN(negCounts, 2);
+  const posTotal  = Object.values(posCounts).reduce((a, b) => a + b, 0);
+  const negTotal  = Object.values(negCounts).reduce((a, b) => a + b, 0);
+  const topTopics = topN(topicCounts, 2);
+  const topPosKw  = topN(posCounts, 2);
+  const topNegKw  = topN(negCounts, 2);
 
-  const topicPhrase = topTopics.length > 0 ? topTopics.join(', ') : 'general support';
+  // Strip trailing "customers" / "subscribers" from name to avoid repetition
+  const shortName = name.replace(/\s+(customers|subscribers)$/i, '');
+  const topicStr  = topTopics.length > 0
+    ? topTopics.map(t => t.charAt(0).toUpperCase() + t.slice(1)).join(' and ')
+    : null;
 
   if (posTotal > negTotal * 1.5) {
-    const praise = topPos.length > 0 ? ` — commonly describing the support as ${topPos.join(' and ')}` : '';
-    return `${name} customers had a largely positive experience this period${praise}. Top topics: ${topicPhrase}.`;
+    const phrase = topPosKw.map(k => POS_PHRASES[k]).filter(Boolean)[0]
+      ?? 'having a positive support experience';
+    const suffix = topicStr ? ` Most common topics: ${topicStr}.` : '';
+    return `${shortName} contacts were generally ${phrase} this period.${suffix}`;
   } else if (negTotal > posTotal * 1.5) {
-    const pain = topNeg.length > 0 ? ` — frequently encountering ${topNeg.join(' and ')} issues` : '';
-    return `${name} customers faced more friction than average this period${pain}. Main topics: ${topicPhrase}.`;
+    const phrase = topNegKw.map(k => NEG_PHRASES[k]).filter(Boolean)[0]
+      ?? 'experiencing more friction than usual';
+    const suffix = topicStr ? ` Most common topics: ${topicStr}.` : '';
+    return `${shortName} contacts reported ${phrase} this period.${suffix}`;
   } else {
-    return `${name} customers had mixed experiences this period, with balanced positive and negative signals. Main topics: ${topicPhrase}.`;
+    const suffix = topicStr ? ` Top topics this period: ${topicStr}.` : '';
+    return `${shortName} contacts had a mixed experience this period, with both positive feedback and recurring pain points.${suffix}`;
   }
 }
 
