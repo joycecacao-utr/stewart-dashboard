@@ -768,6 +768,15 @@ async function main() {
   const daily   = buildDailyRollups(tickets, sessions, csat, LOOKBACK_DAYS);
   const monthly = buildMonthlyRollups(daily);
 
+  // Diagnostic: print ticket counts per month so we can verify against Freshdesk Analytics
+  const curMoKey = new Date().toISOString().slice(0, 7);
+  console.log('  Monthly ticket counts (last 6 months):');
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i);
+    const k = d.toISOString().slice(0, 7);
+    console.log(`    ${k}: ${monthly[k]?.ticketsCreated ?? 0} tickets`);
+  }
+
   console.log('Extracting Happy Thoughts from CSAT…');
   const happyThoughts = findHappyThoughts(csat);
   console.log(`  → ${happyThoughts.length} quotes`);
