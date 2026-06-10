@@ -1,0 +1,18 @@
+name: Test June Volume
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Count June 2026 tickets
+        env:
+          FRESHDESK_KEY:    ${{ secrets.FRESHDESK_KEY }}
+          FRESHDESK_DOMAIN: universaltennis
+        run: node test-june-volume.js
