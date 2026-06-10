@@ -464,13 +464,23 @@ function buildInteractionExamples() {
           ? `https://creator.voiceflow.com/project/${VF_PROJECT_ID}/transcripts/${ex.transcriptId}`
           : null;
         const transcriptLink = vfUrl
-          ? `<a class="transcript-link" href="${vfUrl}" target="_blank" rel="noopener">View in Voiceflow ↗</a>`
+          ? `<a class="transcript-link" href="${vfUrl}" target="_blank" rel="noopener">View transcript ↗</a>`
           : '';
-        const turns = (ex.turns ?? []).slice(0, 8).map(t => `
-          <div class="turn ${t.role}">
-            <span class="turn-label">${t.role === 'user' ? 'User' : 'AI'}</span>
-            <span class="turn-text">${escHtml(t.text)}</span>
-          </div>`).join('');
+
+        const turns = ex.turns ?? [];
+        const userTurns = turns.filter(t => t.role === 'user');
+        const aiTurns   = turns.filter(t => t.role === 'ai');
+
+        // Topic = first user message, truncated
+        const topic = userTurns[0]?.text?.trim() ?? '';
+        const topicDisplay = topic.length > 140 ? topic.slice(0, 137) + '…' : topic;
+
+        // Last AI message as the resolution note
+        const lastAi = aiTurns[aiTurns.length - 1]?.text?.trim() ?? '';
+        const resolutionDisplay = lastAi.length > 140 ? lastAi.slice(0, 137) + '…' : lastAi;
+
+        const turnCount = turns.length;
+
         return `
       <div class="example-card">
         <div class="example-header">
@@ -479,7 +489,17 @@ function buildInteractionExamples() {
           ${status}
           ${transcriptLink}
         </div>
-        <div class="turns">${turns}</div>
+        <div class="example-summary">
+          <div class="summary-row">
+            <span class="summary-label">User asked</span>
+            <span class="summary-text">${escHtml(topicDisplay)}</span>
+          </div>
+          ${resolutionDisplay ? `<div class="summary-row">
+            <span class="summary-label">AI replied</span>
+            <span class="summary-text">${escHtml(resolutionDisplay)}</span>
+          </div>` : ''}
+          <div class="summary-meta">${turnCount} message${turnCount !== 1 ? 's' : ''} total</div>
+        </div>
       </div>`;
       }).join('')
     : `<p class="empty-state">No Voiceflow transcripts found for this period.</p>`;
@@ -855,15 +875,14 @@ const css = `
   .tag { font-size: 12px; font-weight: 600; border-radius: 20px; padding: 2px 10px; }
   .tag.resolved { background: rgba(34,197,94,0.12); color: var(--green); }
   .tag.escalated { background: rgba(239,68,68,0.12); color: var(--red); }
-  .turns { padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
-  .turn { display: flex; gap: 10px; font-size: 15px; line-height: 1.5; }
-  .turn-label {
+  .example-summary { padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
+  .summary-row { display: flex; gap: 10px; font-size: 14px; line-height: 1.5; }
+  .summary-label {
     font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
-    flex-shrink: 0; padding-top: 3px; min-width: 28px;
+    flex-shrink: 0; padding-top: 2px; min-width: 64px; color: var(--muted);
   }
-  .turn.user .turn-label { color: var(--blue); }
-  .turn.ai   .turn-label { color: var(--cyan); }
-  .turn-text { color: var(--ink); }
+  .summary-text { color: var(--ink); }
+  .summary-meta { font-size: 12px; color: var(--muted); padding-top: 4px; }
   .transcript-link {
     margin-left: auto; font-size: 12px; font-weight: 600;
     color: var(--cyan); text-decoration: none; white-space: nowrap;
