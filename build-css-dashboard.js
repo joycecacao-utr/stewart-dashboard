@@ -627,14 +627,15 @@ const css = `
   /* AI Resolution hero number */
   .ai-hero { text-align: center; padding: 28px 0 40px; }
   .ai-hero-number {
-    font-size: clamp(88px, 14vw, 144px); font-weight: 900; line-height: 1;
+    font-size: clamp(56px, 8vw, 96px); font-weight: 900; line-height: 1;
+    white-space: nowrap;
     background: var(--gradient); -webkit-background-clip: text;
     -webkit-text-fill-color: transparent; background-clip: text;
     margin-bottom: 10px;
   }
   .ai-hero-label {
     font-size: 13px; font-weight: 700; color: var(--muted);
-    text-transform: uppercase; letter-spacing: 1.2px;
+    text-transform: uppercase; letter-spacing: 1.2px; white-space: nowrap;
   }
 
   .definition {
