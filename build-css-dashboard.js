@@ -64,6 +64,7 @@ function sumMonths(keys) {
     frt1Sum: 0, frt1Count: 0, frt2Sum: 0, frt2Count: 0,
     frt3Sum: 0, frt3Count: 0, frt4Sum: 0, frt4Count: 0,
     fcrResolved: 0, fcrEligible: 0,
+    fcr2Resolved: 0, fcr2Eligible: 0,
     sessions: 0, engaged: 0, aiResolved: 0,
     durSum: 0, durCount: 0,
     stewartTickets: 0, fcTickets: 0,
@@ -154,7 +155,8 @@ function sessM(m)   { return m ? num(m.sessions)                    : NA; }
 function tickM(m)   { return m ? num(m.ticketsCreated)              : NA; }
 function frtM(m)    { return m ? avg(m.frtSum, m.frtCount) + (m.frtCount ? 'h' : '') : NA; }
 function frtPri(m, p) { return m ? avg(m[`frt${p}Sum`], m[`frt${p}Count`]) + (m[`frt${p}Count`] ? 'h' : '') : NA; }
-function fcrM(m)    { return m ? pct(m.fcrResolved, m.fcrEligible)  : NA; }
+function fcrM(m)    { return m ? pct(m.fcrResolved, m.fcrEligible)   : NA; }
+function fcrM2(m)   { return m ? pct(m.fcr2Resolved, m.fcr2Eligible) : NA; }
 function csatM(m)   { return m ? pct(m.csatHappy, m.csatTotal)      : NA; }
 function durM(m)    { return m ? avg(m.durSum, m.durCount) + (m.durCount ? ' min' : '') : NA; }
 
@@ -164,7 +166,8 @@ const ytdAiCost = dollar(ytd.sessions * data.vfCostPerSession);
 const ytdSess   = num(ytd.sessions);
 const ytdTick   = num(ytd.ticketsCreated);
 const ytdFrt    = avg(ytd.frtSum, ytd.frtCount) + (ytd.frtCount ? 'h' : '');
-const ytdFcr    = pct(ytd.fcrResolved, ytd.fcrEligible);
+const ytdFcr    = pct(ytd.fcrResolved,  ytd.fcrEligible);
+const ytdFcr2   = pct(ytd.fcr2Resolved, ytd.fcr2Eligible);
 const ytdCsat   = pct(ytd.csatHappy, ytd.csatTotal);
 const ytdDur    = avg(ytd.durSum, ytd.durCount) + (ytd.durCount ? ' min' : '');
 
@@ -397,9 +400,11 @@ function buildVolumeResponse() {
         ${metricRow('Ticket Volume',            fmtSheetTick(CUR_MO) !== 'N/A' ? fmtSheetTick(CUR_MO) : (curMo ? tickM(curMo) : '0'), fmtSheetTick(PREV_MO), fmtSheetTick('ytd'), fmtSheetTick(PY_MO))}
         ${frtPriRows}
         ${metricRow('First Contact Resolution', fcrM(curMo),   fcrM(prevMo),   ytdFcr,  fcrM(pyMo))}
+        ${metricRow('FCR — Medium Priority',    fcrM2(curMo),  fcrM2(prevMo),  ytdFcr2, fcrM2(pyMo))}
         ${metricRow('CSAT',                     fmtSheetCsat(CUR_MO) !== 'N/A' ? fmtSheetCsat(CUR_MO) : csatM(curMo), fmtSheetCsat(PREV_MO), fmtSheetCsat('ytd'), fmtSheetCsat(PY_MO))}
       </tbody>
     </table>
+    ${(data.sampledMonths ?? []).length > 0 ? `<p style="font-size:11px;color:var(--muted);margin-top:4px;">* ${data.sampledMonths.join(', ')} FRT/FCR based on sample (500-ticket cap)</p>` : ''}
   </div>
   <div class="chart-wrap">
     <canvas id="ticketChart" height="120"></canvas>

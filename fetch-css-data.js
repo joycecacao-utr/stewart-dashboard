@@ -4,7 +4,7 @@
 // Env vars: FRESHDESK_KEY, VOICEFLOW_KEY, GOOGLE_SHEETS_API_KEY
 // Optional: FRESHDESK_DOMAIN (default: universaltennis), VF_COST_PER_SESSION (default: 0.05)
 
-import { writeFileSync } from 'fs';
+import { writeFileSync, readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
@@ -25,7 +25,7 @@ const STEWART_TAG     = 'Stewart_AI';
 const LOOKBACK_DAYS    = 730;   // 24 months rolling — Freshdesk tickets
 const DATA_END        = new Date('2024-08-09T23:59:59Z'); // last date with CSS group ticket data
 const VF_LOOKBACK_DAYS = parseInt(process.env.VF_LOOKBACK_DAYS || '90', 10); // bot launched May 2026
-const MIN_SLEEP_MS     = 200;   // 200ms = ~300 req/min, safely under Freshdesk's 400 req/min limit
+const MIN_SLEEP_MS     = 2000;  // 2s between calls — conservative 30% cap to avoid conflicting with Stewart bot
 const VF_SLEEP_MS      = 80;    // Voiceflow rate limits are much more lenient
 
 // Priority labels (Freshdesk: 1=Low 2=Medium 3=High 4=Urgent)
@@ -74,9 +74,8 @@ async function fdGet(path, params = {}) {
   for (let attempt = 0; attempt < 5; attempt++) {
     const res = await fetch(url, { headers: { Authorization: fdAuth() } });
     if (res.status === 429) {
-      const wait = (+(res.headers.get('retry-after') || 60) + 5) * 1000;
-      console.warn(`  rate limited on ${path}, waiting ${wait / 1000}s…`);
-      await sleep(wait);
+      console.warn(`  rate limited on ${path}, backing off 10s…`);
+      await sleep(10000);
       continue;
     }
     if (res.status === 503 || res.status === 502) {
@@ -453,6 +452,7 @@ function buildDailyRollups(tickets, sessions, csat, days) {
     stewartTickets: 0,
     fcTickets: 0,
     fcrResolved: 0, fcrEligible: 0,
+    fcr2Resolved: 0, fcr2Eligible: 0,  // Medium priority only
     sessions: 0, bounces: 0, engaged: 0, aiResolved: 0,
     durSum: 0,  durCount: 0,
   });
@@ -477,6 +477,10 @@ function buildDailyRollups(tickets, sessions, csat, days) {
           : null;
         const noFollowUp = !requesterReplied || (requesterReplied - resolvedAt) > 86400000;
         if (noFollowUp) m.fcrResolved++;
+        if (t.priority === 2) {
+          m.fcr2Eligible++;
+          if (noFollowUp) m.fcr2Resolved++;
+        }
       }
 
       if (t.stats?.first_responded_at) {
@@ -568,6 +572,7 @@ function buildMonthlyRollups(daily) {
       frt4Sum: 0, frt4Count: 0,
       stewartTickets: 0, fcTickets: 0,
       fcrResolved: 0, fcrEligible: 0,
+      fcr2Resolved: 0, fcr2Eligible: 0,
       sessions: 0, bounces: 0, engaged: 0, aiResolved: 0,
       durSum: 0, durCount: 0,
     };
@@ -676,6 +681,42 @@ async function fetchRevenueRecovery() {
   };
 }
 
+// ─── JUNE 2025 SUPPLEMENT ────────────────────────────────────────────────────
+// Targeted lightweight fetch for June 2025, capped at 500 tickets.
+// Returns { tickets, sampled } where sampled=true means the cap was hit.
+async function fetchJune2025Supplement(cssGroupIds, existingIds) {
+  console.log('  Fetching June 2025 supplement (cap: 500)…');
+  const juneStart = '2025-06-01T00:00:00Z';
+  const juneEnd   = '2025-07-01T00:00:00Z';
+  const found = [];
+  let sampled = false;
+
+  for (let page = 1; page <= 5; page++) {  // 5 × 100 = 500 hard cap
+    const data = await fdGet('tickets', {
+      updated_since: juneStart,
+      include: 'stats',
+      per_page: 100,
+      page,
+      order_by: 'updated_at',
+      order_type: 'asc',
+    });
+    if (!Array.isArray(data) || data.length === 0) break;
+    for (const t of data) {
+      if (cssGroupIds.has(t.group_id) &&
+          t.created_at >= juneStart && t.created_at < juneEnd &&
+          !existingIds.has(t.id)) {
+        found.push(t);
+      }
+    }
+    if (data.length < 100) break;
+    if (page === 5) { sampled = true; break; }
+    await sleep(MIN_SLEEP_MS);
+  }
+
+  console.log(`  → ${found.length} June 2025 new tickets${sampled ? ' (sample — hit 500 cap)' : ''}`);
+  return { tickets: found, sampled };
+}
+
 // ─── MAIN ────────────────────────────────────────────────────────────────────
 async function main() {
   if (!FD_KEY) throw new Error('FRESHDESK_KEY env var not set');
@@ -693,8 +734,32 @@ async function main() {
     throw new Error(`No CSS groups found matching: ${CSS_GROUP_NAMES.join(', ')}`);
   console.log(`  → matched ${cssGroupIds.size} group(s): ${allGroups.filter(g => CSS_GROUP_NAMES.includes(g.name)).map(g => `"${g.name}" (${g.id})`).join(', ')}`);
 
+  // Check if we already have good June 2025 data cached — if so, skip supplement fetch
+  const dataPath = join(__dirname, 'css-data.json');
+  let jun2025Cached = false;
+  if (existsSync(dataPath)) {
+    try {
+      const cached = JSON.parse(readFileSync(dataPath, 'utf8'));
+      const jun25 = cached.monthly?.['2025-06'];
+      if ((jun25?.frtCount ?? 0) > 0 || (jun25?.fcrEligible ?? 0) > 0) {
+        jun2025Cached = true;
+        console.log('  June 2025: cached data found — skipping supplement fetch');
+      }
+    } catch { /* ignore corrupt cache */ }
+  }
+
   console.log(`Fetching Freshdesk tickets (${LOOKBACK_DAYS}d, CSS groups)…`);
-  const tickets = await fdFetchTickets(since, cssGroupIds);
+  const allTickets = await fdFetchTickets(since, cssGroupIds);
+
+  // June 2025 supplement fetch (skipped if cached)
+  let jun2025Sampled = false;
+  if (!jun2025Cached) {
+    const existingIds = new Set(allTickets.map(t => t.id));
+    const { tickets: supTickets, sampled } = await fetchJune2025Supplement(cssGroupIds, existingIds);
+    allTickets.push(...supTickets);
+    jun2025Sampled = sampled;
+  }
+  const tickets = allTickets;
   const tCreated = tickets.map(t => t.created_at).filter(Boolean).sort();
   console.log(`  → ${tickets.length} tickets, created ${tCreated[0]?.slice(0,10) ?? 'n/a'} – ${tCreated[tCreated.length-1]?.slice(0,10) ?? 'n/a'}`);
   // DEBUG: sample stats to verify FRT/FCR fields
@@ -775,6 +840,7 @@ async function main() {
     vfCostPerSession:    VF_COST,
     cssGroups:           CSS_GROUP_NAMES,
     priorityNames:       PRIORITY_NAMES,
+    sampledMonths:       jun2025Sampled ? ['2025-06'] : [],
     daily,
     monthly,
     happyThoughts,
