@@ -7,7 +7,7 @@ const headers = {
 };
 
 async function get(path) {
-  const r = await fetch(`https://api.freshchat.com/v2/${path}`, { headers });
+  const r = await fetch(`https://universaltennis.freshchat.com/v2/${path}`, { headers });
   console.log(`GET ${path} → ${r.status}`);
   if (!r.ok) { console.error(await r.text()); return null; }
   return r.json();
