@@ -157,23 +157,23 @@ async function fdFetchTickets(sinceISO, cssGroupIds) {
   const since = new Date(sinceISO);
   const now = new Date();
 
-  // Build monthly date ranges
+  // Build WEEKLY date ranges — weekly slices keep each range well under 300 tickets,
+  // avoiding recursive splits that inflate API call counts with monthly slices.
   const ranges = [];
   const cur = new Date(since);
-  cur.setUTCDate(1);
   while (cur < now) {
     const start = new Date(cur);
-    cur.setUTCMonth(cur.getUTCMonth() + 1);
+    cur.setUTCDate(cur.getUTCDate() + 7);
     ranges.push({ start, end: new Date(Math.min(cur.getTime(), now.getTime())) });
   }
 
-  console.log(`  Searching ${cssGroupIds.size} groups × ${ranges.length} monthly ranges…`);
+  console.log(`  Searching ${cssGroupIds.size} groups × ${ranges.length} weekly ranges…`);
   let done = 0;
   for (const groupId of cssGroupIds) {
     for (const { start, end } of ranges) {
       await fdSearchRange(groupId, start, end, allById);
       done++;
-      if (done % 6 === 0) console.log(`  … ${done}/${cssGroupIds.size * ranges.length} ranges, ${allById.size} CSS tickets`);
+      if (done % 20 === 0) console.log(`  … ${done}/${cssGroupIds.size * ranges.length} ranges, ${allById.size} CSS tickets`);
     }
   }
 
