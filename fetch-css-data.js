@@ -25,7 +25,7 @@ const STEWART_TAG     = 'Stewart_AI';
 const LOOKBACK_DAYS    = 730;   // 24 months rolling — Freshdesk tickets
 const DATA_END        = new Date('2024-08-09T23:59:59Z'); // last date with CSS group ticket data
 const VF_LOOKBACK_DAYS = parseInt(process.env.VF_LOOKBACK_DAYS || '90', 10); // bot launched May 2026
-const MIN_SLEEP_MS     = 400;   // ~150 req/min = ~30% of a 500 req/hr limit (Freshdesk)
+const MIN_SLEEP_MS     = 200;   // 200ms = ~300 req/min, safely under Freshdesk's 400 req/min limit
 const VF_SLEEP_MS      = 80;    // Voiceflow rate limits are much more lenient
 
 // Priority labels (Freshdesk: 1=Low 2=Medium 3=High 4=Urgent)
