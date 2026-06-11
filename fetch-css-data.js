@@ -136,8 +136,8 @@ async function fdFetchTickets(sinceISO, cssGroupIds) {
   const allById = new Map();
   const seen = new Set();
 
-  // Pass 1: full historical sweep (ascending) — up to 120k total tickets
-  await fdFetchPass(sinceISO, cssGroupIds, allById, seen, 120);
+  // Pass 1: full historical sweep (ascending) — up to 250k total tickets
+  await fdFetchPass(sinceISO, cssGroupIds, allById, seen, 250);
 
   // Pass 2: descending sweep of full 2-year window — newest tickets come back first.
   // 120 pages × 100 = 12,000 most-recently-updated tickets, covering any CSS tickets
