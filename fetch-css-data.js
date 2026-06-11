@@ -103,13 +103,88 @@ async function fdGetAll(path, params = {}, maxPages = 25) {
   return all;
 }
 
-// Single cursor-paginated pass over all tickets (no group filter — Freshdesk doesn't support it)
-async function fdFetchPass(sinceISO, cssGroupIds, allById, seen, maxRounds) {
-  let cursor = sinceISO;
-  for (let round = 0; round < maxRounds; round++) {
+// Search API: fetch only CSS tickets using group_id filter + date range slices.
+// Returns { total, results } where results are ticket objects.
+async function fdSearch(query, page) {
+  const url = new URL(`https://${FD_DOMAIN}.freshdesk.com/api/v2/search/tickets`);
+  url.searchParams.set('query', `"${query}"`);
+  url.searchParams.set('page', page);
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const res = await fetch(url, { headers: { Authorization: fdAuth() } });
+    if (res.status === 429) {
+      const wait = (+(res.headers.get('retry-after') || 60) + 5) * 1000;
+      console.warn(`  rate limited on search, waiting ${wait / 1000}s…`);
+      await sleep(wait);
+      continue;
+    }
+    if (res.status === 503 || res.status === 502) {
+      await sleep((attempt + 1) * 3000);
+      continue;
+    }
+    if (!res.ok) throw new Error(`Freshdesk search: HTTP ${res.status}`);
+    return res.json();
+  }
+  throw new Error('Freshdesk search: rate-limited after retries');
+}
+
+// Fetch one group × one date range, recursively splitting if >300 results.
+async function fdSearchRange(groupId, start, end, allById) {
+  const s = start.toISOString().slice(0, 10);
+  const e = end.toISOString().slice(0, 10);
+  if (s === e) return; // 1-day min granularity
+  const query = `group_id:${groupId} AND created_at:>'${s}' AND created_at:<'${e}'`;
+
+  let hitLimit = false;
+  for (let page = 1; page <= 10; page++) {
+    const data = await fdSearch(query, page);
+    const results = data.results ?? [];
+    for (const t of results) allById.set(t.id, t);
+    if (results.length < 30) break;
+    if (page === 10) hitLimit = true;
+    await sleep(MIN_SLEEP_MS);
+  }
+
+  // If we maxed out 300 results, split the range in half and recurse
+  if (hitLimit) {
+    const mid = new Date((start.getTime() + end.getTime()) / 2);
+    await fdSearchRange(groupId, start, mid, allById);
+    await fdSearchRange(groupId, mid, end, allById);
+  }
+}
+
+async function fdFetchTickets(sinceISO, cssGroupIds) {
+  const allById = new Map();
+  const since = new Date(sinceISO);
+  const now = new Date();
+
+  // Build monthly date ranges
+  const ranges = [];
+  const cur = new Date(since);
+  cur.setUTCDate(1);
+  while (cur < now) {
+    const start = new Date(cur);
+    cur.setUTCMonth(cur.getUTCMonth() + 1);
+    ranges.push({ start, end: new Date(Math.min(cur.getTime(), now.getTime())) });
+  }
+
+  console.log(`  Searching ${cssGroupIds.size} groups × ${ranges.length} monthly ranges…`);
+  let done = 0;
+  for (const groupId of cssGroupIds) {
+    for (const { start, end } of ranges) {
+      await fdSearchRange(groupId, start, end, allById);
+      done++;
+      if (done % 6 === 0) console.log(`  … ${done}/${cssGroupIds.size * ranges.length} ranges, ${allById.size} CSS tickets`);
+    }
+  }
+
+  // Search API doesn't return stats — fill them in via ascending cursor sweep,
+  // terminating early once stats are found for all CSS tickets.
+  console.log(`  Filling stats via ascending sweep (early-exit when all matched)…`);
+  const needsStats = new Set(allById.keys());
+  let cursor = new Date(Date.now() - LOOKBACK_DAYS * 86400000).toISOString();
+  for (let round = 0; round < 300 && needsStats.size > 0; round++) {
     let advanced = false;
     let lastUpdated = null;
-    const before = seen.size;
     for (let page = 1; page <= 10; page++) {
       const data = await fdGet('tickets', {
         updated_since: cursor, include: 'stats',
@@ -117,47 +192,20 @@ async function fdFetchPass(sinceISO, cssGroupIds, allById, seen, maxRounds) {
       });
       if (!Array.isArray(data) || data.length === 0) break;
       for (const t of data) {
-        if (seen.has(t.id)) continue;
-        seen.add(t.id);
-        if (cssGroupIds.has(t.group_id)) allById.set(t.id, t);
+        if (needsStats.has(t.id)) { allById.set(t.id, t); needsStats.delete(t.id); }
       }
       lastUpdated = data[data.length - 1].updated_at;
       if (data.length < 100) break;
       if (page === 10) advanced = true;
       await sleep(MIN_SLEEP_MS);
     }
-    if (round % 5 === 0 && round > 0) console.log(`  … ${seen.size} seen, ${allById.size} CSS tickets so far`);
-    if (!advanced || !lastUpdated || lastUpdated === cursor || seen.size === before) break;
+    if (round % 10 === 0 && round > 0) console.log(`  … round ${round}, ${needsStats.size} CSS tickets still need stats`);
+    if (!advanced || !lastUpdated || lastUpdated === cursor) break;
     cursor = lastUpdated;
   }
-}
+  if (needsStats.size > 0) console.log(`  ⚠ ${needsStats.size} tickets missing stats (resolved before lookback window)`);
 
-async function fdFetchTickets(sinceISO, cssGroupIds) {
-  const allById = new Map();
-  const seen = new Set();
-
-  // Pass 1: full historical sweep (ascending) — up to 250k total tickets
-  await fdFetchPass(sinceISO, cssGroupIds, allById, seen, 250);
-
-  // Pass 2: descending sweep of full 2-year window — newest tickets come back first.
-  // 120 pages × 100 = 12,000 most-recently-updated tickets, covering any CSS tickets
-  // that pass 1 missed due to round limits.
-  const recentSince = new Date(Date.now() - LOOKBACK_DAYS * 86400000).toISOString();
-  console.log(`  Pass 2 (desc, ${LOOKBACK_DAYS}d)…`);
-  for (let page = 1; page <= 120; page++) {
-    const data = await fdGet('tickets', {
-      updated_since: recentSince, include: 'stats',
-      per_page: 100, page, order_by: 'updated_at', order_type: 'desc',
-    });
-    if (!Array.isArray(data) || data.length === 0) break;
-    for (const t of data) {
-      if (cssGroupIds.has(t.group_id)) allById.set(t.id, t);
-    }
-    if (data.length < 100) break;
-    await sleep(MIN_SLEEP_MS);
-  }
-  console.log(`  → ${allById.size} CSS tickets total after pass 2`);
-
+  console.log(`  → ${allById.size} CSS tickets total`);
   return [...allById.values()];
 }
 
