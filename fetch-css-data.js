@@ -103,107 +103,39 @@ async function fdGetAll(path, params = {}, maxPages = 25) {
   return all;
 }
 
-// Search API: fetch only CSS tickets using group_id filter + date range slices.
-// Returns { total, results } where results are ticket objects.
-async function fdSearch(query, page) {
-  const url = new URL(`https://${FD_DOMAIN}.freshdesk.com/api/v2/search/tickets`);
-  url.searchParams.set('query', `"${query}"`);
-  url.searchParams.set('page', page);
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const res = await fetch(url, { headers: { Authorization: fdAuth() } });
-    if (res.status === 429) {
-      const wait = (+(res.headers.get('retry-after') || 60) + 5) * 1000;
-      console.warn(`  rate limited on search, waiting ${wait / 1000}s…`);
-      await sleep(wait);
-      continue;
-    }
-    if (res.status === 503 || res.status === 502) {
-      await sleep((attempt + 1) * 3000);
-      continue;
-    }
-    if (!res.ok) throw new Error(`Freshdesk search: HTTP ${res.status}`);
-    return res.json();
-  }
-  throw new Error('Freshdesk search: rate-limited after retries');
-}
-
-// Fetch one group × one date range, recursively splitting if >300 results.
-async function fdSearchRange(groupId, start, end, allById) {
-  const s = start.toISOString().slice(0, 10);
-  const e = end.toISOString().slice(0, 10);
-  if (s === e) return; // 1-day min granularity
-  const query = `group_id:${groupId} AND created_at:>'${s}' AND created_at:<'${e}'`;
-
-  let hitLimit = false;
-  for (let page = 1; page <= 10; page++) {
-    const data = await fdSearch(query, page);
-    const results = data.results ?? [];
-    for (const t of results) allById.set(t.id, t);
-    if (results.length < 30) break;
-    if (page === 10) hitLimit = true;
-    await sleep(MIN_SLEEP_MS);
-  }
-
-  // If we maxed out 300 results, split the range in half and recurse
-  if (hitLimit) {
-    const mid = new Date((start.getTime() + end.getTime()) / 2);
-    await fdSearchRange(groupId, start, mid, allById);
-    await fdSearchRange(groupId, mid, end, allById);
-  }
-}
-
 async function fdFetchTickets(sinceISO, cssGroupIds) {
+  // Single-pass scan of ALL tickets ordered by created_at, with stats included.
+  // Filter CSS groups client-side. Avoids search API rate limits entirely.
+  // Freshdesk caps at page 300 (30k tickets); we advance the cursor when needed.
   const allById = new Map();
-  const since = new Date(sinceISO);
-  const now = new Date();
+  let cursor = sinceISO;
 
-  // Build WEEKLY date ranges — weekly slices keep each range well under 300 tickets,
-  // avoiding recursive splits that inflate API call counts with monthly slices.
-  const ranges = [];
-  const cur = new Date(since);
-  while (cur < now) {
-    const start = new Date(cur);
-    cur.setUTCDate(cur.getUTCDate() + 7);
-    ranges.push({ start, end: new Date(Math.min(cur.getTime(), now.getTime())) });
-  }
+  console.log(`  Scanning all tickets since ${sinceISO.slice(0, 10)} (filtering CSS groups client-side)…`);
 
-  console.log(`  Searching ${cssGroupIds.size} groups × ${ranges.length} weekly ranges…`);
-  let done = 0;
-  for (const groupId of cssGroupIds) {
-    for (const { start, end } of ranges) {
-      await fdSearchRange(groupId, start, end, allById);
-      done++;
-      if (done % 20 === 0) console.log(`  … ${done}/${cssGroupIds.size * ranges.length} ranges, ${allById.size} CSS tickets`);
-    }
-  }
-
-  // Search API doesn't return stats — fill them in via ascending cursor sweep,
-  // terminating early once stats are found for all CSS tickets.
-  console.log(`  Filling stats via ascending sweep (early-exit when all matched)…`);
-  const needsStats = new Set(allById.keys());
-  let cursor = new Date(Date.now() - LOOKBACK_DAYS * 86400000).toISOString();
-  for (let round = 0; round < 300 && needsStats.size > 0; round++) {
-    let advanced = false;
-    let lastUpdated = null;
-    for (let page = 1; page <= 10; page++) {
+  outer: while (true) {
+    let lastCreated = null;
+    for (let page = 1; page <= 300; page++) {
       const data = await fdGet('tickets', {
-        updated_since: cursor, include: 'stats',
-        per_page: 100, page, order_by: 'updated_at', order_type: 'asc',
+        created_since: cursor,
+        include: 'stats',
+        per_page: 100,
+        page,
+        order_by: 'created_at',
+        order_type: 'asc',
       });
-      if (!Array.isArray(data) || data.length === 0) break;
+      if (!Array.isArray(data) || data.length === 0) break outer;
       for (const t of data) {
-        if (needsStats.has(t.id)) { allById.set(t.id, t); needsStats.delete(t.id); }
+        if (cssGroupIds.has(t.group_id)) allById.set(t.id, t);
+        lastCreated = t.created_at;
       }
-      lastUpdated = data[data.length - 1].updated_at;
-      if (data.length < 100) break;
-      if (page === 10) advanced = true;
+      if (data.length < 100) break outer;
+      if (page % 20 === 0) console.log(`  … page ${page} (since ${cursor.slice(0, 10)}), ${allById.size} CSS tickets`);
       await sleep(MIN_SLEEP_MS);
     }
-    if (round % 10 === 0 && round > 0) console.log(`  … round ${round}, ${needsStats.size} CSS tickets still need stats`);
-    if (!advanced || !lastUpdated || lastUpdated === cursor) break;
-    cursor = lastUpdated;
+    // Hit page 300 limit — advance cursor past processed tickets
+    if (!lastCreated || lastCreated === cursor) break;
+    cursor = lastCreated;
   }
-  if (needsStats.size > 0) console.log(`  ⚠ ${needsStats.size} tickets missing stats (resolved before lookback window)`);
 
   console.log(`  → ${allById.size} CSS tickets total`);
   return [...allById.values()];
