@@ -74,8 +74,9 @@ async function fdGet(path, params = {}) {
   for (let attempt = 0; attempt < 5; attempt++) {
     const res = await fetch(url, { headers: { Authorization: fdAuth() } });
     if (res.status === 429) {
-      console.warn(`  rate limited on ${path}, backing off 10s…`);
-      await sleep(10000);
+      const wait = (+(res.headers.get('retry-after') || 60) + 5) * 1000;
+      console.warn(`  rate limited on ${path}, waiting ${wait / 1000}s…`);
+      await sleep(wait);
       continue;
     }
     if (res.status === 503 || res.status === 502) {
@@ -110,8 +111,9 @@ async function fdSearch(query, page) {
   for (let attempt = 0; attempt < 5; attempt++) {
     const res = await fetch(url, { headers: { Authorization: fdAuth() } });
     if (res.status === 429) {
-      console.warn(`  rate limited on search, backing off 10s…`);
-      await sleep(10000);
+      const wait = (+(res.headers.get('retry-after') || 60) + 5) * 1000;
+      console.warn(`  rate limited on search, waiting ${wait / 1000}s…`);
+      await sleep(wait);
       continue;
     }
     if (res.status === 503 || res.status === 502) { await sleep((attempt + 1) * 3000); continue; }
