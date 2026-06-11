@@ -139,12 +139,12 @@ async function fdFetchTickets(sinceISO, cssGroupIds) {
   // Pass 1: full historical sweep (ascending) — up to 120k total tickets
   await fdFetchPass(sinceISO, cssGroupIds, allById, seen, 120);
 
-  // Pass 2: descending sweep of last 90 days — newest tickets come back first,
-  // so page 1 always has today's CSS tickets regardless of total ticket volume.
-  // No cursor advancement needed — 10 pages × 100 = 1000 most-recently-updated tickets.
-  const recentSince = new Date(Date.now() - 90 * 86400000).toISOString();
-  console.log('  Pass 2 (desc, last 90d)…');
-  for (let page = 1; page <= 10; page++) {
+  // Pass 2: descending sweep of full 2-year window — newest tickets come back first.
+  // 120 pages × 100 = 12,000 most-recently-updated tickets, covering any CSS tickets
+  // that pass 1 missed due to round limits.
+  const recentSince = new Date(Date.now() - LOOKBACK_DAYS * 86400000).toISOString();
+  console.log(`  Pass 2 (desc, ${LOOKBACK_DAYS}d)…`);
+  for (let page = 1; page <= 120; page++) {
     const data = await fdGet('tickets', {
       updated_since: recentSince, include: 'stats',
       per_page: 100, page, order_by: 'updated_at', order_type: 'desc',
@@ -463,6 +463,7 @@ function buildDailyRollups(tickets, sessions, csat, days) {
   const blank = () => ({
     ticketsCreated: 0, ticketsResolved: 0, backlog: 0,
     csatHappy: 0, csatTotal: 0,
+    fcCsatHappy: 0, fcCsatTotal: 0,
     slaHit: 0, slaEligible: 0,
     frtSum: 0,  frtCount: 0,
     frt1Sum: 0, frt1Count: 0,   // Low
@@ -487,9 +488,16 @@ function buildDailyRollups(tickets, sessions, csat, days) {
       if ((t.tags ?? []).includes(STEWART_TAG)) m.stewartTickets++;
       if ((t.subject ?? '').trim().toLowerCase().startsWith('conversation')) m.fcTickets++;
 
-      // FCR: resolved and never reopened
-      m.fcrEligible++;
-      if (t.stats?.resolved_at && !t.stats?.reopened_at) m.fcrResolved++;
+      // FCR: resolved without a customer follow-up reply within 24 hours
+      if (t.stats?.resolved_at) {
+        m.fcrEligible++;
+        const resolvedAt = new Date(t.stats.resolved_at);
+        const requesterReplied = t.stats?.requester_responded_at
+          ? new Date(t.stats.requester_responded_at)
+          : null;
+        const noFollowUp = !requesterReplied || (requesterReplied - resolvedAt) > 86400000;
+        if (noFollowUp) m.fcrResolved++;
+      }
 
       if (t.stats?.first_responded_at) {
         const frtH = (new Date(t.stats.first_responded_at) - new Date(t.created_at)) / 3600000;
@@ -531,11 +539,20 @@ function buildDailyRollups(tickets, sessions, csat, days) {
     if (v >= 99 && v <= 103) return v >= 101;
     return null;
   };
+  const fcTicketIds = new Set(
+    tickets.filter(t => (t.subject ?? '').trim().toLowerCase().startsWith('conversation with'))
+           .map(t => t.id)
+  );
   for (const r of (csat ?? [])) {
     const d = dayKey(r.created_at);
     if (!d || !map[d]) continue;
+    const happy = normCsat(r) === true;
     map[d].csatTotal++;
-    if (normCsat(r) === true) map[d].csatHappy++;
+    if (happy) map[d].csatHappy++;
+    if (fcTicketIds.has(r.ticket_id)) {
+      map[d].fcCsatTotal++;
+      if (happy) map[d].fcCsatHappy++;
+    }
   }
 
   // Voiceflow sessions
@@ -562,6 +579,7 @@ function buildMonthlyRollups(daily) {
     if (!byMonth[mk]) byMonth[mk] = {
       ticketsCreated: 0, ticketsResolved: 0, backlog: 0,
       csatHappy: 0,   csatTotal: 0,
+      fcCsatHappy: 0, fcCsatTotal: 0,
       slaHit: 0,      slaEligible: 0,
       frtSum: 0,      frtCount: 0,
       frt1Sum: 0, frt1Count: 0,
@@ -749,6 +767,15 @@ async function main() {
   console.log('Building daily rollups…');
   const daily   = buildDailyRollups(tickets, sessions, csat, LOOKBACK_DAYS);
   const monthly = buildMonthlyRollups(daily);
+
+  // Diagnostic: print ticket counts per month so we can verify against Freshdesk Analytics
+  const curMoKey = new Date().toISOString().slice(0, 7);
+  console.log('  Monthly ticket counts (last 6 months):');
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i);
+    const k = d.toISOString().slice(0, 7);
+    console.log(`    ${k}: ${monthly[k]?.ticketsCreated ?? 0} tickets`);
+  }
 
   console.log('Extracting Happy Thoughts from CSAT…');
   const happyThoughts = findHappyThoughts(csat);
