@@ -179,7 +179,7 @@ function buildSeries(metric) {
     const m = monthly[key];
     if (!m) { values.push(metric === 'aiRes' ? null : 0); continue; }
     if (metric === 'aiRes')    values.push(m.engaged > 0 ? +(m.aiResolved / m.engaged * 100).toFixed(1) : null);
-    if (metric === 'sessions') values.push(m.sessions ?? 0);
+    if (metric === 'sessions') values.push(m.fcTickets ?? 0);
   }
   return { labels, values };
 }
@@ -372,7 +372,7 @@ function buildVolumeResponse() {
 <section id="s5">
   ${sectionHeader('05', 'Volume & Response Time')}
 
-  <h3 class="sub-heading">Chat — Voiceflow / Freshchat</h3>
+  <h3 class="sub-heading">Freshchat</h3>
   <div class="table-wrap">
     <table class="metrics-table">
       <thead>
