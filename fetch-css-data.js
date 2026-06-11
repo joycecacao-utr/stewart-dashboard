@@ -113,28 +113,28 @@ async function fdFetchTickets(sinceISO, cssGroupIds) {
   console.log(`  Scanning all tickets since ${sinceISO.slice(0, 10)} (filtering CSS groups client-side)…`);
 
   outer: while (true) {
-    let lastCreated = null;
+    let lastUpdated = null;
     for (let page = 1; page <= 300; page++) {
       const data = await fdGet('tickets', {
-        created_since: cursor,
+        updated_since: cursor,
         include: 'stats',
         per_page: 100,
         page,
-        order_by: 'created_at',
+        order_by: 'updated_at',
         order_type: 'asc',
       });
       if (!Array.isArray(data) || data.length === 0) break outer;
       for (const t of data) {
-        if (cssGroupIds.has(t.group_id)) allById.set(t.id, t);
-        lastCreated = t.created_at;
+        if (cssGroupIds.has(t.group_id) && t.created_at >= sinceISO) allById.set(t.id, t);
+        lastUpdated = t.updated_at;
       }
       if (data.length < 100) break outer;
       if (page % 20 === 0) console.log(`  … page ${page} (since ${cursor.slice(0, 10)}), ${allById.size} CSS tickets`);
       await sleep(MIN_SLEEP_MS);
     }
     // Hit page 300 limit — advance cursor past processed tickets
-    if (!lastCreated || lastCreated === cursor) break;
-    cursor = lastCreated;
+    if (!lastUpdated || lastUpdated === cursor) break;
+    cursor = lastUpdated;
   }
 
   console.log(`  → ${allById.size} CSS tickets total`);
