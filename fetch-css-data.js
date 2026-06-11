@@ -102,39 +102,75 @@ async function fdGetAll(path, params = {}, maxPages = 25) {
   return all;
 }
 
-async function fdFetchTickets(sinceISO, cssGroupIds) {
-  // Single-pass scan of ALL tickets ordered by created_at, with stats included.
-  // Filter CSS groups client-side. Avoids search API rate limits entirely.
-  // Freshdesk caps at page 300 (30k tickets); we advance the cursor when needed.
+// Search API — targeted by group_id, no full-table scan needed.
+async function fdSearch(query, page) {
+  const url = new URL(`https://${FD_DOMAIN}.freshdesk.com/api/v2/search/tickets`);
+  url.searchParams.set('query', `"${query}"`);
+  url.searchParams.set('page', page);
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const res = await fetch(url, { headers: { Authorization: fdAuth() } });
+    if (res.status === 429) {
+      console.warn(`  rate limited on search, backing off 10s…`);
+      await sleep(10000);
+      continue;
+    }
+    if (res.status === 503 || res.status === 502) { await sleep((attempt + 1) * 3000); continue; }
+    if (!res.ok) throw new Error(`Freshdesk search: HTTP ${res.status}`);
+    return res.json();
+  }
+  throw new Error('Freshdesk search: rate-limited after retries');
+}
+
+async function fdSearchRange(groupId, start, end, allById) {
+  const s = start.toISOString().slice(0, 10);
+  const e = end.toISOString().slice(0, 10);
+  if (s === e) return;
+  const query = `group_id:${groupId} AND created_at:>'${s}' AND created_at:<'${e}'`;
+  let hitLimit = false;
+  for (let page = 1; page <= 10; page++) {
+    const data = await fdSearch(query, page);
+    for (const t of (data.results ?? [])) allById.set(t.id, t);
+    if ((data.results ?? []).length < 30) break;
+    if (page === 10) hitLimit = true;
+    await sleep(MIN_SLEEP_MS);
+  }
+  if (hitLimit) {
+    const mid = new Date((start.getTime() + end.getTime()) / 2);
+    await fdSearchRange(groupId, start, mid, allById);
+    await fdSearchRange(groupId, mid, end, allById);
+  }
+}
+
+async function fdFetchTickets(targetMonths, cssGroupIds) {
+  // Phase 1: search API — fetch CSS ticket IDs for only the months we need.
   const allById = new Map();
-  let cursor = sinceISO;
-
-  console.log(`  Scanning all tickets since ${sinceISO.slice(0, 10)} (filtering CSS groups client-side)…`);
-
-  outer: while (true) {
-    let lastUpdated = null;
-    for (let page = 1; page <= 300; page++) {
-      const data = await fdGet('tickets', {
-        updated_since: cursor,
-        include: 'stats',
-        per_page: 100,
-        page,
-        order_by: 'updated_at',
-        order_type: 'asc',
-      });
-      if (!Array.isArray(data) || data.length === 0) break outer;
-      for (const t of data) {
-        if (cssGroupIds.has(t.group_id) && t.created_at >= sinceISO) allById.set(t.id, t);
-        lastUpdated = t.updated_at;
-      }
-      if (data.length < 100) break outer;
-      if (page % 20 === 0) console.log(`  … page ${page} (since ${cursor.slice(0, 10)}), ${allById.size} CSS tickets`);
+  console.log(`  Search API: ${cssGroupIds.size} groups × ${targetMonths.length} months…`);
+  for (const groupId of cssGroupIds) {
+    for (const { start, end } of targetMonths) {
+      await fdSearchRange(groupId, start, end, allById);
       await sleep(MIN_SLEEP_MS);
     }
-    // Hit page 300 limit — advance cursor past processed tickets
-    if (!lastUpdated || lastUpdated === cursor) break;
-    cursor = lastUpdated;
   }
+  console.log(`  → ${allById.size} CSS ticket IDs found`);
+
+  // Phase 2: fill stats via a single ascending sweep, early-exit when all matched.
+  console.log(`  Filling stats (sweep from ${targetMonths[0].start.toISOString().slice(0,10)})…`);
+  const needsStats = new Set(allById.keys());
+  let cursor = targetMonths[0].start.toISOString();
+  for (let page = 1; page <= 200 && needsStats.size > 0; page++) {
+    const data = await fdGet('tickets', {
+      updated_since: cursor, include: 'stats',
+      per_page: 100, page, order_by: 'updated_at', order_type: 'asc',
+    });
+    if (!Array.isArray(data) || data.length === 0) break;
+    for (const t of data) {
+      if (needsStats.has(t.id)) { allById.set(t.id, t); needsStats.delete(t.id); }
+    }
+    if (data.length < 100) break;
+    if (page % 20 === 0) console.log(`  … stats page ${page}, ${needsStats.size} remaining`);
+    await sleep(MIN_SLEEP_MS);
+  }
+  if (needsStats.size > 0) console.log(`  ⚠ ${needsStats.size} tickets missing stats`);
 
   console.log(`  → ${allById.size} CSS tickets total`);
   return [...allById.values()];
@@ -681,48 +717,11 @@ async function fetchRevenueRecovery() {
   };
 }
 
-// ─── JUNE 2025 SUPPLEMENT ────────────────────────────────────────────────────
-// Targeted lightweight fetch for June 2025, capped at 500 tickets.
-// Returns { tickets, sampled } where sampled=true means the cap was hit.
-async function fetchJune2025Supplement(cssGroupIds, existingIds) {
-  console.log('  Fetching June 2025 supplement (cap: 500)…');
-  const juneStart = '2025-06-01T00:00:00Z';
-  const juneEnd   = '2025-07-01T00:00:00Z';
-  const found = [];
-  let sampled = false;
-
-  for (let page = 1; page <= 5; page++) {  // 5 × 100 = 500 hard cap
-    const data = await fdGet('tickets', {
-      updated_since: juneStart,
-      include: 'stats',
-      per_page: 100,
-      page,
-      order_by: 'updated_at',
-      order_type: 'asc',
-    });
-    if (!Array.isArray(data) || data.length === 0) break;
-    for (const t of data) {
-      if (cssGroupIds.has(t.group_id) &&
-          t.created_at >= juneStart && t.created_at < juneEnd &&
-          !existingIds.has(t.id)) {
-        found.push(t);
-      }
-    }
-    if (data.length < 100) break;
-    if (page === 5) { sampled = true; break; }
-    await sleep(MIN_SLEEP_MS);
-  }
-
-  console.log(`  → ${found.length} June 2025 new tickets${sampled ? ' (sample — hit 500 cap)' : ''}`);
-  return { tickets: found, sampled };
-}
 
 // ─── MAIN ────────────────────────────────────────────────────────────────────
 async function main() {
   if (!FD_KEY) throw new Error('FRESHDESK_KEY env var not set');
   if (!VF_KEY) throw new Error('VOICEFLOW_KEY env var not set');
-
-  const since = daysAgoISO(LOOKBACK_DAYS + 5);
 
   console.log('Fetching Freshdesk groups…');
   const allGroups  = await fdGet('groups');
@@ -734,51 +733,33 @@ async function main() {
     throw new Error(`No CSS groups found matching: ${CSS_GROUP_NAMES.join(', ')}`);
   console.log(`  → matched ${cssGroupIds.size} group(s): ${allGroups.filter(g => CSS_GROUP_NAMES.includes(g.name)).map(g => `"${g.name}" (${g.id})`).join(', ')}`);
 
-  // Check if we already have good June 2025 data cached — if so, skip supplement fetch
-  const dataPath = join(__dirname, 'css-data.json');
-  let jun2025Cached = false;
-  if (existsSync(dataPath)) {
-    try {
-      const cached = JSON.parse(readFileSync(dataPath, 'utf8'));
-      const jun25 = cached.monthly?.['2025-06'];
-      if ((jun25?.frtCount ?? 0) > 0 || (jun25?.fcrEligible ?? 0) > 0) {
-        jun2025Cached = true;
-        console.log('  June 2025: cached data found — skipping supplement fetch');
-      }
-    } catch { /* ignore corrupt cache */ }
+  // Build the exact months we need: Jan–current month of this year + same month last year
+  const now2 = new Date();
+  const targetMonths = [];
+  for (let m = 0; m <= now2.getMonth(); m++) {
+    const start = new Date(Date.UTC(now2.getFullYear(), m, 1));
+    const end   = new Date(Date.UTC(now2.getFullYear(), m + 1, 1));
+    targetMonths.push({ start, end });
   }
+  // Same month last year (e.g. June 2025)
+  const pyStart = new Date(Date.UTC(now2.getFullYear() - 1, now2.getMonth(), 1));
+  const pyEnd   = new Date(Date.UTC(now2.getFullYear() - 1, now2.getMonth() + 1, 1));
+  targetMonths.push({ start: pyStart, end: pyEnd });
 
-  console.log(`Fetching Freshdesk tickets (${LOOKBACK_DAYS}d, CSS groups)…`);
-  const allTickets = await fdFetchTickets(since, cssGroupIds);
-
-  // June 2025 supplement fetch (skipped if cached)
-  let jun2025Sampled = false;
-  if (!jun2025Cached) {
-    const existingIds = new Set(allTickets.map(t => t.id));
-    const { tickets: supTickets, sampled } = await fetchJune2025Supplement(cssGroupIds, existingIds);
-    allTickets.push(...supTickets);
-    jun2025Sampled = sampled;
-  }
-  const tickets = allTickets;
+  console.log(`Fetching Freshdesk tickets (${targetMonths.length} targeted months, CSS groups)…`);
+  const tickets = await fdFetchTickets(targetMonths, cssGroupIds);
   const tCreated = tickets.map(t => t.created_at).filter(Boolean).sort();
   console.log(`  → ${tickets.length} tickets, created ${tCreated[0]?.slice(0,10) ?? 'n/a'} – ${tCreated[tCreated.length-1]?.slice(0,10) ?? 'n/a'}`);
-  // DEBUG: sample stats to verify FRT/FCR fields
-  const withStats = tickets.filter(t => t.stats);
-  console.log(`  tickets with stats object: ${withStats.length}`);
-  const withFRT = tickets.filter(t => t.stats?.first_responded_at);
-  console.log(`  tickets with first_responded_at: ${withFRT.length}`);
-  const withFCR = tickets.filter(t => t.stats?.resolved_at);
-  console.log(`  tickets with resolved_at: ${withFCR.length}`);
-  withStats.slice(0, 2).forEach((t, i) => console.log(`  sample[${i}]: stats=${JSON.stringify(t.stats)} priority=${t.priority}`));
 
+  const csatSince = pyStart.toISOString();
   console.log('Fetching Freshdesk CSAT…');
   let csat = [];
   try {
-    csat = await fdGetAll('surveys/satisfaction_ratings', { created_since: since });
+    csat = await fdGetAll('surveys/satisfaction_ratings', { created_since: csatSince });
     console.log(`  → ${csat.length} ratings`);
   } catch {
     try {
-      csat = await fdGetAll('satisfaction_ratings', { created_since: since });
+      csat = await fdGetAll('satisfaction_ratings', { created_since: csatSince });
       console.log(`  → ${csat.length} ratings`);
     } catch (e) { console.warn('  CSAT unavailable:', e.message); }
   }
@@ -840,7 +821,7 @@ async function main() {
     vfCostPerSession:    VF_COST,
     cssGroups:           CSS_GROUP_NAMES,
     priorityNames:       PRIORITY_NAMES,
-    sampledMonths:       jun2025Sampled ? ['2025-06'] : [],
+    sampledMonths:       [],
     daily,
     monthly,
     happyThoughts,
