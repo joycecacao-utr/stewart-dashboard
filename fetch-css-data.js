@@ -22,7 +22,7 @@ const SHEETS_ID       = '19g2G3dlSNba5U5b4Xf6k_jRlMI9S2TVI3Kg7_MLGWGA';
 
 const CSS_GROUP_NAMES = ['General', 'Campaigns'];
 const STEWART_TAG     = 'Stewart_AI';
-const LOOKBACK_DAYS    = 730;   // 24 months rolling — Freshdesk tickets
+const LOOKBACK_DAYS    = 370;   // ~13 months: covers YTD + same month last year
 const DATA_END        = new Date('2024-08-09T23:59:59Z'); // last date with CSS group ticket data
 const VF_LOOKBACK_DAYS = parseInt(process.env.VF_LOOKBACK_DAYS || '90', 10); // bot launched May 2026
 const MIN_SLEEP_MS     = 2000;  // 2s between calls — conservative 30% cap to avoid conflicting with Stewart bot
