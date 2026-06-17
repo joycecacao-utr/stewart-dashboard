@@ -772,8 +772,9 @@ async function main() {
     throw new Error(`No CSS groups found matching: ${CSS_GROUP_NAMES.join(', ')}`);
   console.log(`  → matched ${cssGroupIds.size} group(s): ${allGroups.filter(g => CSS_GROUP_NAMES.includes(g.name)).map(g => `"${g.name}" (${g.id})`).join(', ')}`);
 
-  // Fetch only the 3 months that change: previous month, current month, same month last year.
-  // Historical months (Jan–(current-2)) are stable — merged in from cached css-data.json.
+  // The 3 volatile months always re-fetched: previous month, current month, same month last year.
+  // Stable historical YTD months (Jan–(current-2)) come from cached css-data.json — but if the
+  // cache is missing any of them, we fetch them too so the dashboard self-heals.
   const now2 = new Date();
   const curMonth  = now2.getMonth();
   const curYear   = now2.getFullYear();
@@ -782,6 +783,15 @@ async function main() {
   const pyStart = new Date(Date.UTC(curYear - 1, curMonth,     1));
   const pyEnd   = new Date(Date.UTC(curYear - 1, curMonth + 1, 1));
   const pyMonthKey = pyStart.toISOString().slice(0, 7);
+
+  // Read cache up front to know which historical months we already have.
+  const cachedPath = join(__dirname, 'css-data.json');
+  let cachedMonthly = {};
+  if (existsSync(cachedPath)) {
+    try { cachedMonthly = JSON.parse(readFileSync(cachedPath, 'utf8')).monthly ?? {}; }
+    catch { /* corrupt/missing cache — treat as empty */ }
+  }
+
   const targetMonths = [];
   if (curMonth > 0) {
     targetMonths.push({
@@ -794,6 +804,18 @@ async function main() {
     end:   new Date(Date.UTC(curYear, curMonth + 1, 1)),
   });
   targetMonths.push({ start: pyStart, end: pyEnd });
+
+  // Backfill any earlier YTD month (Jan … month-before-prev) that isn't cached yet.
+  for (let m = 0; m < curMonth - 1; m++) {
+    const key = `${curYear}-${String(m + 1).padStart(2, '0')}`;
+    if (!cachedMonthly[key]) {
+      console.log(`  Backfilling missing historical month: ${key}`);
+      targetMonths.push({
+        start: new Date(Date.UTC(curYear, m,     1)),
+        end:   new Date(Date.UTC(curYear, m + 1, 1)),
+      });
+    }
+  }
 
   console.log(`Fetching Freshdesk tickets (${targetMonths.length} targeted months, CSS groups)…`);
   const tickets = await fdFetchTickets(targetMonths, cssGroupIds);
@@ -854,19 +876,13 @@ async function main() {
   const daily   = buildDailyRollups(tickets, sessions, csat, LOOKBACK_DAYS, generalGroupId);
   const monthly = buildMonthlyRollups(daily);
 
-  // Merge stable historical months from cache (we only fetched prev/cur/PY above).
-  const cachedPath = join(__dirname, 'css-data.json');
-  if (existsSync(cachedPath)) {
-    try {
-      const cached = JSON.parse(readFileSync(cachedPath, 'utf8'));
-      const freshKeys = new Set([prevMonthKey, curMonthKey, pyMonthKey]);
-      let merged = 0;
-      for (const [k, v] of Object.entries(cached.monthly ?? {})) {
-        if (!freshKeys.has(k) && !monthly[k]) { monthly[k] = v; merged++; }
-      }
-      if (merged > 0) console.log(`  Merged ${merged} historical month(s) from cache`);
-    } catch { /* no cache yet — first run */ }
+  // Merge stable historical months from cache for any month we did NOT fetch this run.
+  const fetchedKeys = new Set(targetMonths.map(t => t.start.toISOString().slice(0, 7)));
+  let merged = 0;
+  for (const [k, v] of Object.entries(cachedMonthly)) {
+    if (!fetchedKeys.has(k)) { monthly[k] = v; merged++; }
   }
+  if (merged > 0) console.log(`  Merged ${merged} historical month(s) from cache`);
 
   // Diagnostic: print ticket counts per month so we can verify against Freshdesk Analytics
   const curMoKey = new Date().toISOString().slice(0, 7);
