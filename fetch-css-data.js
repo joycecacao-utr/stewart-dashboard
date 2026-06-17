@@ -471,7 +471,11 @@ async function pickInteractionExamples(sessions) {
 }
 
 // ─── DAILY ROLLUPS ───────────────────────────────────────────────────────────
-function buildDailyRollups(tickets, sessions, csat, days) {
+function buildDailyRollups(tickets, sessions, csat, days, generalGroupId = null) {
+  // Chat tickets ("Conversation with…") are only counted from the General queue.
+  const isChatTicket = t =>
+    (t.subject ?? '').trim().toLowerCase().startsWith('conversation with') &&
+    (generalGroupId == null || t.group_id === generalGroupId);
   const today = new Date(); today.setUTCHours(0, 0, 0, 0);
   const dayKeys = [];
   for (let i = days - 1; i >= 0; i--)
@@ -504,7 +508,7 @@ function buildDailyRollups(tickets, sessions, csat, days) {
       const m = map[created];
       m.ticketsCreated++;
       if ((t.tags ?? []).includes(STEWART_TAG)) m.stewartTickets++;
-      if ((t.subject ?? '').trim().toLowerCase().startsWith('conversation')) m.fcTickets++;
+      if (isChatTicket(t)) m.fcTickets++;
 
       // FCR: resolved without a customer follow-up reply within 24 hours
       if (t.stats?.resolved_at) {
@@ -562,8 +566,7 @@ function buildDailyRollups(tickets, sessions, csat, days) {
     return null;
   };
   const fcTicketIds = new Set(
-    tickets.filter(t => (t.subject ?? '').trim().toLowerCase().startsWith('conversation with'))
-           .map(t => t.id)
+    tickets.filter(isChatTicket).map(t => t.id)
   );
   for (const r of (csat ?? [])) {
     const d = dayKey(r.created_at);
@@ -731,6 +734,9 @@ async function main() {
   const cssGroupIds = new Set(
     allGroups.filter(g => CSS_GROUP_NAMES.includes(g.name)).map(g => g.id)
   );
+  // Chat tickets are only counted from the General queue.
+  const generalGroupId = allGroups.find(g => g.name === 'General')?.id ?? null;
+  console.log(`  General queue id for chat: ${generalGroupId ?? 'NOT FOUND'}`);
   if (cssGroupIds.size === 0)
     throw new Error(`No CSS groups found matching: ${CSS_GROUP_NAMES.join(', ')}`);
   console.log(`  → matched ${cssGroupIds.size} group(s): ${allGroups.filter(g => CSS_GROUP_NAMES.includes(g.name)).map(g => `"${g.name}" (${g.id})`).join(', ')}`);
@@ -793,7 +799,7 @@ async function main() {
   }
 
   console.log('Building daily rollups…');
-  const daily   = buildDailyRollups(tickets, sessions, csat, LOOKBACK_DAYS);
+  const daily   = buildDailyRollups(tickets, sessions, csat, LOOKBACK_DAYS, generalGroupId);
   const monthly = buildMonthlyRollups(daily);
 
   // Diagnostic: print ticket counts per month so we can verify against Freshdesk Analytics
