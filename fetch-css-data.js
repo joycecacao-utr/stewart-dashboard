@@ -813,6 +813,17 @@ async function main() {
     } catch (e) { console.warn('  CSAT unavailable:', e.message); }
   }
 
+  // Keep only CSAT for CSS-group tickets — a rating qualifies if its group_id is
+  // a CSS group, or its ticket is one we fetched for a CSS group. Drops feedback
+  // that leaked in from other teams (e.g. agents outside CSS).
+  const cssTicketIdSet = new Set(tickets.map(t => t.id));
+  const csatBefore = csat.length;
+  csat = csat.filter(r =>
+    (r.group_id != null && cssGroupIds.has(r.group_id)) ||
+    (r.ticket_id != null && cssTicketIdSet.has(r.ticket_id))
+  );
+  console.log(`  → ${csat.length} CSS ratings (filtered out ${csatBefore - csat.length})`);
+
   console.log('Fetching CSS metrics from Google Sheets…');
   let cssSheetMetrics = null;
   try {
