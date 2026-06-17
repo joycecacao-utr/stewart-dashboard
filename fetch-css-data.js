@@ -741,17 +741,27 @@ async function main() {
     throw new Error(`No CSS groups found matching: ${CSS_GROUP_NAMES.join(', ')}`);
   console.log(`  → matched ${cssGroupIds.size} group(s): ${allGroups.filter(g => CSS_GROUP_NAMES.includes(g.name)).map(g => `"${g.name}" (${g.id})`).join(', ')}`);
 
-  // Build the exact months we need: Jan–current month of this year + same month last year
+  // Fetch only the 3 months that change: previous month, current month, same month last year.
+  // Historical months (Jan–(current-2)) are stable — merged in from cached css-data.json.
   const now2 = new Date();
+  const curMonth  = now2.getMonth();
+  const curYear   = now2.getFullYear();
+  const prevMonthKey = new Date(Date.UTC(curYear, curMonth - 1, 1)).toISOString().slice(0, 7);
+  const curMonthKey  = new Date(Date.UTC(curYear, curMonth,     1)).toISOString().slice(0, 7);
+  const pyStart = new Date(Date.UTC(curYear - 1, curMonth,     1));
+  const pyEnd   = new Date(Date.UTC(curYear - 1, curMonth + 1, 1));
+  const pyMonthKey = pyStart.toISOString().slice(0, 7);
   const targetMonths = [];
-  for (let m = 0; m <= now2.getMonth(); m++) {
-    const start = new Date(Date.UTC(now2.getFullYear(), m, 1));
-    const end   = new Date(Date.UTC(now2.getFullYear(), m + 1, 1));
-    targetMonths.push({ start, end });
+  if (curMonth > 0) {
+    targetMonths.push({
+      start: new Date(Date.UTC(curYear, curMonth - 1, 1)),
+      end:   new Date(Date.UTC(curYear, curMonth,     1)),
+    });
   }
-  // Same month last year (e.g. June 2025)
-  const pyStart = new Date(Date.UTC(now2.getFullYear() - 1, now2.getMonth(), 1));
-  const pyEnd   = new Date(Date.UTC(now2.getFullYear() - 1, now2.getMonth() + 1, 1));
+  targetMonths.push({
+    start: new Date(Date.UTC(curYear, curMonth,     1)),
+    end:   new Date(Date.UTC(curYear, curMonth + 1, 1)),
+  });
   targetMonths.push({ start: pyStart, end: pyEnd });
 
   console.log(`Fetching Freshdesk tickets (${targetMonths.length} targeted months, CSS groups)…`);
@@ -801,6 +811,20 @@ async function main() {
   console.log('Building daily rollups…');
   const daily   = buildDailyRollups(tickets, sessions, csat, LOOKBACK_DAYS, generalGroupId);
   const monthly = buildMonthlyRollups(daily);
+
+  // Merge stable historical months from cache (we only fetched prev/cur/PY above).
+  const cachedPath = join(__dirname, 'css-data.json');
+  if (existsSync(cachedPath)) {
+    try {
+      const cached = JSON.parse(readFileSync(cachedPath, 'utf8'));
+      const freshKeys = new Set([prevMonthKey, curMonthKey, pyMonthKey]);
+      let merged = 0;
+      for (const [k, v] of Object.entries(cached.monthly ?? {})) {
+        if (!freshKeys.has(k) && !monthly[k]) { monthly[k] = v; merged++; }
+      }
+      if (merged > 0) console.log(`  Merged ${merged} historical month(s) from cache`);
+    } catch { /* no cache yet — first run */ }
+  }
 
   // Diagnostic: print ticket counts per month so we can verify against Freshdesk Analytics
   const curMoKey = new Date().toISOString().slice(0, 7);
