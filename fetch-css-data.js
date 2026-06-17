@@ -137,23 +137,35 @@ async function fdSearch(query, page) {
   throw new Error('Freshdesk search: rate-limited after retries');
 }
 
-async function fdSearchRange(groupId, start, end, allById) {
+async function fdSearchRange(groupId, start, end, allById, depth = 0) {
   const s = start.toISOString().slice(0, 10);
   const e = end.toISOString().slice(0, 10);
   if (s === e) return;
+  const pad = '      ' + '  '.repeat(depth);
   const query = `group_id:${groupId} AND created_at:>'${s}' AND created_at:<'${e}'`;
-  let hitLimit = false;
-  for (let page = 1; page <= 10; page++) {
+
+  // Page 1 also tells us the total — if >300 we split immediately instead of
+  // wastefully paginating 10 pages and then re-fetching the same period.
+  const first = await fdSearch(query, 1);
+  for (const t of (first.results ?? [])) allById.set(t.id, t);
+  const total = first.total ?? (first.results ?? []).length;
+
+  if (total > 300 && (end.getTime() - start.getTime()) > 86400000) {
+    const mid = new Date((start.getTime() + end.getTime()) / 2);
+    console.log(`${pad}↳ ${s}–${e} has ${total} (>300), splitting…`);
+    await sleep(MIN_SLEEP_MS);
+    await fdSearchRange(groupId, start, mid, allById, depth + 1);
+    await fdSearchRange(groupId, mid, end, allById, depth + 1);
+    return;
+  }
+
+  // Leaf range (≤300): paginate the remaining pages we actually need.
+  const pages = Math.min(10, Math.ceil(total / 30));
+  for (let page = 2; page <= pages; page++) {
+    await sleep(MIN_SLEEP_MS);
     const data = await fdSearch(query, page);
     for (const t of (data.results ?? [])) allById.set(t.id, t);
     if ((data.results ?? []).length < 30) break;
-    if (page === 10) hitLimit = true;
-    await sleep(MIN_SLEEP_MS);
-  }
-  if (hitLimit) {
-    const mid = new Date((start.getTime() + end.getTime()) / 2);
-    await fdSearchRange(groupId, start, mid, allById);
-    await fdSearchRange(groupId, mid, end, allById);
   }
 }
 
