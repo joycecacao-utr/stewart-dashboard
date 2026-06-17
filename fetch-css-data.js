@@ -20,7 +20,7 @@ const VF_PROJECT      = '69ebd4159a532921bd258f8d';
 const VF_ANALYTICS    = 'https://analytics-api.voiceflow.com';
 const SHEETS_ID       = '19g2G3dlSNba5U5b4Xf6k_jRlMI9S2TVI3Kg7_MLGWGA';
 
-const CSS_GROUP_NAMES = ['General', 'Campaigns'];
+const CSS_GROUP_NAMES = ['General', 'Campaigns', 'Bug Captain'];
 const STEWART_TAG     = 'Stewart_AI';
 const LOOKBACK_DAYS    = 185;   // ~6 months: covers YTD + prev month (June 2025 handled by supplement)
 const DATA_END        = new Date('2024-08-09T23:59:59Z'); // last date with CSS group ticket data
