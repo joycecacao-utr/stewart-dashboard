@@ -185,9 +185,11 @@ async function fdFetchTickets(targetMonths, cssGroupIds) {
   console.log(`  → ${allById.size} CSS ticket IDs found`);
 
   // Phase 2: fill stats via a single ascending sweep, early-exit when all matched.
-  console.log(`  Filling stats (sweep from ${targetMonths[0].start.toISOString().slice(0,10)})…`);
+  // Sort so the earliest month (e.g. June 2025) sets the cursor — otherwise PY tickets never get stats.
+  const sortedMonths = [...targetMonths].sort((a, b) => a.start - b.start);
+  console.log(`  Filling stats (sweep from ${sortedMonths[0].start.toISOString().slice(0,10)})…`);
   const needsStats = new Set(allById.keys());
-  let cursor = targetMonths[0].start.toISOString();
+  let cursor = sortedMonths[0].start.toISOString();
   for (let page = 1; page <= 200 && needsStats.size > 0; page++) {
     const data = await fdGet('tickets', {
       updated_since: cursor, include: 'stats',
