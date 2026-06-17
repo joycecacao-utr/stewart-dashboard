@@ -109,7 +109,21 @@ async function fdSearch(query, page) {
   url.searchParams.set('query', `"${query}"`);
   url.searchParams.set('page', page);
   for (let attempt = 0; attempt < 5; attempt++) {
-    const res = await fetch(url, { headers: { Authorization: fdAuth() } });
+    let res;
+    try {
+      // 30s timeout so a hung socket fails fast and retries instead of blocking forever
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 30000);
+      try {
+        res = await fetch(url, { headers: { Authorization: fdAuth() }, signal: ctrl.signal });
+      } finally {
+        clearTimeout(timer);
+      }
+    } catch (e) {
+      console.warn(`  search request failed (${e.name}), retry ${attempt + 1}/5…`);
+      await sleep((attempt + 1) * 3000);
+      continue;
+    }
     if (res.status === 429) {
       const wait = (+(res.headers.get('retry-after') || 60) + 5) * 1000;
       console.warn(`  rate limited on search, waiting ${wait / 1000}s…`);
@@ -149,7 +163,10 @@ async function fdFetchTickets(targetMonths, cssGroupIds) {
   console.log(`  Search API: ${cssGroupIds.size} groups × ${targetMonths.length} months…`);
   for (const groupId of cssGroupIds) {
     for (const { start, end } of targetMonths) {
+      const label = `${start.toISOString().slice(0,7)} grp ${groupId}`;
+      console.log(`    → searching ${label}…`);
       await fdSearchRange(groupId, start, end, allById);
+      console.log(`    ✓ ${label}: ${allById.size} ids so far`);
       await sleep(MIN_SLEEP_MS);
     }
   }
