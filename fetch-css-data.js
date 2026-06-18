@@ -278,6 +278,30 @@ async function vfGetAll(days) {
     await sleep(VF_SLEEP_MS);
   }
   console.log(`  → ${all.length} transcripts (${fetched} with log entries)`);
+
+  // TEMP DIAGNOSTIC: inspect how `freshdesk_create_ticket` appears in logs so we
+  // can tell a real ticket creation apart from the integration merely being
+  // present in the flow. Remove once the isEscalated() detection is fixed.
+  if (process.env.VF_DIAG) {
+    let withString = 0, samplesShown = 0;
+    for (const t of all) {
+      const logs = t.logs ?? [];
+      if (!JSON.stringify(logs).includes('freshdesk_create_ticket')) continue;
+      withString++;
+      if (samplesShown >= 3) continue;
+      samplesShown++;
+      console.log(`\n  ── DIAG transcript ${t.id} ──`);
+      logs.forEach((l, i) => {
+        const blob = JSON.stringify(l);
+        if (!blob.includes('freshdesk_create_ticket')) return;
+        console.log(`    log[${i}] type=${l.type} dataType=${l.data?.type}`);
+        console.log(`      keys: ${Object.keys(l).join(', ')} | data keys: ${Object.keys(l.data ?? {}).join(', ')}`);
+        console.log(`      ${blob.slice(0, 500)}`);
+      });
+    }
+    console.log(`\n  DIAG: ${withString}/${all.length} transcripts contain "freshdesk_create_ticket"`);
+  }
+
   return all;
 }
 

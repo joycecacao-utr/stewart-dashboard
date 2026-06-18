@@ -30,6 +30,7 @@ jobs:
           VOICEFLOW_KEY:           ${{ secrets.VOICEFLOW_KEY }}
           GOOGLE_SHEETS_API_KEY:   ${{ secrets.GOOGLE_SHEETS_API_KEY }}
           FRESHDESK_DOMAIN:        universaltennis
+          VF_DIAG:                 '1'   # TEMP: dump freshdesk_create_ticket log shape; remove after AI-resolution fix
         run: node fetch-css-data.js
 
       - name: Build dashboard HTML
