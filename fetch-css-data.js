@@ -216,14 +216,18 @@ async function vfGetAll(days) {
   const now = Date.now();
   const numWindows = Math.ceil(days / 7);
 
-  // Fetch weekly windows in parallel batches of 8
+  // Fetch weekly windows in parallel batches of 8.
+  // Dedup by transcript id — adjacent windows share a boundary instant, so a
+  // transcript on the boundary would otherwise be counted (and billed) twice.
   const BATCH = 8;
-  const all = [];
+  const byId = new Map();
+  let maxWindow = 0;
   for (let b = 0; b < numWindows; b += BATCH) {
     const batch = [];
     for (let w = b; w < Math.min(b + BATCH, numWindows); w++) {
+      // Offset the window start by 1ms so adjacent windows don't overlap on the boundary.
       const winEnd   = new Date(now - w * 7 * 86400000);
-      const winStart = new Date(Math.max(now - (w + 1) * 7 * 86400000, now - days * 86400000));
+      const winStart = new Date(Math.max(now - (w + 1) * 7 * 86400000 + 1, now - days * 86400000));
       batch.push(
         fetch(`${VF_ANALYTICS}/v1/transcript/project/${VF_PROJECT}`, {
           method: 'POST', headers: vfHeaders(),
@@ -232,9 +236,17 @@ async function vfGetAll(days) {
       );
     }
     const results = await Promise.all(batch);
-    for (const list of results) all.push(...list);
+    results.forEach((list, idx) => {
+      const w = b + idx;
+      // A window returning a large round number likely hit an API cap.
+      if (list.length >= 100) console.warn(`  ⚠ VF window ${w} returned ${list.length} — possible result cap`);
+      maxWindow = Math.max(maxWindow, list.length);
+      for (const t of list) if (t?.id) byId.set(t.id, t);
+    });
     await sleep(VF_SLEEP_MS);
   }
+  const all = [...byId.values()];
+  console.log(`  → ${all.length} unique transcripts (max ${maxWindow}/window)`);
 
   // Fetch individual transcript logs in parallel batches of 10
   let fetched = 0;
@@ -903,6 +915,21 @@ async function main() {
     const k = d.toISOString().slice(0, 7);
     console.log(`    ${k}: ${monthly[k]?.ticketsCreated ?? 0} tickets`);
   }
+
+  // Diagnostic: Voiceflow sessions, engaged, AI-resolved, and cost per month + YTD
+  console.log('  Monthly Voiceflow (sessions / engaged / aiResolved / cost):');
+  let ytdSess = 0, ytdEng = 0, ytdAi = 0;
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i);
+    const k = d.toISOString().slice(0, 7);
+    const m = monthly[k];
+    if (!m) { console.log(`    ${k}: (no data)`); continue; }
+    if (k.startsWith(`${new Date().getFullYear()}`)) { ytdSess += m.sessions; ytdEng += m.engaged; ytdAi += m.aiResolved; }
+    const cost = (m.sessions * VF_COST).toFixed(2);
+    const rate = m.engaged > 0 ? (m.aiResolved / m.engaged * 100).toFixed(1) + '%' : 'n/a';
+    console.log(`    ${k}: ${m.sessions} / ${m.engaged} / ${m.aiResolved} (${rate}) · $${cost}`);
+  }
+  console.log(`    YTD: sessions=${ytdSess}, engaged=${ytdEng}, aiResolved=${ytdAi}, cost=$${(ytdSess * VF_COST).toFixed(2)} @ $${VF_COST}/session`);
 
   console.log('Extracting Happy Thoughts from CSAT…');
   const happyThoughts = findHappyThoughts(csat);
