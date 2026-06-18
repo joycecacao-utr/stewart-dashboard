@@ -918,6 +918,31 @@ async function main() {
   }
   if (merged > 0) console.log(`  Merged ${merged} historical month(s) from cache`);
 
+  // Safety net: a month must never regress from "has Freshdesk stats" to empty.
+  // If a fetch comes back without FRT/FCR data for a month (page cap, timeout,
+  // rate-limit, or a code change that broke the sweep), keep the good cached
+  // Freshdesk stats instead of overwriting them with N/A. Fresh VF/CSAT/volume
+  // numbers are left untouched — only the Freshdesk response/resolution fields
+  // are restored from cache.
+  const FD_STAT_FIELDS = [
+    'frtSum', 'frtCount',
+    'frt1Sum', 'frt1Count', 'frt2Sum', 'frt2Count',
+    'frt3Sum', 'frt3Count', 'frt4Sum', 'frt4Count',
+    'fcrResolved', 'fcrEligible', 'fcr2Resolved', 'fcr2Eligible',
+    'slaHit', 'slaEligible',
+  ];
+  const hasTicketStats = m => !!m && ((m.frtCount ?? 0) > 0 || (m.fcrEligible ?? 0) > 0);
+  let preserved = 0;
+  for (const [k, cached] of Object.entries(cachedMonthly)) {
+    const fresh = monthly[k];
+    if (hasTicketStats(cached) && fresh && !hasTicketStats(fresh)) {
+      for (const f of FD_STAT_FIELDS) fresh[f] = cached[f] ?? fresh[f] ?? 0;
+      preserved++;
+      console.log(`  ⚠ ${k}: fresh fetch had no FD stats — restored from cache`);
+    }
+  }
+  if (preserved > 0) console.log(`  ⚠ Preserved Freshdesk stats for ${preserved} month(s) (fresh fetch came back empty)`);
+
   // Diagnostic: print ticket counts per month so we can verify against Freshdesk Analytics
   const curMoKey = new Date().toISOString().slice(0, 7);
   console.log('  Monthly ticket counts (last 6 months):');
