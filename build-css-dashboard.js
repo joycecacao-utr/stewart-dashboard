@@ -228,6 +228,11 @@ function metricRow(label, cur, prev, ytdVal, py) {
   return `<tr><td class="label">${label}</td><td class="cur">${cur}</td><td>${prev}</td><td>${ytdVal}</td>${pyCell}</tr>`;
 }
 
+// Row without the prior-year column (used where PY isn't relevant, e.g. AI Resolution).
+function metricRowNoPy(label, cur, prev, ytdVal) {
+  return `<tr><td class="label">${label}</td><td class="cur">${cur}</td><td>${prev}</td><td>${ytdVal}</td></tr>`;
+}
+
 function sectionHeader(num, title, tag = '') {
   const badge = tag ? `<span class="badge">${tag}</span>` : '';
   return `<div class="section-header"><span class="section-num">${num}</span><h2>${title}${badge}</h2></div>`;
@@ -279,13 +284,12 @@ function buildAiResolution() {
           <th>${curMoLabel} (MTD)</th>
           <th>${prevMoLabel}</th>
           <th>YTD</th>
-          <th>${pyMoLabel}</th>
         </tr>
       </thead>
       <tbody>
-        ${metricRow('AI Resolution %',  aiResM(curMo),  aiResM(prevMo),  ytdAiRes,  aiResM(pyMo))}
-        ${metricRow('Sessions',         sessM(curMo),   sessM(prevMo),   ytdSess,   sessM(pyMo))}
-        ${metricRow('AI Cost',          aiCostM(curMo), aiCostM(prevMo), ytdAiCost, aiCostM(pyMo))}
+        ${metricRowNoPy('AI Resolution %',  aiResM(curMo),  aiResM(prevMo),  ytdAiRes)}
+        ${metricRowNoPy('Sessions',         sessM(curMo),   sessM(prevMo),   ytdSess)}
+        ${metricRowNoPy('AI Cost',          aiCostM(curMo), aiCostM(prevMo), ytdAiCost)}
       </tbody>
     </table>
   </div>
