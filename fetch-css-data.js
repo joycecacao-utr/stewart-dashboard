@@ -560,15 +560,23 @@ async function pickInteractionExamples(sessions) {
 }
 
 // ─── DAILY ROLLUPS ───────────────────────────────────────────────────────────
-function buildDailyRollups(tickets, sessions, csat, days, generalGroupId = null) {
+function buildDailyRollups(tickets, sessions, csat, days, generalGroupId = null, extraMonths = []) {
   // Chat tickets ("Conversation with…") are only counted from the General queue.
   const isChatTicket = t =>
     (t.subject ?? '').trim().toLowerCase().startsWith('conversation with') &&
     (generalGroupId == null || t.group_id === generalGroupId);
   const today = new Date(); today.setUTCHours(0, 0, 0, 0);
-  const dayKeys = [];
+  const daySet = new Set();
   for (let i = days - 1; i >= 0; i--)
-    dayKeys.push(new Date(today.getTime() - i * 86400000).toISOString().slice(0, 10));
+    daySet.add(new Date(today.getTime() - i * 86400000).toISOString().slice(0, 10));
+  // Also bucket any extra month ranges (e.g. June 2025, the prior-year column),
+  // which fall outside the contiguous `days` window — otherwise their tickets are
+  // fetched but never rolled up, leaving that month's FRT/FCR blank.
+  for (const { start, end } of extraMonths) {
+    for (let t = start.getTime(); t < end.getTime(); t += 86400000)
+      daySet.add(new Date(t).toISOString().slice(0, 10));
+  }
+  const dayKeys = [...daySet].sort();
 
   const blank = () => ({
     ticketsCreated: 0, ticketsResolved: 0, backlog: 0,
@@ -931,7 +939,7 @@ async function main() {
   }
 
   console.log('Building daily rollups…');
-  const daily   = buildDailyRollups(tickets, sessions, csat, LOOKBACK_DAYS, generalGroupId);
+  const daily   = buildDailyRollups(tickets, sessions, csat, LOOKBACK_DAYS, generalGroupId, [{ start: pyStart, end: pyEnd }]);
   const monthly = buildMonthlyRollups(daily);
 
   // Merge stable historical months from cache for any month we did NOT fetch this run.
