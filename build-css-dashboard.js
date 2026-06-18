@@ -197,8 +197,14 @@ function buildTicketCsatSeries() {
     const key = moKey(d);
     labels.push(d.toLocaleString('default', { month: 'short', year: '2-digit' }));
     const s = cssSheet[key];
-    ticketValues.push(s?.ticketVolume ?? null);
-    csatValues.push(s?.csat ?? null);
+    // The Google Sheet lags by a month, so the current month is missing there.
+    // Fall back to the Freshdesk-fetched rollup (same fallback the table uses)
+    // so the latest month still shows on the chart.
+    const fd = monthly[key];
+    const ticketVal = s?.ticketVolume ?? (fd ? fd.ticketsCreated : null);
+    const csatVal = s?.csat ?? (fd && fd.csatTotal > 0 ? +(fd.csatHappy / fd.csatTotal * 100).toFixed(1) : null);
+    ticketValues.push(ticketVal);
+    csatValues.push(csatVal);
   }
   return { labels, ticketValues, csatValues };
 }
