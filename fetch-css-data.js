@@ -24,7 +24,7 @@ const CSS_GROUP_NAMES = ['General', 'Campaigns', 'Bug Captain'];
 const STEWART_TAG     = 'Stewart_AI';
 const LOOKBACK_DAYS    = 185;   // ~6 months: covers YTD + prev month (June 2025 handled by supplement)
 const DATA_END        = new Date('2024-08-09T23:59:59Z'); // last date with CSS group ticket data
-const VF_LOOKBACK_DAYS = parseInt(process.env.VF_LOOKBACK_DAYS || '90', 10); // bot launched May 2026
+const VF_LOOKBACK_DAYS = parseInt(process.env.VF_LOOKBACK_DAYS || '90', 10); // AI/Voiceflow launched April 2026; 90d covers it
 const MIN_SLEEP_MS     = 3000;  // 3s between calls — 20% capacity cap (≈20 req/min) to avoid conflicting with Stewart bot
 const VF_SLEEP_MS      = 80;    // Voiceflow rate limits are much more lenient
 
