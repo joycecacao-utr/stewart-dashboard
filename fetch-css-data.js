@@ -184,24 +184,35 @@ async function fdFetchTickets(targetMonths, cssGroupIds) {
   }
   console.log(`  → ${allById.size} CSS ticket IDs found`);
 
-  // Phase 2: fill stats via a single ascending sweep, early-exit when all matched.
-  // Sort so the earliest month (e.g. June 2025) sets the cursor — otherwise PY tickets never get stats.
-  const sortedMonths = [...targetMonths].sort((a, b) => a.start - b.start);
-  console.log(`  Filling stats (sweep from ${sortedMonths[0].start.toISOString().slice(0,10)})…`);
+  // Phase 2: fill stats via per-month sweeps.
+  // A single sweep from June 2025 to now would page through 20k+ tickets across all groups,
+  // hitting the page cap before reaching recently-updated current-month tickets.
+  // Instead, sweep each target month independently: start at monthStart, stop when
+  // updated_at passes monthEnd — each sweep covers ~1 month of updates and stays fast.
   const needsStats = new Set(allById.keys());
-  let cursor = sortedMonths[0].start.toISOString();
-  for (let page = 1; page <= 200 && needsStats.size > 0; page++) {
-    const data = await fdGet('tickets', {
-      updated_since: cursor, include: 'stats',
-      per_page: 100, page, order_by: 'updated_at', order_type: 'asc',
-    });
-    if (!Array.isArray(data) || data.length === 0) break;
-    for (const t of data) {
-      if (needsStats.has(t.id)) { allById.set(t.id, t); needsStats.delete(t.id); }
+  const sortedMonths = [...targetMonths].sort((a, b) => a.start - b.start);
+  console.log(`  Filling stats (${sortedMonths.length} month windows)…`);
+  for (const { start, end } of sortedMonths) {
+    if (needsStats.size === 0) break;
+    const label = start.toISOString().slice(0, 7);
+    let found = 0;
+    for (let page = 1; page <= 50; page++) {
+      const data = await fdGet('tickets', {
+        updated_since: start.toISOString(), include: 'stats',
+        per_page: 100, page, order_by: 'updated_at', order_type: 'asc',
+      });
+      if (!Array.isArray(data) || data.length === 0) break;
+      let pastEnd = false;
+      for (const t of data) {
+        if (needsStats.has(t.id)) { allById.set(t.id, t); needsStats.delete(t.id); found++; }
+        if (t.updated_at && new Date(t.updated_at) > end) pastEnd = true;
+      }
+      if (pastEnd || data.length < 100) break;
+      if (needsStats.size === 0) break;
+      await sleep(MIN_SLEEP_MS);
     }
-    if (data.length < 100) break;
-    if (page % 20 === 0) console.log(`  … stats page ${page}, ${needsStats.size} remaining`);
-    await sleep(MIN_SLEEP_MS);
+    console.log(`    ${label}: ${found} stats filled, ${needsStats.size} remaining`);
+    if (needsStats.size > 0) await sleep(MIN_SLEEP_MS);
   }
   if (needsStats.size > 0) console.log(`  ⚠ ${needsStats.size} tickets missing stats`);
 
