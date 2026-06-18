@@ -150,8 +150,9 @@ function dollar(n)       { return n != null ? '$' + n.toFixed(2) : NA; }
 function num(n)          { return n != null ? n.toLocaleString() : NA; }
 
 function aiResM(m)  { return m ? pct(m.aiResolved, m.engaged)      : NA; }
-function aiCostM(m) { return m ? dollar(m.sessions * data.vfCostPerSession) : NA; }
-function sessM(m)   { return m ? num(m.sessions)                    : NA; }
+// Sessions and cost count engaged sessions only (exclude bounces).
+function aiCostM(m) { return m ? dollar(m.engaged * data.vfCostPerSession) : NA; }
+function sessM(m)   { return m ? num(m.engaged)                    : NA; }
 function tickM(m)   { return m ? num(m.ticketsCreated)              : NA; }
 function frtM(m)    { return m ? avg(m.frtSum, m.frtCount) + (m.frtCount ? 'h' : '') : NA; }
 function frtPri(m, p) { return m ? avg(m[`frt${p}Sum`], m[`frt${p}Count`]) + (m[`frt${p}Count`] ? 'h' : '') : NA; }
@@ -162,8 +163,8 @@ function durM(m)    { return m ? avg(m.durSum, m.durCount) + (m.durCount ? ' min
 
 // YTD derived
 const ytdAiRes  = pct(ytd.aiResolved, ytd.engaged);
-const ytdAiCost = dollar(ytd.sessions * data.vfCostPerSession);
-const ytdSess   = num(ytd.sessions);
+const ytdAiCost = dollar(ytd.engaged * data.vfCostPerSession);
+const ytdSess   = num(ytd.engaged);
 const ytdTick   = num(ytd.ticketsCreated);
 const ytdFrt    = avg(ytd.frtSum, ytd.frtCount) + (ytd.frtCount ? 'h' : '');
 const ytdFcr    = pct(ytd.fcrResolved,  ytd.fcrEligible);

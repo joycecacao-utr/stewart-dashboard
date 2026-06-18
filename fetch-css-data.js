@@ -925,11 +925,11 @@ async function main() {
     const m = monthly[k];
     if (!m) { console.log(`    ${k}: (no data)`); continue; }
     if (k.startsWith(`${new Date().getFullYear()}`)) { ytdSess += m.sessions; ytdEng += m.engaged; ytdAi += m.aiResolved; }
-    const cost = (m.sessions * VF_COST).toFixed(2);
+    const cost = (m.engaged * VF_COST).toFixed(2); // cost = engaged sessions only
     const rate = m.engaged > 0 ? (m.aiResolved / m.engaged * 100).toFixed(1) + '%' : 'n/a';
-    console.log(`    ${k}: ${m.sessions} / ${m.engaged} / ${m.aiResolved} (${rate}) · $${cost}`);
+    console.log(`    ${k}: transcripts=${m.sessions} / engaged=${m.engaged} / aiResolved=${m.aiResolved} (${rate}) · $${cost}`);
   }
-  console.log(`    YTD: sessions=${ytdSess}, engaged=${ytdEng}, aiResolved=${ytdAi}, cost=$${(ytdSess * VF_COST).toFixed(2)} @ $${VF_COST}/session`);
+  console.log(`    YTD: transcripts=${ytdSess}, engaged=${ytdEng}, aiResolved=${ytdAi}, cost=$${(ytdEng * VF_COST).toFixed(2)} @ $${VF_COST}/engaged session`);
 
   console.log('Extracting Happy Thoughts from CSAT…');
   const happyThoughts = findHappyThoughts(csat);
