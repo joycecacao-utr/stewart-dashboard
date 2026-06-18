@@ -244,13 +244,17 @@ async function vfGetAll(days) {
     await Promise.all(chunk.map(async t => {
       try {
         const r = await fetch(`${VF_ANALYTICS}/v1/transcript/${t.id}`, { headers: vfHeaders() });
-        if (r.ok) { t.logs = (await r.json()).transcript?.logs ?? []; fetched++; }
-        else t.logs = [];
+        if (r.ok) {
+          const body = await r.json();
+          // API may return logs at root or nested under 'transcript'
+          t.logs = body.logs ?? body.transcript?.logs ?? [];
+          if (t.logs.length > 0) fetched++;
+        } else t.logs = [];
       } catch { t.logs = []; }
     }));
     await sleep(VF_SLEEP_MS);
   }
-  console.log(`  → ${all.length} transcripts (${fetched} with turns)`);
+  console.log(`  → ${all.length} transcripts (${fetched} with log entries)`);
   return all;
 }
 
@@ -278,9 +282,16 @@ function convText(s) {
 }
 
 function isEscalated(s) {
+  // Programmatic escalation: bot actually created a Freshdesk ticket
   if (JSON.stringify(s.logs ?? []).includes('freshdesk_create_ticket')) return true;
-  const text = convText(s).toLowerCase();
-  return ['agent', 'human', 'transfer', 'escalat', 'live chat', 'speak to', 'talk to someone'].some(kw => text.includes(kw));
+  // Keyword escalation: only scan USER messages (type==='action'), not the AI's own text.
+  // Checking AI text causes false positives when the bot describes its own capabilities.
+  const userText = (s.logs ?? [])
+    .filter(l => l.type === 'action' && l.data?.type === 'text' && typeof l.data.payload === 'string')
+    .map(l => l.data.payload)
+    .join(' ')
+    .toLowerCase();
+  return ['agent', 'human', 'transfer', 'escalat', 'live chat', 'speak to', 'talk to someone'].some(kw => userText.includes(kw));
 }
 
 function isBounce(s) {
