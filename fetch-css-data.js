@@ -278,30 +278,6 @@ async function vfGetAll(days) {
     await sleep(VF_SLEEP_MS);
   }
   console.log(`  → ${all.length} transcripts (${fetched} with log entries)`);
-
-  // TEMP DIAGNOSTIC: inspect how `freshdesk_create_ticket` appears in logs so we
-  // can tell a real ticket creation apart from the integration merely being
-  // present in the flow. Remove once the isEscalated() detection is fixed.
-  if (process.env.VF_DIAG) {
-    let withString = 0, samplesShown = 0;
-    for (const t of all) {
-      const logs = t.logs ?? [];
-      if (!JSON.stringify(logs).includes('freshdesk_create_ticket')) continue;
-      withString++;
-      if (samplesShown >= 3) continue;
-      samplesShown++;
-      console.log(`\n  ── DIAG transcript ${t.id} ──`);
-      logs.forEach((l, i) => {
-        const blob = JSON.stringify(l);
-        if (!blob.includes('freshdesk_create_ticket')) return;
-        console.log(`    log[${i}] type=${l.type} dataType=${l.data?.type}`);
-        console.log(`      keys: ${Object.keys(l).join(', ')} | data keys: ${Object.keys(l.data ?? {}).join(', ')}`);
-        console.log(`      ${blob.slice(0, 500)}`);
-      });
-    }
-    console.log(`\n  DIAG: ${withString}/${all.length} transcripts contain "freshdesk_create_ticket"`);
-  }
-
   return all;
 }
 
@@ -329,8 +305,18 @@ function convText(s) {
 }
 
 function isEscalated(s) {
-  // Programmatic escalation: bot actually created a Freshdesk ticket
-  if (JSON.stringify(s.logs ?? []).includes('freshdesk_create_ticket')) return true;
+  // Programmatic escalation: bot actually *invoked* the freshdesk_create_ticket tool.
+  // NOTE: a plain substring match flags ~everything — the tool name appears in nearly
+  // every transcript inside the agent's available-tools list ("starting execution"
+  // debug logs). We must detect a real call/execution instead:
+  //   • payload.ref.mcpToolName === 'freshdesk_create_ticket'  (actual MCP execution)
+  //   • payload.message includes 'calling freshdesk_create_ticket' (agent invoking it)
+  for (const l of (s.logs ?? [])) {
+    const p = l?.data?.payload;
+    if (!p) continue;
+    if (p.ref?.mcpToolName === 'freshdesk_create_ticket') return true;
+    if (typeof p.message === 'string' && p.message.includes('calling freshdesk_create_ticket')) return true;
+  }
   // Keyword escalation: only scan USER messages (type==='action'), not the AI's own text.
   // Checking AI text causes false positives when the bot describes its own capabilities.
   const userText = (s.logs ?? [])
