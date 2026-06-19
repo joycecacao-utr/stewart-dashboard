@@ -66,6 +66,7 @@ function sumMonths(keys) {
     fcrResolved: 0, fcrEligible: 0,
     fcr2Resolved: 0, fcr2Eligible: 0,
     sessions: 0, engaged: 0, aiResolved: 0,
+    aiDeflectPass: 0, aiDeflectFail: 0, aiDeflectNA: 0, aiEvaluated: 0,
     durSum: 0, durCount: 0,
     stewartTickets: 0, fcTickets: 0,
   };
@@ -163,7 +164,7 @@ function csatM(m)   { return m ? pct(m.csatHappy, m.csatTotal)      : NA; }
 function durM(m)    { return m ? avg(m.durSum, m.durCount) + (m.durCount ? ' min' : '') : NA; }
 
 // YTD derived
-const ytdAiRes  = pct(ytd.aiResolved, ytd.engaged);
+const ytdAiRes  = pct(ytd.aiDeflectPass, ytd.aiDeflectPass + ytd.aiDeflectFail);
 const ytdAiCost = dollar(ytd.engaged * data.vfCostPerSession);
 const ytdSess   = num(ytd.engaged);
 const ytdTick   = num(ytd.ticketsCreated);
