@@ -65,16 +65,31 @@ async function main() {
   });
   const list = listResp.ok ? ((await listResp.json()).transcripts ?? []) : [];
   console.log(`\n=== COVERAGE SCAN: ${list.length} transcripts in last 14d ===`);
-  let withEval = 0, checked = 0;
+  let withEval = 0, checked = 0, dumped = 0;
   for (const t of list.slice(0, 40)) {
     if (!t?.id) continue;
     const b = await getTranscript(t.id);
     checked++;
-    const paths = b.error ? [] : findEvalPaths(stripLogs(b));
-    if (paths.length) withEval++;
+    if (b.error) { await sleep(80); continue; }
+    const stripped = stripLogs(b);
+    if (stripped.transcript) stripped.transcript = stripLogs(stripped.transcript);
+    const paths = findEvalPaths(stripped);
+    if (paths.length) {
+      withEval++;
+      // Dump the first 2 transcripts that actually carry eval fields so we can map the shape.
+      if (dumped < 2) {
+        dumped++;
+        console.log(`\n--- SAMPLE ${dumped} (transcript ${t.id}) ---`);
+        console.log('top-level keys:', Object.keys(b));
+        if (b.transcript) console.log('transcript keys:', Object.keys(b.transcript));
+        console.log('eval-related paths:', JSON.stringify(paths, null, 2));
+        console.log('full body (logs removed):');
+        console.log(JSON.stringify(stripped, null, 2).slice(0, 10000));
+      }
+    }
     await sleep(80);
   }
-  console.log(`checked ${checked}, ${withEval} carried eval-related fields`);
+  console.log(`\nchecked ${checked}, ${withEval} carried eval-related fields`);
 }
 
 main().catch(e => { console.error(e); process.exit(1); });
