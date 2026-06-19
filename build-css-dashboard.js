@@ -149,7 +149,8 @@ function avg(sum, count) { return (count && count > 0) ? (sum / count).toFixed(1
 function dollar(n)       { return n != null ? '$' + n.toFixed(2) : NA; }
 function num(n)          { return n != null ? n.toLocaleString() : NA; }
 
-function aiResM(m)  { return m ? pct(m.aiResolved, m.engaged)      : NA; }
+// AI resolution = Voiceflow "Deflection rate (strict)": Pass / (Pass + Fail), N/A excluded.
+function aiResM(m)  { return m ? pct(m.aiDeflectPass, m.aiDeflectPass + m.aiDeflectFail) : NA; }
 // Sessions and cost count engaged sessions only (exclude bounces).
 function aiCostM(m) { return m ? dollar(m.engaged * data.vfCostPerSession) : NA; }
 function sessM(m)   { return m ? num(m.engaged)                    : NA; }
