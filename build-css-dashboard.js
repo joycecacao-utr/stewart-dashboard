@@ -205,7 +205,6 @@ function buildTicketCsatSeries() {
 }
 
 const allChartData = {
-  aiRes:      buildSeries('aiRes'),
   sessions:   buildSeries('sessions'),
   ticketCsat: buildTicketCsatSeries(),
 };
@@ -293,9 +292,6 @@ function buildAiResolution() {
         ${metricRowNoPy('AI Cost',          aiCostM(curMo), aiCostM(prevMo), ytdAiCost)}
       </tbody>
     </table>
-  </div>
-  <div class="chart-wrap">
-    <canvas id="aiResChart" height="120"></canvas>
   </div>
 </section>`;
 }
@@ -662,10 +658,9 @@ const chartInitJs = `
   }
 
   function initCharts(n) {
-    ['aiResChart', 'sessionChart', 'ticketChart'].forEach(id => {
+    ['sessionChart', 'ticketChart'].forEach(id => {
       if (charts[id]) { charts[id].destroy(); delete charts[id]; }
     });
-    charts.aiResChart   = makeLineChart('aiResChart',   slice(ALL.aiRes,    n), '%',  CYAN, CYAN_FAINT);
     charts.sessionChart = makeBarChart( 'sessionChart', slice(ALL.sessions, n), CYAN);
     charts.ticketChart  = makeTicketCsatChart('ticketChart', sliceTicketCsat(ALL.ticketCsat, n));
   }
