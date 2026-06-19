@@ -258,8 +258,9 @@ async function vfGetAll(days) {
         const r = await fetch(`${VF_ANALYTICS}/v1/transcript/${t.id}`, { headers: vfHeaders() });
         if (r.ok) {
           const body = await r.json();
-          // API may return logs at root or nested under 'transcript'
+          // API may return logs/evaluations at root or nested under 'transcript'
           t.logs = body.logs ?? body.transcript?.logs ?? [];
+          t.evaluations = body.evaluations ?? body.transcript?.evaluations ?? [];
           if (t.logs.length > 0) fetched++;
         } else t.logs = [];
       } catch { t.logs = []; }
@@ -308,6 +309,19 @@ function isEscalated(s) {
 
 function isBounce(s) {
   return !(s.logs ?? []).some(l => l.type === 'action' && l.data?.type === 'text');
+}
+
+// Voiceflow's own "Deflection rate (strict)" evaluation, read straight from the
+// transcript so the AI resolution % matches Voiceflow's Evaluations exactly.
+// Returns 'pass' (true deflection), 'fail' (not deflected), 'na' (excluded), or null (no result).
+function deflectionResult(s) {
+  const ev = (s.evaluations ?? []).find(e => /deflection rate \(strict\)/i.test(e?.name ?? ''));
+  if (!ev) return null;
+  const v = String(ev.value ?? '').trim().toLowerCase();
+  if (v === 'pass') return 'pass';
+  if (v === 'fail') return 'fail';
+  if (v === 'n/a' || v === 'na') return 'na';
+  return null;
 }
 
 function sessionDurationMin(s) {
@@ -550,6 +564,8 @@ function buildDailyRollups(tickets, sessions, csat, days, generalGroupId = null)
     fcrResolved: 0, fcrEligible: 0,
     fcr2Resolved: 0, fcr2Eligible: 0,  // Medium priority only
     sessions: 0, bounces: 0, engaged: 0, aiResolved: 0,
+    // Voiceflow "Deflection rate (strict)" evaluation results (na excluded from rate)
+    aiDeflectPass: 0, aiDeflectFail: 0, aiDeflectNA: 0, aiEvaluated: 0,
     durSum: 0,  durCount: 0,
   });
 
@@ -640,9 +656,14 @@ function buildDailyRollups(tickets, sessions, csat, days, generalGroupId = null)
     if (!d || !map[d]) continue;
     const m = map[d];
     m.sessions++;
+    // AI resolution = Voiceflow's "Deflection rate (strict)" evaluation (na excluded).
+    const deflect = deflectionResult(s);
+    if (deflect === 'pass')      { m.aiDeflectPass++; m.aiEvaluated++; }
+    else if (deflect === 'fail') { m.aiDeflectFail++; m.aiEvaluated++; }
+    else if (deflect === 'na')   { m.aiDeflectNA++; }
     if (isBounce(s)) { m.bounces++; continue; }
     m.engaged++;
-    if (!isEscalated(s)) m.aiResolved++;
+    if (!isEscalated(s)) m.aiResolved++; // legacy heuristic, kept for continuity
     const dur = sessionDurationMin(s);
     if (dur !== null) { m.durSum += dur; m.durCount++; }
   }
@@ -669,6 +690,7 @@ function buildMonthlyRollups(daily) {
       fcrResolved: 0, fcrEligible: 0,
       fcr2Resolved: 0, fcr2Eligible: 0,
       sessions: 0, bounces: 0, engaged: 0, aiResolved: 0,
+      aiDeflectPass: 0, aiDeflectFail: 0, aiDeflectNA: 0, aiEvaluated: 0,
       durSum: 0, durCount: 0,
     };
     const m = byMonth[mk];
