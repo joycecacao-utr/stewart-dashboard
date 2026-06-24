@@ -576,23 +576,29 @@ function buildInteractionExamples() {
     </div>`;
   }).join('') + `</div>`;
 
-  // ── Option D — Mini Transcript Cards (3–4 key exchanges) ────────────────────
+  // ── Option D — Mini Transcript Cards (3–4 key exchanges, expandable to full) ─
+  const miniLine = (t, n) => `
+        <div class="ie-mini-line">
+          <span class="ie-mini-who ${t.role}">${t.role === 'ai' ? 'Stewart' : 'User'}</span>
+          <span class="ie-mini-text">${n ? richClip(t.text, n) : escHtml(t.text).replace(/\n+/g, '<br>')}</span>
+        </div>`;
   const panelD = `<div class="ie-grid cols">` + vms.map(vm => {
     let picked = vm.turns.slice(0, 4);
     const last = vm.turns[vm.turns.length - 1];
     if (last && !picked.includes(last)) picked = [...vm.turns.slice(0, 3), last];
-    const hidden = vm.turns.length - picked.length;
+    const canExpand = vm.turns.length > picked.length;
     return `
     <div class="ie-card">
       <div class="ie-card-head ie-head-d">${tag(vm)}${badge(vm)}<span class="ie-date">${vm.date}</span></div>
-      <div class="ie-mini">
-        ${picked.map(t => `
-        <div class="ie-mini-line">
-          <span class="ie-mini-who ${t.role}">${t.role === 'ai' ? 'Stewart' : 'User'}</span>
-          <span class="ie-mini-text">${richClip(t.text, 220)}</span>
-        </div>`).join('')}
-        ${hidden > 0 ? `<div class="ie-mini-more">+${hidden} more exchange${hidden !== 1 ? 's' : ''} in full transcript</div>` : ''}
+      <div class="ie-mini ie-mini-preview">
+        ${picked.map(t => miniLine(t, 220)).join('')}
+        ${canExpand ? `<button class="ie-toggle" type="button" data-ie-expand>Show full conversation (${vm.turns.length} messages) ▾</button>` : ''}
       </div>
+      ${canExpand ? `
+      <div class="ie-mini ie-mini-full" hidden>
+        ${vm.turns.map(t => miniLine(t, 0)).join('')}
+        <button class="ie-toggle" type="button" data-ie-collapse>Hide full conversation ▴</button>
+      </div>` : ''}
       <div class="ie-card-foot">${vfLink(vm)}</div>
     </div>`;
   }).join('') + `</div>`;
@@ -619,6 +625,20 @@ function buildInteractionExamples() {
         var id = btn.getAttribute('data-ie-tab');
         sec.querySelectorAll('.ie-tab').forEach(function(b){ b.classList.toggle('active', b === btn); });
         sec.querySelectorAll('.ie-panel').forEach(function(p){ p.classList.toggle('active', p.getAttribute('data-ie-panel') === id); });
+      });
+    });
+    sec.querySelectorAll('[data-ie-expand]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var card = btn.closest('.ie-card');
+        card.querySelector('.ie-mini-preview').hidden = true;
+        card.querySelector('.ie-mini-full').hidden = false;
+      });
+    });
+    sec.querySelectorAll('[data-ie-collapse]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var card = btn.closest('.ie-card');
+        card.querySelector('.ie-mini-full').hidden = true;
+        card.querySelector('.ie-mini-preview').hidden = false;
       });
     });
   })();
@@ -1040,6 +1060,9 @@ const css = `
   .ie-mini-who.ai { color: var(--green); }
   .ie-mini-text { color: var(--ink); }
   .ie-mini-more { font-size: 12px; color: var(--muted); font-style: italic; }
+  .ie-mini-full { max-height: 440px; overflow-y: auto; }
+  .ie-toggle { align-self: flex-start; margin-top: 2px; background: none; border: none; padding: 4px 0; font-family: inherit; font-size: 13px; font-weight: 600; color: var(--cyan); cursor: pointer; }
+  .ie-toggle:hover { text-decoration: underline; }
 
   @media (max-width: 760px) {
     .ie-case { grid-template-columns: 1fr; }
