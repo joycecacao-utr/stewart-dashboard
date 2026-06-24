@@ -485,8 +485,11 @@ function buildInteractionExamples() {
     return 'General Support';
   }
 
-  // Normalized view-model — show 2 interactions (a mix of resolved and escalated).
-  const vms = examples.slice(0, 2).map((ex, i) => {
+  // Show 2 interactions, preferring a resolved + escalated mix.
+  const firstEsc = examples.find(e => !e.resolved);
+  const firstRes = examples.find(e => e.resolved);
+  const chosen = (firstEsc && firstRes) ? [firstEsc, firstRes] : examples.slice(0, 2);
+  const vms = chosen.map((ex, i) => {
     const turns = (ex.turns ?? []).filter(t => (t.text ?? '').trim());
     const userTurns = turns.filter(t => t.role === 'user');
     const aiTurns   = turns.filter(t => t.role === 'ai');
