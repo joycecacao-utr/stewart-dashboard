@@ -832,8 +832,13 @@ async function main() {
   // Read cache up front to know which historical months we already have.
   const cachedPath = join(__dirname, 'css-data.json');
   let cachedMonthly = {};
+  let cachedRevenueRecovery = null;
   if (existsSync(cachedPath)) {
-    try { cachedMonthly = JSON.parse(readFileSync(cachedPath, 'utf8')).monthly ?? {}; }
+    try {
+      const cached = JSON.parse(readFileSync(cachedPath, 'utf8'));
+      cachedMonthly = cached.monthly ?? {};
+      cachedRevenueRecovery = cached.revenueRecovery ?? null;
+    }
     catch { /* corrupt/missing cache — treat as empty */ }
   }
 
@@ -907,6 +912,21 @@ async function main() {
     console.log(`  → ${Object.keys(revenueRecovery?.monthly ?? {}).length} months of recovery data`);
   } catch (e) {
     console.warn('  Revenue Recovery fetch failed:', e.message);
+  }
+
+  // Safety net: the sheet no longer carries the unrecovered_revenue / in_recovery_revenue
+  // rows. Keep the last known values from cache so those stat cards don't blank to N/A.
+  if (!revenueRecovery) {
+    revenueRecovery = cachedRevenueRecovery; // full fetch failed — fall back to cache entirely
+  } else if (cachedRevenueRecovery) {
+    if (revenueRecovery.unrecoveredRevenue == null && cachedRevenueRecovery.unrecoveredRevenue != null) {
+      revenueRecovery.unrecoveredRevenue = cachedRevenueRecovery.unrecoveredRevenue;
+      console.log(`  Restored unrecoveredRevenue from cache: ${revenueRecovery.unrecoveredRevenue}`);
+    }
+    if (revenueRecovery.inRecoveryRevenue == null && cachedRevenueRecovery.inRecoveryRevenue != null) {
+      revenueRecovery.inRecoveryRevenue = cachedRevenueRecovery.inRecoveryRevenue;
+      console.log(`  Restored inRecoveryRevenue from cache: ${revenueRecovery.inRecoveryRevenue}`);
+    }
   }
 
   console.log(`Fetching Voiceflow transcripts (${VF_LOOKBACK_DAYS}d)…`);
