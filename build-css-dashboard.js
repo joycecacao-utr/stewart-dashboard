@@ -485,8 +485,8 @@ function buildInteractionExamples() {
     return 'General Support';
   }
 
-  // Normalized view-model per example.
-  const vms = examples.map((ex, i) => {
+  // Normalized view-model — show 2 interactions (a mix of resolved and escalated).
+  const vms = examples.slice(0, 2).map((ex, i) => {
     const turns = (ex.turns ?? []).filter(t => (t.text ?? '').trim());
     const userTurns = turns.filter(t => t.role === 'user');
     const aiTurns   = turns.filter(t => t.role === 'ai');
@@ -506,83 +506,13 @@ function buildInteractionExamples() {
   const badge = vm => `<span class="ie-badge ${vm.outcome.cls}">${vm.outcome.icon} ${vm.outcome.label}</span>`;
   const tag   = vm => `<span class="ie-topic">${escHtml(vm.topic)}</span>`;
 
-  // ── Option A — Conversation Bubbles (iMessage style) ────────────────────────
-  const panelA = `<div class="ie-grid cols">` + vms.map(vm => `
-    <div class="ie-card">
-      <div class="ie-card-head">${tag(vm)}<span class="ie-date">${vm.date}</span></div>
-      <div class="ie-chat">
-        ${vm.turns.map(t => `
-        <div class="ie-bubble-row ${t.role}">
-          ${t.role === 'ai' ? `<span class="ie-avatar">S</span>` : ''}
-          <div class="ie-bubble ${t.role}">${richClip(t.text, 340)}</div>
-        </div>`).join('')}
-        <div class="ie-chat-outcome">${badge(vm)}</div>
-      </div>
-      <div class="ie-card-foot">${vfLink(vm)}</div>
-    </div>`).join('') + `</div>`;
-
-  // ── Option B — Case Study (Problem → AI Response → Result) ───────────────────
-  const panelB = `<div class="ie-grid">` + vms.map(vm => {
-    const aiResp = vm.aiTurns.slice(0, 2).map(t => clip(t.text, 220)).join('\n\n');
-    return `
-    <div class="ie-card">
-      <div class="ie-card-head">${tag(vm)}<span class="ie-date">${vm.date}</span></div>
-      <div class="ie-case">
-        <div class="ie-case-col">
-          <div class="ie-case-label">Problem</div>
-          <div class="ie-case-text">${richClip(vm.question, 240)}</div>
-        </div>
-        <div class="ie-case-col">
-          <div class="ie-case-label">AI Response</div>
-          <div class="ie-case-text">${aiResp ? escHtml(aiResp).replace(/\n+/g, '<br>') : '—'}</div>
-        </div>
-        <div class="ie-case-col">
-          <div class="ie-case-label">Result</div>
-          ${badge(vm)}
-          <div class="ie-case-note">${richClip(vm.lastAi, 200)}</div>
-        </div>
-      </div>
-      <div class="ie-card-foot">${vfLink(vm)}</div>
-    </div>`;
-  }).join('') + `</div>`;
-
-  // ── Option C — Before / After (Question → Actions → Outcome, with connectors) ─
-  const panelC = `<div class="ie-grid">` + vms.map(vm => {
-    const steps = vm.aiTurns.slice(0, 3).map(t => clip(t.text, 120));
-    const stepsHtml = steps.length
-      ? `<ul class="ie-steps">${steps.map(s => `<li>${escHtml(s).replace(/\n+/g, ' ')}</li>`).join('')}</ul>`
-      : '<div class="ie-stage-body">—</div>';
-    return `
-    <div class="ie-card">
-      <div class="ie-card-head">${tag(vm)}<span class="ie-date">${vm.date}</span></div>
-      <div class="ie-flow">
-        <div class="ie-stage">
-          <div class="ie-stage-label">Customer Question</div>
-          <div class="ie-stage-body">${richClip(vm.question, 200)}</div>
-        </div>
-        <div class="ie-connector">→</div>
-        <div class="ie-stage">
-          <div class="ie-stage-label">Stewart Actions</div>
-          ${stepsHtml}
-        </div>
-        <div class="ie-connector">→</div>
-        <div class="ie-stage">
-          <div class="ie-stage-label">Outcome</div>
-          ${badge(vm)}
-          <div class="ie-case-note">${richClip(vm.lastAi, 160)}</div>
-        </div>
-      </div>
-      <div class="ie-card-foot">${vfLink(vm)}</div>
-    </div>`;
-  }).join('') + `</div>`;
-
-  // ── Option D — Mini Transcript Cards (3–4 key exchanges, expandable to full) ─
+  // Mini Transcript — key exchanges by default, expandable to the full conversation.
   const miniLine = (t, n) => `
         <div class="ie-mini-line">
           <span class="ie-mini-who ${t.role}">${t.role === 'ai' ? 'Stewart' : 'User'}</span>
           <span class="ie-mini-text">${n ? richClip(t.text, n) : escHtml(t.text).replace(/\n+/g, '<br>')}</span>
         </div>`;
-  const panelD = `<div class="ie-grid cols">` + vms.map(vm => {
+  const cards = vms.map(vm => {
     let picked = vm.turns.slice(0, 4);
     const last = vm.turns[vm.turns.length - 1];
     if (last && !picked.includes(last)) picked = [...vm.turns.slice(0, 3), last];
@@ -601,32 +531,16 @@ function buildInteractionExamples() {
       </div>` : ''}
       <div class="ie-card-foot">${vfLink(vm)}</div>
     </div>`;
-  }).join('') + `</div>`;
+  }).join('');
 
   return `
 <section id="s8">
   ${sectionHeader('08', 'Interaction Examples')}
-  <p class="section-note">Real live-chat interactions with Stewart — choose a presentation format</p>
-  <div class="ie-tabs" role="tablist">
-    <button class="ie-tab active" data-ie-tab="A">A · Conversation Bubbles</button>
-    <button class="ie-tab" data-ie-tab="B">B · Case Study</button>
-    <button class="ie-tab" data-ie-tab="C">C · Before / After</button>
-    <button class="ie-tab" data-ie-tab="D">D · Mini Transcript</button>
-  </div>
-  <div class="ie-panel active" data-ie-panel="A">${panelA}</div>
-  <div class="ie-panel" data-ie-panel="B">${panelB}</div>
-  <div class="ie-panel" data-ie-panel="C">${panelC}</div>
-  <div class="ie-panel" data-ie-panel="D">${panelD}</div>
+  <p class="section-note">Real live-chat interactions with Stewart — a mix of resolved and escalated</p>
+  <div class="ie-grid cols">${cards}</div>
   <script>
   (function(){
     var sec = document.getElementById('s8');
-    sec.querySelectorAll('.ie-tab').forEach(function(btn){
-      btn.addEventListener('click', function(){
-        var id = btn.getAttribute('data-ie-tab');
-        sec.querySelectorAll('.ie-tab').forEach(function(b){ b.classList.toggle('active', b === btn); });
-        sec.querySelectorAll('.ie-panel').forEach(function(p){ p.classList.toggle('active', p.getAttribute('data-ie-panel') === id); });
-      });
-    });
     sec.querySelectorAll('[data-ie-expand]').forEach(function(btn){
       btn.addEventListener('click', function(){
         var card = btn.closest('.ie-card');
@@ -1001,18 +915,6 @@ const css = `
   .transcript-link { font-size: 13px; font-weight: 600; color: var(--cyan); text-decoration: none; }
   .transcript-link:hover { text-decoration: underline; }
 
-  /* Tabs */
-  .ie-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 22px; }
-  .ie-tab {
-    font-size: 14px; font-weight: 600; padding: 9px 16px; border-radius: 999px;
-    border: 1px solid var(--border); background: var(--card); color: var(--muted);
-    cursor: pointer; transition: all .15s; font-family: inherit;
-  }
-  .ie-tab:hover { color: var(--ink); border-color: var(--cyan); }
-  .ie-tab.active { background: var(--gradient); color: #fff; border-color: transparent; }
-  .ie-panel { display: none; }
-  .ie-panel.active { display: block; }
-
   /* Card shell */
   .ie-grid { display: grid; gap: 22px; }
   .ie-grid.cols { grid-template-columns: repeat(auto-fit, minmax(370px, 1fr)); }
@@ -1025,34 +927,7 @@ const css = `
   .ie-badge.escalated { background: rgba(220,38,38,.12); color: var(--red); }
   .ie-card-foot { padding: 12px 18px; border-top: 1px solid var(--border); }
 
-  /* A — Conversation bubbles */
-  .ie-chat { padding: 18px; display: flex; flex-direction: column; gap: 10px; background: #fff; }
-  .ie-bubble-row { display: flex; align-items: flex-end; gap: 8px; }
-  .ie-bubble-row.user { justify-content: flex-end; }
-  .ie-avatar { width: 26px; height: 26px; border-radius: 50%; background: var(--gradient); color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-  .ie-bubble { max-width: 80%; font-size: 14px; line-height: 1.5; padding: 10px 14px; border-radius: 16px; }
-  .ie-bubble.ai { background: var(--card); color: var(--ink); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
-  .ie-bubble.user { background: var(--gradient); color: #fff; border-bottom-right-radius: 4px; }
-  .ie-chat-outcome { display: flex; justify-content: center; margin-top: 6px; }
-
-  /* B — Case study */
-  .ie-case { display: grid; grid-template-columns: 1fr 1fr 1fr; }
-  .ie-case-col { padding: 18px 20px; border-right: 1px solid var(--border); }
-  .ie-case-col:last-child { border-right: none; }
-  .ie-case-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); margin-bottom: 10px; }
-  .ie-case-text { font-size: 14px; line-height: 1.55; color: var(--ink); }
-  .ie-case-note { font-size: 13px; color: var(--muted); margin-top: 10px; line-height: 1.5; }
-
-  /* C — Before / After flow */
-  .ie-flow { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; align-items: stretch; padding: 20px; }
-  .ie-stage { padding: 16px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; }
-  .ie-stage-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--blue); margin-bottom: 10px; }
-  .ie-stage-body { font-size: 14px; line-height: 1.5; color: var(--ink); }
-  .ie-connector { display: flex; align-items: center; justify-content: center; font-size: 24px; color: var(--cyan); padding: 0 12px; }
-  .ie-steps { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 7px; }
-  .ie-steps li { font-size: 13px; line-height: 1.45; color: var(--ink); }
-
-  /* D — Mini transcript */
+  /* Mini transcript */
   .ie-mini { padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; background: #fff; }
   .ie-mini-line { display: flex; gap: 12px; font-size: 14px; line-height: 1.5; }
   .ie-mini-who { flex-shrink: 0; min-width: 58px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; padding-top: 2px; }
@@ -1060,16 +935,11 @@ const css = `
   .ie-mini-who.ai { color: var(--green); }
   .ie-mini-text { color: var(--ink); }
   .ie-mini-more { font-size: 12px; color: var(--muted); font-style: italic; }
+  .ie-mini[hidden] { display: none; }
   .ie-mini-full { max-height: 440px; overflow-y: auto; }
   .ie-toggle { align-self: flex-start; margin-top: 2px; background: none; border: none; padding: 4px 0; font-family: inherit; font-size: 13px; font-weight: 600; color: var(--cyan); cursor: pointer; }
   .ie-toggle:hover { text-decoration: underline; }
 
-  @media (max-width: 760px) {
-    .ie-case { grid-template-columns: 1fr; }
-    .ie-case-col { border-right: none; border-bottom: 1px solid var(--border); }
-    .ie-flow { grid-template-columns: 1fr; gap: 8px; }
-    .ie-connector { transform: rotate(90deg); padding: 4px 0; }
-  }
 
   .empty-state { color: var(--muted); font-style: italic; padding: 24px 0; }
 
