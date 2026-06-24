@@ -192,31 +192,38 @@
   }
   .persona-summary { font-size: 17px; color: var(--ink); font-style: italic; line-height: 1.6; }
 
-  /* Interaction Examples */
-  .examples-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 24px; }
-  .example-card { background: var(--card2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-  .example-header {
-    padding: 14px 18px; background: rgba(255,255,255,0.02);
-    display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border);
-  }
-  .example-num { font-size: 13px; font-weight: 700; color: var(--muted); }
-  .example-date { font-size: 13px; color: var(--muted); margin-left: auto; }
+  /* Interaction Examples — shared shell */
   .tag { font-size: 12px; font-weight: 600; border-radius: 20px; padding: 2px 10px; }
   .tag.resolved { background: rgba(34,197,94,0.12); color: var(--green); }
   .tag.escalated { background: rgba(239,68,68,0.12); color: var(--red); }
-  .example-summary { padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; }
-  .summary-row { display: flex; gap: 10px; font-size: 14px; line-height: 1.5; }
-  .summary-label {
-    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
-    flex-shrink: 0; padding-top: 2px; min-width: 64px; color: var(--muted);
-  }
-  .summary-text { color: var(--ink); }
-  .summary-meta { font-size: 12px; color: var(--muted); padding-top: 4px; }
-  .transcript-link {
-    margin-left: auto; font-size: 12px; font-weight: 600;
-    color: var(--cyan); text-decoration: none; white-space: nowrap;
-  }
+  .transcript-link { font-size: 13px; font-weight: 600; color: var(--cyan); text-decoration: none; }
   .transcript-link:hover { text-decoration: underline; }
+
+  /* Card shell */
+  .ie-grid { display: grid; gap: 22px; }
+  .ie-grid.cols { grid-template-columns: repeat(auto-fit, minmax(370px, 1fr)); }
+  .ie-card { background: var(--card2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+  .ie-card-head { display: flex; align-items: center; gap: 10px; padding: 13px 18px; border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.015); }
+  .ie-head-d .ie-date, .ie-card-head .ie-date { margin-left: auto; font-size: 13px; color: var(--muted); }
+  .ie-topic { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--blue); background: rgba(59,139,235,.1); padding: 3px 10px; border-radius: 6px; }
+  .ie-badge { font-size: 12px; font-weight: 700; border-radius: 999px; padding: 3px 12px; white-space: nowrap; }
+  .ie-badge.resolved { background: rgba(22,163,74,.12); color: var(--green); }
+  .ie-badge.escalated { background: rgba(220,38,38,.12); color: var(--red); }
+  .ie-card-foot { padding: 12px 18px; border-top: 1px solid var(--border); }
+
+  /* Mini transcript */
+  .ie-mini { padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; background: #fff; }
+  .ie-mini-line { display: flex; gap: 12px; font-size: 14px; line-height: 1.5; }
+  .ie-mini-who { flex-shrink: 0; min-width: 58px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; padding-top: 2px; }
+  .ie-mini-who.user { color: var(--blue); }
+  .ie-mini-who.ai { color: var(--green); }
+  .ie-mini-text { color: var(--ink); }
+  .ie-mini-more { font-size: 12px; color: var(--muted); font-style: italic; }
+  .ie-mini[hidden] { display: none; }
+  .ie-mini-full { max-height: 440px; overflow-y: auto; }
+  .ie-toggle { align-self: flex-start; margin-top: 2px; background: none; border: none; padding: 4px 0; font-family: inherit; font-size: 13px; font-weight: 600; color: var(--cyan); cursor: pointer; }
+  .ie-toggle:hover { text-decoration: underline; }
+
 
   .empty-state { color: var(--muted); font-style: italic; padding: 24px 0; }
 
@@ -452,69 +459,137 @@
   
 <section id="s8">
   <div class="section-header"><span class="section-num">08</span><h2>Interaction Examples</h2></div>
-  <p class="section-note">3 representative live chat interactions from this period</p>
-  <div class="examples-grid">
-    
-      <div class="example-card">
-        <div class="example-header">
-          <span class="example-num">Example 1</span>
-          <span class="example-date">May 13</span>
-          <span class="tag escalated">Escalated</span>
-          <a class="transcript-link" href="https://creator.voiceflow.com/project/69ebd4159a532921bd258f8d/transcripts/6a0501239d5123000737aed3" target="_blank" rel="noopener">View transcript ↗</a>
+  <p class="section-note">Real live-chat interactions with Stewart — a mix of resolved and escalated</p>
+  <div class="ie-grid cols">
+    <div class="ie-card">
+      <div class="ie-card-head ie-head-d"><span class="ie-topic">General Support</span><span class="ie-badge escalated">⚡ Escalated</span><span class="ie-date">May 13, 2026</span></div>
+      <div class="ie-mini ie-mini-preview">
+        
+        <div class="ie-mini-line">
+          <span class="ie-mini-who ai">Stewart</span>
+          <span class="ie-mini-text">I can help you with High School questions. Are you a player, parent, or coach? And what specifically do you need help with today? For example, are you looking to activate a team page, find missing scores, or add someone…</span>
         </div>
-        <div class="example-summary">
-          <div class="summary-row">
-            <span class="summary-label">User asked</span>
-            <span class="summary-text">Player</span>
-          </div>
-          <div class="summary-row">
-            <span class="summary-label">AI replied</span>
-            <span class="summary-text">High school scores are typically posted by the team coaches, but I can definitely have our support team look into this missing match for …</span>
-          </div>
-          <div class="summary-meta">5 messages total</div>
+        <div class="ie-mini-line">
+          <span class="ie-mini-who user">User</span>
+          <span class="ie-mini-text">Player</span>
         </div>
+        <div class="ie-mini-line">
+          <span class="ie-mini-who ai">Stewart</span>
+          <span class="ie-mini-text">Thanks! As a player, what do you need help with today? For example, are you looking to join a roster, find missing high school scores, or something else?</span>
+        </div>
+        <div class="ie-mini-line">
+          <span class="ie-mini-who ai">Stewart</span>
+          <span class="ie-mini-text">High school scores are typically posted by the team coaches, but I can definitely have our support team look into this missing match for you. <br>To get a ticket started, could you please provide:<br>1. The name of your high…</span>
+        </div>
+        <button class="ie-toggle" type="button" data-ie-expand>Show full conversation (5 messages) ▾</button>
       </div>
-      <div class="example-card">
-        <div class="example-header">
-          <span class="example-num">Example 2</span>
-          <span class="example-date">May 6</span>
-          <span class="tag escalated">Escalated</span>
-          <a class="transcript-link" href="https://creator.voiceflow.com/project/69ebd4159a532921bd258f8d/transcripts/69fb71e9b12ef900077ce5d9" target="_blank" rel="noopener">View transcript ↗</a>
+      
+      <div class="ie-mini ie-mini-full" hidden>
+        
+        <div class="ie-mini-line">
+          <span class="ie-mini-who ai">Stewart</span>
+          <span class="ie-mini-text">I can help you with High School questions. Are you a player, parent, or coach? And what specifically do you need help with today? For example, are you looking to activate a team page, find missing scores, or add someone to a roster?</span>
         </div>
-        <div class="example-summary">
-          <div class="summary-row">
-            <span class="summary-label">User asked</span>
-            <span class="summary-text">A player played at my camps but never registered into the event because he lost both his matches. Doesn't want to do it as it will affect…</span>
-          </div>
-          <div class="summary-row">
-            <span class="summary-label">AI replied</span>
-            <span class="summary-text">I'd be happy to escalate this to the support team for you. Could you please provide me with the following details:
-
-1. Your name and emai…</span>
-          </div>
-          <div class="summary-meta">8 messages total</div>
+        <div class="ie-mini-line">
+          <span class="ie-mini-who user">User</span>
+          <span class="ie-mini-text">Player</span>
         </div>
+        <div class="ie-mini-line">
+          <span class="ie-mini-who ai">Stewart</span>
+          <span class="ie-mini-text">Thanks! As a player, what do you need help with today? For example, are you looking to join a roster, find missing high school scores, or something else?</span>
+        </div>
+        <div class="ie-mini-line">
+          <span class="ie-mini-who user">User</span>
+          <span class="ie-mini-text">I played a match [location]like it never was counted</span>
+        </div>
+        <div class="ie-mini-line">
+          <span class="ie-mini-who ai">Stewart</span>
+          <span class="ie-mini-text">High school scores are typically posted by the team coaches, but I can definitely have our support team look into this missing match for you. <br>To get a ticket started, could you please provide:<br>1. The name of your high school and the state it's located in.<br>2. Your email address and a link to your UTR profile.<br>3. Any details about the match (like the exact date, opponent, or event link) if you have them.</span>
+        </div>
+        <button class="ie-toggle" type="button" data-ie-collapse>Hide full conversation ▴</button>
       </div>
-      <div class="example-card">
-        <div class="example-header">
-          <span class="example-num">Example 3</span>
-          <span class="example-date">May 20</span>
-          <span class="tag escalated">Escalated</span>
-          <a class="transcript-link" href="https://creator.voiceflow.com/project/69ebd4159a532921bd258f8d/transcripts/6a0e2054b1443200075255a4" target="_blank" rel="noopener">View transcript ↗</a>
+      <div class="ie-card-foot"><a class="transcript-link" href="https://creator.voiceflow.com/project/69ebd4159a532921bd258f8d/transcripts/6a0501239d5123000737aed3" target="_blank" rel="noopener">View full transcript in Voiceflow ↗</a></div>
+    </div>
+    <div class="ie-card">
+      <div class="ie-card-head ie-head-d"><span class="ie-topic">Match &amp; Rating</span><span class="ie-badge escalated">⚡ Escalated</span><span class="ie-date">May 6, 2026</span></div>
+      <div class="ie-mini ie-mini-preview">
+        
+        <div class="ie-mini-line">
+          <span class="ie-mini-who user">User</span>
+          <span class="ie-mini-text">A player played at my camps but never registered into the event because he lost both his matches. Doesn't want to do it as it will affect his UTR. Is there any option for me to add him manually ? Do not mind the financi…</span>
         </div>
-        <div class="example-summary">
-          <div class="summary-row">
-            <span class="summary-label">User asked</span>
-            <span class="summary-text">Where is the camp waiver located</span>
-          </div>
-          <div class="summary-row">
-            <span class="summary-label">AI replied</span>
-            <span class="summary-text">Thank you for that detail! So you're already registered and the system is directing you to print the waiver from the event provider's sec…</span>
-          </div>
-          <div class="summary-meta">11 messages total</div>
+        <div class="ie-mini-line">
+          <span class="ie-mini-who ai">Stewart</span>
+          <span class="ie-mini-text">I can help you with this camp-related question! Let me route you to the right place.</span>
         </div>
+        <div class="ie-mini-line">
+          <span class="ie-mini-who ai">Stewart</span>
+          <span class="ie-mini-text">Let me search for information on this for you.</span>
+        </div>
+        <div class="ie-mini-line">
+          <span class="ie-mini-who ai">Stewart</span>
+          <span class="ie-mini-text">I'd be happy to escalate this to the support team for you. Could you please provide me with the following details:<br>1. Your name and email address associated with your UTR Sports account<br>2. The name of the camp/event<br>3.…</span>
+        </div>
+        <button class="ie-toggle" type="button" data-ie-expand>Show full conversation (8 messages) ▾</button>
       </div>
-  </div>
+      
+      <div class="ie-mini ie-mini-full" hidden>
+        
+        <div class="ie-mini-line">
+          <span class="ie-mini-who user">User</span>
+          <span class="ie-mini-text">A player played at my camps but never registered into the event because he lost both his matches. Doesn't want to do it as it will affect his UTR. Is there any option for me to add him manually ? Do not mind the financial side of it or you can invoice me for fees of their registration. It jus needs to be fair for whoever they played. </span>
+        </div>
+        <div class="ie-mini-line">
+          <span class="ie-mini-who ai">Stewart</span>
+          <span class="ie-mini-text">I can help you with this camp-related question! Let me route you to the right place.</span>
+        </div>
+        <div class="ie-mini-line">
+          <span class="ie-mini-who ai">Stewart</span>
+          <span class="ie-mini-text">Let me search for information on this for you.</span>
+        </div>
+        <div class="ie-mini-line">
+          <span class="ie-mini-who ai">Stewart</span>
+          <span class="ie-mini-text">Great question, and I appreciate you thinking about fairness for the other players involved. Here's what you can do:<br>If the player showed up and played but didn't register, you can still add them to the event by re-opening registration. Here are the steps:<br>1. Re-open registration for the event. You can follow the step-by-step guide here: https://support.universaltennis.com/en/support/solutions/articles/9000213753-how-do-i-open-registration-for-players-who-missed-the-deadline-<br>2. Ask the player to log into their UTRSports.net account, navigate to the event page, and complete registration.<br>3. Once they've registered, close registration again and move them into the appropriate draw.<br>Regarding the concern about UTR impact — all match results from camp events do count toward UTR ratings, so the player's scores would be reflected once they're properly registered. Unfortunately, there isn't a way to include the match results without the player being registered in the event.<br>If the player is unwilling to register due to rating concerns, that decision would ultimately be theirs to make. But from a fairness standpoint, you're absolutely right that their opponents deserve to have those results count.<br>Is there anything else I can help you with on this?</span>
+        </div>
+        <div class="ie-mini-line">
+          <span class="ie-mini-who user">User</span>
+          <span class="ie-mini-text">can you add the play manually?</span>
+        </div>
+        <div class="ie-mini-line">
+          <span class="ie-mini-who ai">Stewart</span>
+          <span class="ie-mini-text">Unfortunately, not to make any changes to player registrations or event data directly — that's something only you as the event provider can do through the UTR Sports platform.<br>The process I outlined is the way to get it done: re-open registration, have the player register themselves, then close registration and place them in the draw.<br>If you run into any technical issues while trying to re-open registration, I'd be happy to help troubleshoot or escalate to the support team.<br>Is there anything else I can help you with?</span>
+        </div>
+        <div class="ie-mini-line">
+          <span class="ie-mini-who user">User</span>
+          <span class="ie-mini-text">escalate to the support team</span>
+        </div>
+        <div class="ie-mini-line">
+          <span class="ie-mini-who ai">Stewart</span>
+          <span class="ie-mini-text">I'd be happy to escalate this to the support team for you. Could you please provide me with the following details:<br>1. Your name and email address associated with your UTR Sports account<br>2. The name of the camp/event<br>3. The player's name (and their UTR profile link if you have it)</span>
+        </div>
+        <button class="ie-toggle" type="button" data-ie-collapse>Hide full conversation ▴</button>
+      </div>
+      <div class="ie-card-foot"><a class="transcript-link" href="https://creator.voiceflow.com/project/69ebd4159a532921bd258f8d/transcripts/69fb71e9b12ef900077ce5d9" target="_blank" rel="noopener">View full transcript in Voiceflow ↗</a></div>
+    </div></div>
+  <script>
+  (function(){
+    var sec = document.getElementById('s8');
+    sec.querySelectorAll('[data-ie-expand]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var card = btn.closest('.ie-card');
+        card.querySelector('.ie-mini-preview').hidden = true;
+        card.querySelector('.ie-mini-full').hidden = false;
+      });
+    });
+    sec.querySelectorAll('[data-ie-collapse]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var card = btn.closest('.ie-card');
+        card.querySelector('.ie-mini-full').hidden = true;
+        card.querySelector('.ie-mini-preview').hidden = false;
+      });
+    });
+  })();
+  </script>
 </section>
 </main>
 
