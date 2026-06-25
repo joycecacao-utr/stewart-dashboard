@@ -394,6 +394,21 @@ function buildVolumeResponse() {
   </div>
 
   <h3 class="sub-heading">Tickets — Freshdesk</h3>
+  <div class="priority-legend">
+    <span class="pl-label">Priority:</span>
+    <span class="pl-item">🔴 Urgent</span>
+    <span class="pl-item">🟠 High</span>
+    <span class="pl-item">🟡 Medium</span>
+    <span class="pl-item">🟢 Low</span>
+    <span class="prio-info" tabindex="0" role="img" aria-label="Priority definitions">ⓘ
+      <span class="prio-tooltip">
+        <span class="pt-row"><b>🔴 Urgent</b> — Freshchat conversations converted to ticket, internal merge requests, customers wanting to cancel, direct emails not through Stewart</span>
+        <span class="pt-row"><b>🟠 High</b> — Power users, VIP clubs, and HS accounts</span>
+        <span class="pt-row"><b>🟡 Medium</b> — Free users</span>
+        <span class="pt-row"><b>🟢 Low</b> — Missing scores or direct emails to success@</span>
+      </span>
+    </span>
+  </div>
   <div class="table-wrap">
     <table class="metrics-table">
       <thead>
@@ -408,6 +423,10 @@ function buildVolumeResponse() {
       </tbody>
     </table>
     ${(data.sampledMonths ?? []).length > 0 ? `<p style="font-size:11px;color:var(--muted);margin-top:4px;">* ${data.sampledMonths.join(', ')} FRT/FCR based on sample (500-ticket cap)</p>` : ''}
+    <p class="metric-defs">
+      <b>First Response Time</b> — how quickly the team replied to the customer.<br>
+      <b>First Contact Resolution</b> — whether the issue was fully resolved in the first interaction, without the customer needing to follow up.
+    </p>
   </div>
   <div class="chart-wrap">
     <canvas id="ticketChart" height="120"></canvas>
@@ -804,6 +823,26 @@ const css = `
     color: var(--cyan); margin: 32px 0 16px; text-transform: uppercase;
   }
   .sub-heading:first-of-type { margin-top: 0; }
+
+  /* Priority legend + info tooltip (single icon on the legend line) */
+  .priority-legend { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin: -8px 0 16px; font-size: 14px; color: var(--ink); }
+  .pl-label { font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; font-size: 12px; }
+  .pl-item { display: inline-flex; align-items: center; gap: 4px; }
+  .prio-info { position: relative; cursor: help; color: var(--muted); font-size: 15px; line-height: 1; outline: none; }
+  .prio-tooltip {
+    display: none; position: absolute; left: 0; top: 26px; z-index: 30;
+    width: 380px; max-width: 86vw; background: #1f2937; color: #fff;
+    border-radius: 8px; padding: 12px 14px; font-size: 13px; line-height: 1.5;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.28); font-weight: 400; text-transform: none; letter-spacing: 0;
+  }
+  .prio-tooltip .pt-row { display: block; margin-bottom: 8px; }
+  .prio-tooltip .pt-row:last-child { margin-bottom: 0; }
+  .prio-tooltip b { color: #fff; font-weight: 700; }
+  .prio-info:hover .prio-tooltip, .prio-info:focus .prio-tooltip { display: block; }
+
+  /* Plain-language metric definitions footnote */
+  .metric-defs { font-size: 13px; color: var(--muted); line-height: 1.7; margin-top: 10px; }
+  .metric-defs b { color: var(--ink); font-weight: 700; }
 
   /* Metrics table */
   .table-wrap { overflow-x: auto; margin-bottom: 28px; }
