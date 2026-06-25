@@ -8,7 +8,7 @@ on:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 330   # headroom for a full historical heal (rate-limited at 3s/call)
     permissions:
       contents: write
 

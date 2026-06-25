@@ -907,12 +907,11 @@ async function main() {
     end:   new Date(Date.UTC(curYear, curMonth + 1, 1)),
   });
 
-  // Heavy historical fetches are budgeted to ONE per run — re-fetching several at once
-  // exceeds the 180-min job timeout under the mandatory 3s rate limit. Prior-year
-  // backfill takes priority (one-time), then poisoned YTD months (tickets present but
-  // FRT/FCR = 0) heal oldest-first over subsequent runs. Truly-missing YTD months are
-  // always fetched (rare). Current + previous month are always fetched.
-  let extraBudget = 1;
+  // Heal as many historical months as needed in one run. The workflow timeout was
+  // raised (330 min) to accommodate a full rate-limited backfill, so we no longer cap
+  // to one per run. Prior-year backfill takes priority, then poisoned YTD months
+  // (oldest first). Once healed, steady-state runs only touch current + previous month.
+  let extraBudget = 12;
   const pyCached = cachedMonthly[pyMonthKey];
   const pyPoisoned = pyCached && (pyCached.ticketsCreated ?? 0) > 0 &&
                      (pyCached.frtCount ?? 0) === 0 && (pyCached.fcrEligible ?? 0) === 0;
