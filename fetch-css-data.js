@@ -72,7 +72,16 @@ async function fdGet(path, params = {}) {
   const url = new URL(`https://${FD_DOMAIN}.freshdesk.com/api/v2/${path}`);
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, String(v)));
   for (let attempt = 0; attempt < 5; attempt++) {
-    const res = await fetch(url, { headers: { Authorization: fdAuth() } });
+    let res;
+    try {
+      res = await fetch(url, { headers: { Authorization: fdAuth() }, signal: AbortSignal.timeout(30000) });
+    } catch (e) {
+      // Network stall / timeout — back off and retry rather than hang the whole job.
+      const wait = (attempt + 1) * 3000;
+      console.warn(`  Freshdesk ${path} request failed (${e.name || e.message}), retrying in ${wait / 1000}s…`);
+      await sleep(wait);
+      continue;
+    }
     if (res.status === 429) {
       const wait = (+(res.headers.get('retry-after') || 60) + 5) * 1000;
       console.warn(`  rate limited on ${path}, waiting ${wait / 1000}s…`);
@@ -860,9 +869,6 @@ async function main() {
   const curYear   = now2.getFullYear();
   const prevMonthKey = new Date(Date.UTC(curYear, curMonth - 1, 1)).toISOString().slice(0, 7);
   const curMonthKey  = new Date(Date.UTC(curYear, curMonth,     1)).toISOString().slice(0, 7);
-  const pyStart = new Date(Date.UTC(curYear - 1, curMonth,     1));
-  const pyEnd   = new Date(Date.UTC(curYear - 1, curMonth + 1, 1));
-  const pyMonthKey = pyStart.toISOString().slice(0, 7);
 
   // Read cache up front to know which historical months we already have.
   const cachedPath = join(__dirname, 'css-data.json');
@@ -888,23 +894,35 @@ async function main() {
     start: new Date(Date.UTC(curYear, curMonth,     1)),
     end:   new Date(Date.UTC(curYear, curMonth + 1, 1)),
   });
-  targetMonths.push({ start: pyStart, end: pyEnd });
+  // NOTE: the PY month (e.g. June 2025) is deliberately NOT fetched for tickets — it is
+  // outside the 185-day bucket window so buildDailyRollups never aggregates it, and its
+  // Ticket Volume / CSAT come from the Google Sheet. Fetching it only burned ~20 min of
+  // rate-limited search for data we discard.
 
-  // Backfill any earlier YTD month (Jan … month-before-prev) that isn't cached yet,
-  // OR whose cache is "poisoned" — it has tickets but zero FRT/FCR (a sign a prior
-  // run failed to fetch its stats). Re-fetching repopulates and self-heals the cache.
+  // Backfill earlier YTD months. Missing months (not in cache at all) are always
+  // fetched. "Poisoned" months (tickets present but FRT/FCR = 0, from a prior failed
+  // stats fetch) are healed at most ONE per run — re-fetching all of them at once
+  // exceeds the 180-min job timeout under the mandatory 3s rate limit. Oldest first,
+  // so the cache self-heals over a few runs.
+  let healedPoison = 0;
   for (let m = 0; m < curMonth - 1; m++) {
     const key = `${curYear}-${String(m + 1).padStart(2, '0')}`;
     const cm = cachedMonthly[key];
     const poisoned = cm && (cm.ticketsCreated ?? 0) > 0 &&
                      (cm.frtCount ?? 0) === 0 && (cm.fcrEligible ?? 0) === 0;
-    if (!cm || poisoned) {
-      console.log(`  ${cm ? 'Re-fetching poisoned' : 'Backfilling missing'} historical month: ${key}`);
-      targetMonths.push({
-        start: new Date(Date.UTC(curYear, m,     1)),
-        end:   new Date(Date.UTC(curYear, m + 1, 1)),
-      });
+    if (!cm) {
+      console.log(`  Backfilling missing historical month: ${key}`);
+    } else if (poisoned && healedPoison < 1) {
+      healedPoison++;
+      console.log(`  Healing poisoned historical month: ${key} (1 per run)`);
+    } else {
+      if (poisoned) console.log(`  Deferring poisoned month ${key} to a later run`);
+      continue;
     }
+    targetMonths.push({
+      start: new Date(Date.UTC(curYear, m,     1)),
+      end:   new Date(Date.UTC(curYear, m + 1, 1)),
+    });
   }
 
   console.log(`Fetching Freshdesk tickets (${targetMonths.length} targeted months, CSS groups)…`);
@@ -912,7 +930,9 @@ async function main() {
   const tCreated = tickets.map(t => t.created_at).filter(Boolean).sort();
   console.log(`  → ${tickets.length} tickets, created ${tCreated[0]?.slice(0,10) ?? 'n/a'} – ${tCreated[tCreated.length-1]?.slice(0,10) ?? 'n/a'}`);
 
-  const csatSince = pyStart.toISOString();
+  // Only fetch CSAT within the bucketed window — a full year of ratings is paginated
+  // at 3s/page and isn't aggregated outside the window anyway. PY CSAT comes from the sheet.
+  const csatSince = new Date(Date.now() - (LOOKBACK_DAYS + 2) * 86400000).toISOString();
   console.log('Fetching Freshdesk CSAT…');
   let csat = [];
   try {
