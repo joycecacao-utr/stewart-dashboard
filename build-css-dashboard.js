@@ -483,15 +483,15 @@ const PERSONA_VOICE = {
   },
 };
 
-// Volume share + trend vs previous period, from per-persona contact counts.
+// Volume share + trend from rolling windows (last 30d vs prior 30d).
 function personaStat(name) {
-  const pc = data.personaCounts ?? {};
-  const cur = pc[CUR_MO];
+  const pw = data.personaWindow;
+  const cur = pw?.cur;
   if (!cur || cur[name] == null) return null;             // no counts available
   const count = cur[name] || 0;
   const total = cur._total || 0;
   const share = total > 0 ? Math.round((count / total) * 100) : null;
-  const prevCount = pc[PREV_MO]?.[name];
+  const prevCount = pw.prev?.[name];
   let trend;
   if (count === 0) trend = null;                          // shown as "no chats this period"
   else if (prevCount == null || prevCount === 0) trend = { glyph: '↑', text: 'new', dir: 'up' };
@@ -532,6 +532,11 @@ function buildPersonaSentiment() {
   <div class="persona-grid">
     ${cards}
   </div>
+  <p class="metric-defs">
+    <b>% of contacts</b> — this segment's share of engaged chats over the last 30 days.
+    <b>Trend arrow</b> — change in this segment's chat volume vs the prior 30 days (↑ rising · ↓ falling · → flat).
+    Segments are inferred from chat content, so not every chat maps to one and shares don't total 100%.
+  </p>
 </section>`;
 }
 
@@ -987,9 +992,10 @@ const css = `
   /* Volume/trend support the quote — subtle, never competing with it. */
   .persona-meta { font-size: 13px; color: var(--muted); font-weight: 500; }
   .persona-trend { font-weight: 700; }
-  .persona-trend.pt-up,
-  .persona-trend.pt-down { color: #64748b; }   /* neutral slate — a rising volume isn't 'bad' */
-  .persona-trend.pt-flat { color: #94a3b8; }
+  /* Gentle, non-alarming hints — rising volume isn't 'good' or 'bad', just notable */
+  .persona-trend.pt-up   { color: #3b82c4; }   /* soft blue */
+  .persona-trend.pt-down { color: #b08035; }   /* soft amber */
+  .persona-trend.pt-flat { color: #94a3b8; }   /* muted gray */
   .persona-summary { font-size: 19px; color: var(--ink); font-style: italic; line-height: 1.6; margin: 0; }
   .persona-themes { font-size: 12.5px; color: var(--muted); }
 

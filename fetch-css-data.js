@@ -510,24 +510,27 @@ function buildPersonaSummary(name, texts) {
   }
 }
 
-// Per-month engaged-transcript counts by persona, for the volume/share + trend
-// shown on the Persona cards. _total = all engaged chats that month; each persona
-// is always present (0 if none) so the card can show "no chats this period".
-function buildPersonaCounts(sessions) {
-  const byMonth = {};
+// Rolling-window engaged-transcript counts by persona, for the volume/share +
+// trend on the Persona cards. `cur` = last 30 days, `prev` = the 30 days before
+// that (steadier than calendar-month MTD on small segments). _total = all engaged
+// chats in the window; every persona is present (0 if none) so the card can show
+// "no chats this period".
+function buildPersonaWindow(sessions) {
+  const now = Date.now(), DAY = 86400000;
+  const blank = () => { const o = { _total: 0, _classified: 0 }; for (const p of PERSONAS) o[p.name] = 0; return o; };
+  const cur = blank(), prev = blank();
   for (const s of sessions) {
     if (isBounce(s)) continue;
-    const mk = (s.createdAt ?? s.updatedAt ?? '').slice(0, 7);
-    if (!mk) continue;
-    if (!byMonth[mk]) {
-      byMonth[mk] = { _total: 0, _classified: 0 };
-      for (const p of PERSONAS) byMonth[mk][p.name] = 0;
-    }
-    byMonth[mk]._total++;
+    const t = new Date(s.createdAt ?? s.updatedAt).getTime();
+    if (isNaN(t)) continue;
+    const age = now - t;
+    const bucket = (age >= 0 && age < 30 * DAY) ? cur : (age >= 30 * DAY && age < 60 * DAY) ? prev : null;
+    if (!bucket) continue;
+    bucket._total++;
     const persona = getPersona(convText(s));
-    if (persona) { byMonth[mk][persona]++; byMonth[mk]._classified++; }
+    if (persona) { bucket[persona]++; bucket._classified++; }
   }
-  return byMonth;
+  return { cur, prev, windowDays: 30 };
 }
 
 function analyzePersonaSentiment(sessions) {
@@ -1092,7 +1095,7 @@ async function main() {
 
   console.log('Analyzing Persona Sentiment…');
   const personaSentiment = analyzePersonaSentiment(sessions);
-  const personaCounts    = buildPersonaCounts(sessions);
+  const personaWindow    = buildPersonaWindow(sessions);
 
   console.log('Selecting Interaction Examples…');
   const interactionExamples = await pickInteractionExamples(sessions);
@@ -1110,7 +1113,7 @@ async function main() {
     monthly,
     happyThoughts,
     personaSentiment,
-    personaCounts,
+    personaWindow,
     interactionExamples,
     revenueRecovery,
     cssSheetMetrics,
