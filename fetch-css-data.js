@@ -198,9 +198,7 @@ async function fdFetchTickets(targetMonths, cssGroupIds) {
   // through 12 months of all-team ticket updates and blows past Freshdesk's 300-page
   // list cap before ever reaching current-month tickets — so those tickets get no
   // stats and FRT/FCR collapse to 0. Sweeping each month independently keeps every
-  // sweep small and guarantees the recent months get their stats. Months older than
-  // the bucketed window aren't aggregated by buildDailyRollups, so we skip them.
-  const windowStart = new Date(Date.now() - (LOOKBACK_DAYS + 2) * 86400000);
+  // sweep small and guarantees each target month gets its stats.
   const byMonth = new Map(); // 'YYYY-MM' -> Set(ids created that month)
   for (const [id, t] of allById) {
     const mk = (t.created_at ?? '').slice(0, 7);
@@ -208,9 +206,7 @@ async function fdFetchTickets(targetMonths, cssGroupIds) {
     if (!byMonth.has(mk)) byMonth.set(mk, new Set());
     byMonth.get(mk).add(id);
   }
-  const statMonths = [...targetMonths]
-    .filter(m => m.end > windowStart)               // only months inside the bucketed window
-    .sort((a, b) => a.start - b.start);
+  const statMonths = [...targetMonths].sort((a, b) => a.start - b.start);
   for (const { start } of statMonths) {
     const mk = start.toISOString().slice(0, 7);
     const need = byMonth.get(mk);
@@ -583,7 +579,7 @@ async function pickInteractionExamples(sessions) {
 }
 
 // ─── DAILY ROLLUPS ───────────────────────────────────────────────────────────
-function buildDailyRollups(tickets, sessions, csat, days, generalGroupId = null) {
+function buildDailyRollups(tickets, sessions, csat, days, generalGroupId = null, extraRanges = []) {
   // Chat tickets ("Conversation with…") are only counted from the General queue.
   const isChatTicket = t =>
     (t.subject ?? '').trim().toLowerCase().startsWith('conversation with') &&
@@ -592,6 +588,16 @@ function buildDailyRollups(tickets, sessions, csat, days, generalGroupId = null)
   const dayKeys = [];
   for (let i = days - 1; i >= 0; i--)
     dayKeys.push(new Date(today.getTime() - i * 86400000).toISOString().slice(0, 10));
+
+  // Extra day buckets for ranges outside the rolling window (e.g. the prior-year
+  // month) so those tickets get aggregated instead of silently dropped.
+  const seenDays = new Set(dayKeys);
+  for (const r of extraRanges) {
+    for (let t = r.start.getTime(); t < r.end.getTime(); t += 86400000) {
+      const k = new Date(t).toISOString().slice(0, 10);
+      if (!seenDays.has(k)) { seenDays.add(k); dayKeys.push(k); }
+    }
+  }
 
   const blank = () => ({
     ticketsCreated: 0, ticketsResolved: 0, backlog: 0,
@@ -883,6 +889,12 @@ async function main() {
     catch { /* corrupt/missing cache — treat as empty */ }
   }
 
+  // Prior-year month (e.g. June 2025) — the PY comparison column. Fetched ONCE when
+  // not cached, then served from cache; its days are bucketed via extraRanges below.
+  const pyStart = new Date(Date.UTC(curYear - 1, curMonth,     1));
+  const pyEnd   = new Date(Date.UTC(curYear - 1, curMonth + 1, 1));
+  const pyMonthKey = pyStart.toISOString().slice(0, 7);
+
   const targetMonths = [];
   if (curMonth > 0) {
     targetMonths.push({
@@ -894,17 +906,21 @@ async function main() {
     start: new Date(Date.UTC(curYear, curMonth,     1)),
     end:   new Date(Date.UTC(curYear, curMonth + 1, 1)),
   });
-  // NOTE: the PY month (e.g. June 2025) is deliberately NOT fetched for tickets — it is
-  // outside the 185-day bucket window so buildDailyRollups never aggregates it, and its
-  // Ticket Volume / CSAT come from the Google Sheet. Fetching it only burned ~20 min of
-  // rate-limited search for data we discard.
 
-  // Backfill earlier YTD months. Missing months (not in cache at all) are always
-  // fetched. "Poisoned" months (tickets present but FRT/FCR = 0, from a prior failed
-  // stats fetch) are healed at most ONE per run — re-fetching all of them at once
-  // exceeds the 180-min job timeout under the mandatory 3s rate limit. Oldest first,
-  // so the cache self-heals over a few runs.
-  let healedPoison = 0;
+  // Heavy historical fetches are budgeted to ONE per run — re-fetching several at once
+  // exceeds the 180-min job timeout under the mandatory 3s rate limit. Prior-year
+  // backfill takes priority (one-time), then poisoned YTD months (tickets present but
+  // FRT/FCR = 0) heal oldest-first over subsequent runs. Truly-missing YTD months are
+  // always fetched (rare). Current + previous month are always fetched.
+  let extraBudget = 1;
+  const pyCached = cachedMonthly[pyMonthKey];
+  const pyPoisoned = pyCached && (pyCached.ticketsCreated ?? 0) > 0 &&
+                     (pyCached.frtCount ?? 0) === 0 && (pyCached.fcrEligible ?? 0) === 0;
+  if ((!pyCached || pyPoisoned) && extraBudget > 0) {
+    extraBudget--;
+    console.log(`  ${pyCached ? 'Re-fetching poisoned' : 'Backfilling'} prior-year month: ${pyMonthKey}`);
+    targetMonths.push({ start: pyStart, end: pyEnd });
+  }
   for (let m = 0; m < curMonth - 1; m++) {
     const key = `${curYear}-${String(m + 1).padStart(2, '0')}`;
     const cm = cachedMonthly[key];
@@ -912,9 +928,9 @@ async function main() {
                      (cm.frtCount ?? 0) === 0 && (cm.fcrEligible ?? 0) === 0;
     if (!cm) {
       console.log(`  Backfilling missing historical month: ${key}`);
-    } else if (poisoned && healedPoison < 1) {
-      healedPoison++;
-      console.log(`  Healing poisoned historical month: ${key} (1 per run)`);
+    } else if (poisoned && extraBudget > 0) {
+      extraBudget--;
+      console.log(`  Healing poisoned historical month: ${key} (1 heavy fetch per run)`);
     } else {
       if (poisoned) console.log(`  Deferring poisoned month ${key} to a later run`);
       continue;
@@ -998,7 +1014,7 @@ async function main() {
   }
 
   console.log('Building daily rollups…');
-  const daily   = buildDailyRollups(tickets, sessions, csat, LOOKBACK_DAYS, generalGroupId);
+  const daily   = buildDailyRollups(tickets, sessions, csat, LOOKBACK_DAYS, generalGroupId, [{ start: pyStart, end: pyEnd }]);
   const monthly = buildMonthlyRollups(daily);
 
   // Merge stable historical months from cache for any month we did NOT fetch this run.
