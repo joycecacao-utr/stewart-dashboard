@@ -184,26 +184,44 @@ async function fdFetchTickets(targetMonths, cssGroupIds) {
   }
   console.log(`  → ${allById.size} CSS ticket IDs found`);
 
-  // Phase 2: fill stats via a single ascending sweep, early-exit when all matched.
-  // Sort so the earliest month (e.g. June 2025) sets the cursor — otherwise PY tickets never get stats.
-  const sortedMonths = [...targetMonths].sort((a, b) => a.start - b.start);
-  console.log(`  Filling stats (sweep from ${sortedMonths[0].start.toISOString().slice(0,10)})…`);
-  const needsStats = new Set(allById.keys());
-  let cursor = sortedMonths[0].start.toISOString();
-  for (let page = 1; page <= 200 && needsStats.size > 0; page++) {
-    const data = await fdGet('tickets', {
-      updated_since: cursor, include: 'stats',
-      per_page: 100, page, order_by: 'updated_at', order_type: 'asc',
-    });
-    if (!Array.isArray(data) || data.length === 0) break;
-    for (const t of data) {
-      if (needsStats.has(t.id)) { allById.set(t.id, t); needsStats.delete(t.id); }
-    }
-    if (data.length < 100) break;
-    if (page % 20 === 0) console.log(`  … stats page ${page}, ${needsStats.size} remaining`);
-    await sleep(MIN_SLEEP_MS);
+  // Phase 2: fill stats PER MONTH, each sweep starting at that month's own start.
+  // A single sweep from the earliest target (the PY month, a year back) has to page
+  // through 12 months of all-team ticket updates and blows past Freshdesk's 300-page
+  // list cap before ever reaching current-month tickets — so those tickets get no
+  // stats and FRT/FCR collapse to 0. Sweeping each month independently keeps every
+  // sweep small and guarantees the recent months get their stats. Months older than
+  // the bucketed window aren't aggregated by buildDailyRollups, so we skip them.
+  const windowStart = new Date(Date.now() - (LOOKBACK_DAYS + 2) * 86400000);
+  const byMonth = new Map(); // 'YYYY-MM' -> Set(ids created that month)
+  for (const [id, t] of allById) {
+    const mk = (t.created_at ?? '').slice(0, 7);
+    if (!mk) continue;
+    if (!byMonth.has(mk)) byMonth.set(mk, new Set());
+    byMonth.get(mk).add(id);
   }
-  if (needsStats.size > 0) console.log(`  ⚠ ${needsStats.size} tickets missing stats`);
+  const statMonths = [...targetMonths]
+    .filter(m => m.end > windowStart)               // only months inside the bucketed window
+    .sort((a, b) => a.start - b.start);
+  for (const { start } of statMonths) {
+    const mk = start.toISOString().slice(0, 7);
+    const need = byMonth.get(mk);
+    if (!need || need.size === 0) continue;
+    const total = need.size;
+    const cursor = start.toISOString();
+    for (let page = 1; page <= 300 && need.size > 0; page++) {  // 300 = Freshdesk list-page cap
+      const data = await fdGet('tickets', {
+        updated_since: cursor, include: 'stats',
+        per_page: 100, page, order_by: 'updated_at', order_type: 'asc',
+      });
+      if (!Array.isArray(data) || data.length === 0) break;
+      for (const t of data) {
+        if (need.has(t.id)) { allById.set(t.id, t); need.delete(t.id); }
+      }
+      if (data.length < 100) break;
+      await sleep(MIN_SLEEP_MS);
+    }
+    console.log(`  stats ${mk}: ${total - need.size}/${total} filled${need.size ? ` (⚠ ${need.size} missing)` : ''}`);
+  }
 
   console.log(`  → ${allById.size} CSS tickets total`);
   return [...allById.values()];
@@ -872,11 +890,16 @@ async function main() {
   });
   targetMonths.push({ start: pyStart, end: pyEnd });
 
-  // Backfill any earlier YTD month (Jan … month-before-prev) that isn't cached yet.
+  // Backfill any earlier YTD month (Jan … month-before-prev) that isn't cached yet,
+  // OR whose cache is "poisoned" — it has tickets but zero FRT/FCR (a sign a prior
+  // run failed to fetch its stats). Re-fetching repopulates and self-heals the cache.
   for (let m = 0; m < curMonth - 1; m++) {
     const key = `${curYear}-${String(m + 1).padStart(2, '0')}`;
-    if (!cachedMonthly[key]) {
-      console.log(`  Backfilling missing historical month: ${key}`);
+    const cm = cachedMonthly[key];
+    const poisoned = cm && (cm.ticketsCreated ?? 0) > 0 &&
+                     (cm.frtCount ?? 0) === 0 && (cm.fcrEligible ?? 0) === 0;
+    if (!cm || poisoned) {
+      console.log(`  ${cm ? 'Re-fetching poisoned' : 'Backfilling missing'} historical month: ${key}`);
       targetMonths.push({
         start: new Date(Date.UTC(curYear, m,     1)),
         end:   new Date(Date.UTC(curYear, m + 1, 1)),
@@ -965,6 +988,24 @@ async function main() {
     if (!fetchedKeys.has(k)) { monthly[k] = v; merged++; }
   }
   if (merged > 0) console.log(`  Merged ${merged} historical month(s) from cache`);
+
+  // Safety net: never let an empty Freshdesk fetch wipe good cached stats. If a
+  // fetched month came back with no FRT/FCR signal but the cache had it, keep the
+  // cached Freshdesk fields (preserving this run's freshly-fetched Voiceflow fields).
+  const VF_FIELDS = ['sessions', 'bounces', 'engaged', 'aiResolved',
+    'aiDeflectPass', 'aiDeflectFail', 'aiDeflectNA', 'aiEvaluated', 'durSum', 'durCount'];
+  for (const k of fetchedKeys) {
+    const fresh = monthly[k], cached = cachedMonthly[k];
+    if (!fresh || !cached) continue;
+    const freshEmpty = (fresh.frtCount ?? 0) === 0 && (fresh.fcrEligible ?? 0) === 0;
+    const cachedHas  = (cached.frtCount ?? 0) > 0 || (cached.fcrEligible ?? 0) > 0;
+    if (freshEmpty && cachedHas) {
+      const vf = {};
+      for (const f of VF_FIELDS) vf[f] = fresh[f];
+      monthly[k] = { ...cached, ...vf };
+      console.log(`  Safety net: kept cached Freshdesk stats for ${k} (fetch returned none)`);
+    }
+  }
 
   // Diagnostic: print ticket counts per month so we can verify against Freshdesk Analytics
   const curMoKey = new Date().toISOString().slice(0, 7);
