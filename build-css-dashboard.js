@@ -199,7 +199,11 @@ function buildTicketCsatSeries() {
     const key = moKey(d);
     labels.push(d.toLocaleString('default', { month: 'short', year: '2-digit' }));
     const s = cssSheet[key];
-    ticketValues.push(s?.ticketVolume ?? null);
+    // The Google Sheet lags ~1 month, so the current month has no sheet row yet —
+    // fall back to the Freshdesk-fetched volume for it (same fallback the table uses).
+    let tv = s?.ticketVolume ?? null;
+    if (tv == null && key === CUR_MO) tv = monthly[key]?.ticketsCreated ?? null;
+    ticketValues.push(tv);
     csatValues.push(s?.csat ?? null);
   }
   return { labels, ticketValues, csatValues };
