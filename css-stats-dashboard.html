@@ -643,34 +643,16 @@
             data: series.ticketValues,
             backgroundColor: BLUE,
             yAxisID: 'yTickets',
-            order: 2,
-          },
-          {
-            type: 'line',
-            label: 'CSAT %',
-            data: series.csatValues,
-            borderColor: CYAN,
-            backgroundColor: CYAN_FAINT,
-            borderWidth: 2.5,
-            pointRadius: 4,
-            pointHoverRadius: 6,
-            fill: false,
-            tension: 0.3,
-            spanGaps: true,
-            yAxisID: 'yCsat',
-            order: 1,
           },
         ],
       },
       options: {
         responsive: true, maintainAspectRatio: true,
         plugins: {
-          legend: { display: true, labels: { color: TICK, font: { size: 12 } } },
+          legend: { display: false },
           tooltip: {
             callbacks: {
-              label: ctx => ctx.dataset.label === 'CSAT %'
-                ? (ctx.parsed.y != null ? ctx.dataset.label + ': ' + ctx.parsed.y.toFixed(1) + '%' : 'N/A')
-                : (ctx.parsed.y != null ? ctx.dataset.label + ': ' + ctx.parsed.y.toLocaleString() : 'N/A'),
+              label: ctx => ctx.parsed.y != null ? 'Ticket Volume: ' + ctx.parsed.y.toLocaleString() : 'N/A',
             },
           },
         },
@@ -681,13 +663,6 @@
             grid: { color: GRID }, ticks: { color: TICK, font: { size: 13 } },
             suggestedMin: 0,
             title: { display: true, text: 'Ticket Volume', color: TICK, font: { size: 11 } },
-          },
-          yCsat: {
-            type: 'linear', position: 'right',
-            grid: { drawOnChartArea: false },
-            ticks: { color: TICK, font: { size: 13 }, callback: v => v + '%' },
-            min: 0, max: 100,
-            title: { display: true, text: 'CSAT %', color: TICK, font: { size: 11 } },
           },
         },
       },
