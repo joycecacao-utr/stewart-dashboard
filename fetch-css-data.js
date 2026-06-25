@@ -510,6 +510,26 @@ function buildPersonaSummary(name, texts) {
   }
 }
 
+// Per-month engaged-transcript counts by persona, for the volume/share + trend
+// shown on the Persona cards. _total = all engaged chats that month; each persona
+// is always present (0 if none) so the card can show "no chats this period".
+function buildPersonaCounts(sessions) {
+  const byMonth = {};
+  for (const s of sessions) {
+    if (isBounce(s)) continue;
+    const mk = (s.createdAt ?? s.updatedAt ?? '').slice(0, 7);
+    if (!mk) continue;
+    if (!byMonth[mk]) {
+      byMonth[mk] = { _total: 0, _classified: 0 };
+      for (const p of PERSONAS) byMonth[mk][p.name] = 0;
+    }
+    byMonth[mk]._total++;
+    const persona = getPersona(convText(s));
+    if (persona) { byMonth[mk][persona]++; byMonth[mk]._classified++; }
+  }
+  return byMonth;
+}
+
 function analyzePersonaSentiment(sessions) {
   const buckets = {};
   for (const p of PERSONAS) buckets[p.name] = [];
@@ -1072,6 +1092,7 @@ async function main() {
 
   console.log('Analyzing Persona Sentiment…');
   const personaSentiment = analyzePersonaSentiment(sessions);
+  const personaCounts    = buildPersonaCounts(sessions);
 
   console.log('Selecting Interaction Examples…');
   const interactionExamples = await pickInteractionExamples(sessions);
@@ -1089,6 +1110,7 @@ async function main() {
     monthly,
     happyThoughts,
     personaSentiment,
+    personaCounts,
     interactionExamples,
     revenueRecovery,
     cssSheetMetrics,
