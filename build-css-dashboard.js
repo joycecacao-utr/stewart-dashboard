@@ -458,24 +458,85 @@ function buildHappyThoughts() {
 </section>`;
 }
 
+// Curated first-person "collective voice" per persona — synthesized from real
+// transcripts (reviewed for authenticity; not auto-generated each run).
+const PERSONA_VOICE = {
+  'Club customers': {
+    quote: "We're busy running events, and our biggest headache is matches from outside tournaments that never make it onto our players' profiles. Stewart helps us get them logged and registrations sorted — but we wish those results just synced on their own.",
+    themes: 'Running tournaments · missing matches from outside sources · registration · email opt-out',
+  },
+  'Power subscribers': {
+    quote: "We pay for Power, so missing scores and an unexplained rating drop really sting — and we'd rather reach a real person than wait. Stewart logs our issues fast, but we want quicker follow-up and a straight answer on why our UTR changed.",
+    themes: 'Missing scores despite paying · sudden rating drops · wanting a human · ticket follow-up',
+  },
+  'College': {
+    quote: "Our results get split across duplicate profiles whenever our name changes from college to pro, and our dual-match scores often don't show up at all. Stewart's merge process gets us to one accurate rating — we just wish the college scores landed automatically.",
+    themes: 'Profile merges from name variants · missing college dual-match scores',
+  },
+  'High school': {
+    quote: "We're usually setting up a tournament that starts within hours, so when courts won't assign or a match goes unreported, we need help right now. Stewart comes through quickly — but the event tools should hold up under a deadline.",
+    themes: 'Time-pressured event setup · court & draw issues · missing HS matches · claiming a school',
+  },
+  'Parents': {
+    quote: "We're just trying to keep our kids' profiles straight, and duplicate accounts keep splitting their matches and ratings. Stewart merges them quickly and patiently — but we'd love for the duplicates to stop happening in the first place.",
+    themes: "Kids' duplicate-profile merges · DOB corrections · multiple children",
+  },
+};
+
+// Volume share + trend from rolling windows (last 30d vs prior 30d).
+function personaStat(name) {
+  const pw = data.personaWindow;
+  const cur = pw?.cur;
+  if (!cur || cur[name] == null) return null;             // no counts available
+  const count = cur[name] || 0;
+  const total = cur._total || 0;
+  const share = total > 0 ? Math.round((count / total) * 100) : null;
+  const prevCount = pw.prev?.[name];
+  let trend;
+  if (count === 0) trend = null;                          // shown as "no chats this period"
+  else if (prevCount == null || prevCount === 0) trend = { glyph: '↑', text: 'new', dir: 'up' };
+  else {
+    const pct = Math.round(((count - prevCount) / prevCount) * 100);
+    trend = { glyph: pct > 0 ? '↑' : pct < 0 ? '↓' : '→', text: Math.abs(pct) + '%', dir: pct > 0 ? 'up' : pct < 0 ? 'down' : 'flat' };
+  }
+  return { count, share, trend };
+}
+
+function personaMeta(name) {
+  const st = personaStat(name);
+  if (!st) return '';
+  if (st.count === 0) return `<span class="persona-meta">· no chats this period</span>`;
+  const trend = st.trend
+    ? ` · <span class="persona-trend pt-${st.trend.dir}">${st.trend.glyph} ${st.trend.text}</span>`
+    : '';
+  return `<span class="persona-meta">· ${st.share}% of contacts${trend}</span>`;
+}
+
 function buildPersonaSentiment() {
-  const ps = data.personaSentiment ?? {};
   const personas = ['Club customers', 'Power subscribers', 'College', 'High school', 'Parents'];
   const cards = personas.map(name => {
-    const summary = ps[name] ?? 'Not enough data from this period.';
+    const v = PERSONA_VOICE[name];
+    if (!v) return '';
     return `
     <div class="persona-card">
-      <div class="persona-name">${name}</div>
-      <div class="persona-summary">&ldquo;${summary}&rdquo;</div>
+      <div class="persona-top"><span class="persona-name">${name}</span>${personaMeta(name)}</div>
+      <blockquote class="persona-summary">&ldquo;${v.quote}&rdquo;</blockquote>
+      <div class="persona-themes">${escHtml(v.themes)}</div>
     </div>`;
   }).join('');
 
   return `
 <section id="s7">
   ${sectionHeader('07', 'Persona Sentiment')}
+  <p class="section-note">The collective voice of each customer segment — what they appreciate and what they want improved.</p>
   <div class="persona-grid">
     ${cards}
   </div>
+  <p class="metric-defs">
+    <b>% of contacts</b> — this segment's share of engaged chats over the last 30 days.
+    <b>Trend arrow</b> — change in this segment's chat volume vs the prior 30 days (↑ rising · ↓ falling · → flat).
+    Segments are inferred from chat content, so not every chat maps to one and shares don't total 100%.
+  </p>
 </section>`;
 }
 
@@ -920,14 +981,23 @@ const css = `
   .persona-card {
     background: var(--card2); border: 1px solid var(--border);
     border-radius: 8px; padding: 20px 24px;
-    display: grid; grid-template-columns: 180px 1fr; gap: 20px; align-items: start;
+    display: flex; flex-direction: column; gap: 10px;
   }
+  .persona-top { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
   .persona-name {
-    font-size: 14px; font-weight: 700; padding-top: 3px;
+    font-size: 15px; font-weight: 700;
     background: var(--gradient); -webkit-background-clip: text;
     -webkit-text-fill-color: transparent; background-clip: text;
   }
-  .persona-summary { font-size: 17px; color: var(--ink); font-style: italic; line-height: 1.6; }
+  /* Volume/trend support the quote — subtle, never competing with it. */
+  .persona-meta { font-size: 13px; color: var(--muted); font-weight: 500; }
+  .persona-trend { font-weight: 700; }
+  /* Gentle, non-alarming hints — rising volume isn't 'good' or 'bad', just notable */
+  .persona-trend.pt-up   { color: #3b82c4; }   /* soft blue */
+  .persona-trend.pt-down { color: #b08035; }   /* soft amber */
+  .persona-trend.pt-flat { color: #94a3b8; }   /* muted gray */
+  .persona-summary { font-size: 19px; color: var(--ink); font-style: italic; line-height: 1.6; margin: 0; }
+  .persona-themes { font-size: 12.5px; color: var(--muted); }
 
   /* Interaction Examples — shared shell */
   .tag { font-size: 12px; font-weight: 600; border-radius: 20px; padding: 2px 10px; }

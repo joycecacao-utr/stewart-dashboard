@@ -203,14 +203,23 @@
   .persona-card {
     background: var(--card2); border: 1px solid var(--border);
     border-radius: 8px; padding: 20px 24px;
-    display: grid; grid-template-columns: 180px 1fr; gap: 20px; align-items: start;
+    display: flex; flex-direction: column; gap: 10px;
   }
+  .persona-top { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
   .persona-name {
-    font-size: 14px; font-weight: 700; padding-top: 3px;
+    font-size: 15px; font-weight: 700;
     background: var(--gradient); -webkit-background-clip: text;
     -webkit-text-fill-color: transparent; background-clip: text;
   }
-  .persona-summary { font-size: 17px; color: var(--ink); font-style: italic; line-height: 1.6; }
+  /* Volume/trend support the quote — subtle, never competing with it. */
+  .persona-meta { font-size: 13px; color: var(--muted); font-weight: 500; }
+  .persona-trend { font-weight: 700; }
+  /* Gentle, non-alarming hints — rising volume isn't 'good' or 'bad', just notable */
+  .persona-trend.pt-up   { color: #3b82c4; }   /* soft blue */
+  .persona-trend.pt-down { color: #b08035; }   /* soft amber */
+  .persona-trend.pt-flat { color: #94a3b8; }   /* muted gray */
+  .persona-summary { font-size: 19px; color: var(--ink); font-style: italic; line-height: 1.6; margin: 0; }
+  .persona-themes { font-size: 12.5px; color: var(--muted); }
 
   /* Interaction Examples — shared shell */
   .tag { font-size: 12px; font-weight: 600; border-radius: 20px; padding: 2px 10px; }
@@ -471,29 +480,40 @@
   
 <section id="s7">
   <div class="section-header"><span class="section-num">07</span><h2>Persona Sentiment</h2></div>
+  <p class="section-note">The collective voice of each customer segment — what they appreciate and what they want improved.</p>
   <div class="persona-grid">
     
     <div class="persona-card">
-      <div class="persona-name">Club customers</div>
-      <div class="persona-summary">&ldquo;Club contacts were generally feeling well taken care of this period. Most common topics: App and Match.&rdquo;</div>
+      <div class="persona-top"><span class="persona-name">Club customers</span><span class="persona-meta">· 13% of contacts · <span class="persona-trend pt-up">↑ 100%</span></span></div>
+      <blockquote class="persona-summary">&ldquo;We're busy running events, and our biggest headache is matches from outside tournaments that never make it onto our players' profiles. Stewart helps us get them logged and registrations sorted — but we wish those results just synced on their own.&rdquo;</blockquote>
+      <div class="persona-themes">Running tournaments · missing matches from outside sources · registration · email opt-out</div>
     </div>
     <div class="persona-card">
-      <div class="persona-name">Power subscribers</div>
-      <div class="persona-summary">&ldquo;Power contacts were generally feeling well taken care of this period. Most common topics: Rating and Profile.&rdquo;</div>
+      <div class="persona-top"><span class="persona-name">Power subscribers</span><span class="persona-meta">· 30% of contacts · <span class="persona-trend pt-up">↑ 106%</span></span></div>
+      <blockquote class="persona-summary">&ldquo;We pay for Power, so missing scores and an unexplained rating drop really sting — and we'd rather reach a real person than wait. Stewart logs our issues fast, but we want quicker follow-up and a straight answer on why our UTR changed.&rdquo;</blockquote>
+      <div class="persona-themes">Missing scores despite paying · sudden rating drops · wanting a human · ticket follow-up</div>
     </div>
     <div class="persona-card">
-      <div class="persona-name">College</div>
-      <div class="persona-summary">&ldquo;College contacts reported needing multiple contacts to resolve issues this period. Most common topics: Profile and Result.&rdquo;</div>
+      <div class="persona-top"><span class="persona-name">College</span><span class="persona-meta">· no chats this period</span></div>
+      <blockquote class="persona-summary">&ldquo;Our results get split across duplicate profiles whenever our name changes from college to pro, and our dual-match scores often don't show up at all. Stewart's merge process gets us to one accurate rating — we just wish the college scores landed automatically.&rdquo;</blockquote>
+      <div class="persona-themes">Profile merges from name variants · missing college dual-match scores</div>
     </div>
     <div class="persona-card">
-      <div class="persona-name">High school</div>
-      <div class="persona-summary">&ldquo;Not enough data from this period.&rdquo;</div>
+      <div class="persona-top"><span class="persona-name">High school</span><span class="persona-meta">· 3% of contacts · <span class="persona-trend pt-flat">→ 0%</span></span></div>
+      <blockquote class="persona-summary">&ldquo;We're usually setting up a tournament that starts within hours, so when courts won't assign or a match goes unreported, we need help right now. Stewart comes through quickly — but the event tools should hold up under a deadline.&rdquo;</blockquote>
+      <div class="persona-themes">Time-pressured event setup · court &amp; draw issues · missing HS matches · claiming a school</div>
     </div>
     <div class="persona-card">
-      <div class="persona-name">Parents</div>
-      <div class="persona-summary">&ldquo;Parents contacts were generally feeling well taken care of this period. Most common topics: Profile and Email.&rdquo;</div>
+      <div class="persona-top"><span class="persona-name">Parents</span><span class="persona-meta">· 10% of contacts · <span class="persona-trend pt-up">↑ 120%</span></span></div>
+      <blockquote class="persona-summary">&ldquo;We're just trying to keep our kids' profiles straight, and duplicate accounts keep splitting their matches and ratings. Stewart merges them quickly and patiently — but we'd love for the duplicates to stop happening in the first place.&rdquo;</blockquote>
+      <div class="persona-themes">Kids' duplicate-profile merges · DOB corrections · multiple children</div>
     </div>
   </div>
+  <p class="metric-defs">
+    <b>% of contacts</b> — this segment's share of engaged chats over the last 30 days.
+    <b>Trend arrow</b> — change in this segment's chat volume vs the prior 30 days (↑ rising · ↓ falling · → flat).
+    Segments are inferred from chat content, so not every chat maps to one and shares don't total 100%.
+  </p>
 </section>
   
 <section id="s8">
