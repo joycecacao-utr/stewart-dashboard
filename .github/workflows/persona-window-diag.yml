@@ -1,0 +1,20 @@
+name: Persona Window Diag (temporary)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run persona window diagnostic
+        env:
+          VOICEFLOW_KEY: ${{ secrets.VOICEFLOW_KEY }}
+        run: node persona-window-diag.js
