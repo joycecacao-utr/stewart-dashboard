@@ -1,0 +1,51 @@
+name: Backfill Chat Volume
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_months:
+        description: 'Months to backfill this run'
+        required: false
+        default: '4'
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install dependencies
+        run: npm install
+      - name: Backfill chat volume
+        env:
+          FRESHDESK_KEY:    ${{ secrets.FRESHDESK_KEY }}
+          FRESHDESK_DOMAIN: universaltennis
+          BACKFILL_MAX:     ${{ github.event.inputs.max_months }}
+        run: node backfill-chat-volume.js
+      - name: Rebuild dashboard HTML
+        run: node build-css-dashboard.js
+      - name: Commit data + dashboard
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          cp css-stats-dashboard.html /tmp/h.html
+          cp css-data.json           /tmp/d.json
+          for i in 1 2 3 4 5; do
+            git fetch origin main
+            git reset --hard origin/main
+            cp /tmp/h.html css-stats-dashboard.html
+            cp /tmp/d.json css-data.json
+            git add css-stats-dashboard.html css-data.json
+            git diff --staged --quiet && { echo "no changes"; exit 0; }
+            git commit -m "chore: backfill chat volume [$(date -u '+%Y-%m-%d %H:%M UTC')]"
+            git push origin HEAD:main && exit 0
+            echo "push rejected — retry $i"; sleep 3
+          done
+          echo "::error::failed to push"; exit 1
