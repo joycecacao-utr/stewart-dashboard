@@ -504,7 +504,7 @@ function personaStat(name) {
 
 // Minimum contacts in the current window for a trend % to be meaningful. Below
 // this, a ↑/↓ would swing wildly on a handful of chats, so we suppress it.
-const MIN_PERSONA_TREND = 30;
+const MIN_PERSONA_TREND = 10;
 
 function personaMeta(name) {
   const st = personaStat(name);
