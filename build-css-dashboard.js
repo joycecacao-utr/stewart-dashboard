@@ -502,14 +502,21 @@ function personaStat(name) {
   return { count, share, trend };
 }
 
+// Minimum contacts in the current window for a trend % to be meaningful. Below
+// this, a ↑/↓ would swing wildly on a handful of chats, so we suppress it.
+const MIN_PERSONA_TREND = 30;
+
 function personaMeta(name) {
   const st = personaStat(name);
   if (!st) return '';
-  if (st.count === 0) return `<span class="persona-meta">· no chats this period</span>`;
-  const trend = st.trend
+  if (st.count === 0) {
+    return `<span class="persona-meta">· 0% of contacts (0) · <span class="persona-trend pt-flat">no chats this period</span></span>`;
+  }
+  const base = `· ${st.share}% of contacts (${st.count})`;
+  const trend = (st.count >= MIN_PERSONA_TREND && st.trend)
     ? ` · <span class="persona-trend pt-${st.trend.dir}">${st.trend.glyph} ${st.trend.text}</span>`
-    : '';
-  return `<span class="persona-meta">· ${st.share}% of contacts${trend}</span>`;
+    : ` · <span class="persona-trend pt-flat">trend n/a · low volume</span>`;
+  return `<span class="persona-meta">${base}${trend}</span>`;
 }
 
 function buildPersonaSentiment() {
@@ -533,8 +540,9 @@ function buildPersonaSentiment() {
     ${cards}
   </div>
   <p class="metric-defs">
-    <b>% of contacts</b> — this segment's share of engaged chats over the last 30 days.
-    <b>Trend arrow</b> — change in this segment's chat volume vs the prior 30 days (↑ rising · ↓ falling · → flat).
+    <b>% of contacts (n)</b> — this segment's share of engaged chats over the last 30 days, with the raw count.
+    <b>Trend arrow</b> — change in chat volume vs the prior 30 days (↑ rising · ↓ falling · → flat); shown only for
+    segments with at least ${MIN_PERSONA_TREND} chats, since smaller segments swing on a handful of contacts (marked <i>low volume</i>).
     Segments are inferred from chat content, so not every chat maps to one and shares don't total 100%.
   </p>
 </section>`;
