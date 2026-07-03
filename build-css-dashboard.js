@@ -328,26 +328,29 @@ function buildRevenueRecovery() {
       fmtFailed(rrCur), fmtFailed(rrPrev), fmtRRYTD(m => fmtDollar(m.failed)), fmtFailed(rrPY)),
   ].join('');
 
-  const inRecov    = rr?.inRecoveryRevenue;
-  const unrecov    = rr?.unrecoveredRevenue;
+  const unrecov     = rr?.unrecoveredRevenue;
+  const unrecovInv  = rr?.unrecoveredInvoices;
+  const recov       = rr?.recoveredRevenue;
+  const recovInv    = rr?.recoveredInvoices;
+  const invSub      = n => n != null ? n.toLocaleString() + ' invoices' : 'Current';
 
   const statCards = `
   <div class="rr-stat-grid">
-    <div class="rr-stat-card">
-      <div class="rr-stat-label">
-        Revenue In Recovery
-        <span class="rr-tooltip" title="Payment failures still in recovery process">ⓘ</span>
-      </div>
-      <div class="rr-stat-value">${inRecov != null ? fmtDollar(inRecov) : 'N/A'}</div>
-      <div class="rr-stat-sub">Current</div>
-    </div>
     <div class="rr-stat-card">
       <div class="rr-stat-label">
         Unrecovered Revenue
         <span class="rr-tooltip" title="Payment failures that have exhausted recovery attempts">ⓘ</span>
       </div>
       <div class="rr-stat-value">${unrecov != null ? fmtDollar(unrecov) : 'N/A'}</div>
-      <div class="rr-stat-sub">Current</div>
+      <div class="rr-stat-sub">${invSub(unrecovInv)}</div>
+    </div>
+    <div class="rr-stat-card">
+      <div class="rr-stat-label">
+        Recovered Revenue
+        <span class="rr-tooltip" title="Payment failures successfully recovered">ⓘ</span>
+      </div>
+      <div class="rr-stat-value">${recov != null ? fmtDollar(recov) : 'N/A'}</div>
+      <div class="rr-stat-sub">${invSub(recovInv)}</div>
     </div>
   </div>`;
 
