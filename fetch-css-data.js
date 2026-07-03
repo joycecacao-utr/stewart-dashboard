@@ -848,8 +848,13 @@ async function fetchRevenueRecovery() {
   const failedRow    = rows.find(r => r[0] === 'Grand Total Failed')  ?? [];
   const savedRow     = rows.find(r => r[0] === 'Grand Total Saved')   ?? [];
   const rateRow      = rows.find(r => r[0]?.trim() === 'Recovery Rate') ?? [];
-  const unrecovRow   = rows.find(r => r[0] === 'unrecovered_revenue') ?? [];
-  const inRecovRow   = rows.find(r => r[0] === 'in_recovery_revenue') ?? [];
+  // Stat rows (case/space-insensitive match). The sheet now provides Unrecovered +
+  // Recovered revenue, each with an invoice count.
+  const findRow      = label => rows.find(r => (r[0] ?? '').trim().toLowerCase() === label) ?? [];
+  const unrecovRow    = findRow('unrecovered revenue');
+  const unrecovInvRow = findRow('total unrecovered invoices');
+  const recovRow      = findRow('recovered revenue');
+  const recovInvRow   = findRow('total recovered invoices');
 
   // Build monthly map: { "2026-05": { failed, saved, rate }, ... }
   const monthly = {};
@@ -865,8 +870,10 @@ async function fetchRevenueRecovery() {
 
   return {
     monthly,
-    unrecoveredRevenue: parseDollar(unrecovRow[1]),
-    inRecoveryRevenue:  parseDollar(inRecovRow[1]),
+    unrecoveredRevenue:  parseDollar(unrecovRow[1]),
+    unrecoveredInvoices: parseDollar(unrecovInvRow[1]),
+    recoveredRevenue:    parseDollar(recovRow[1]),
+    recoveredInvoices:   parseDollar(recovInvRow[1]),
     lastUpdated: rows[monthRowIdx - 1]?.[1] ?? null,
   };
 }
@@ -1012,18 +1019,16 @@ async function main() {
     console.warn('  Revenue Recovery fetch failed:', e.message);
   }
 
-  // Safety net: the sheet no longer carries the unrecovered_revenue / in_recovery_revenue
-  // rows. Keep the last known values from cache so those stat cards don't blank to N/A.
+  // Safety net: if any stat value comes back empty (e.g. a sheet edit renames a row),
+  // keep the last known value from cache so the stat cards don't blank to N/A.
   if (!revenueRecovery) {
     revenueRecovery = cachedRevenueRecovery; // full fetch failed — fall back to cache entirely
   } else if (cachedRevenueRecovery) {
-    if (revenueRecovery.unrecoveredRevenue == null && cachedRevenueRecovery.unrecoveredRevenue != null) {
-      revenueRecovery.unrecoveredRevenue = cachedRevenueRecovery.unrecoveredRevenue;
-      console.log(`  Restored unrecoveredRevenue from cache: ${revenueRecovery.unrecoveredRevenue}`);
-    }
-    if (revenueRecovery.inRecoveryRevenue == null && cachedRevenueRecovery.inRecoveryRevenue != null) {
-      revenueRecovery.inRecoveryRevenue = cachedRevenueRecovery.inRecoveryRevenue;
-      console.log(`  Restored inRecoveryRevenue from cache: ${revenueRecovery.inRecoveryRevenue}`);
+    for (const f of ['unrecoveredRevenue', 'unrecoveredInvoices', 'recoveredRevenue', 'recoveredInvoices']) {
+      if (revenueRecovery[f] == null && cachedRevenueRecovery[f] != null) {
+        revenueRecovery[f] = cachedRevenueRecovery[f];
+        console.log(`  Restored ${f} from cache: ${revenueRecovery[f]}`);
+      }
     }
   }
 
