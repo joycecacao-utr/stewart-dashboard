@@ -417,7 +417,7 @@ function buildVolumeResponse() {
     <span class="pl-item">🟢 Low</span>
     <span class="prio-info" tabindex="0" role="img" aria-label="Priority definitions">ⓘ
       <span class="prio-tooltip">
-        <span class="pt-row"><b>🔴 Urgent</b> — Freshchat conversations converted to ticket, internal merge requests, customers wanting to cancel, direct emails not through Stewart</span>
+        <span class="pt-row"><b>🔴 Urgent</b> — Freshchat conversations converted to ticket, merge requests from UTR employees, and customers canceling their Power subscription who reached out directly to success@</span>
         <span class="pt-row"><b>🟠 High</b> — Power users, VIP clubs, and HS accounts</span>
         <span class="pt-row"><b>🟡 Medium</b> — Free users</span>
         <span class="pt-row"><b>🟢 Low</b> — Missing scores or direct emails to success@</span>
@@ -434,7 +434,7 @@ function buildVolumeResponse() {
         ${frtPriRows}
         ${metricRow('First Contact Resolution', fcrM(curMo),   fcrM(prevMo),   ytdFcr,  fcrM(pyMo))}
         ${metricRow('FCR — Medium Priority',    fcrM2(curMo),  fcrM2(prevMo),  ytdFcr2, fcrM2(pyMo))}
-        ${metricRow('CSAT',                     fmtSheetCsat(CUR_MO) !== 'N/A' ? fmtSheetCsat(CUR_MO) : csatM(curMo), fmtSheetCsat(PREV_MO), fmtSheetCsat('ytd'), fmtSheetCsat(PY_MO))}
+        ${metricRow('Controllable CSAT',        fmtSheetCsat(CUR_MO) !== 'N/A' ? fmtSheetCsat(CUR_MO) : csatM(curMo), fmtSheetCsat(PREV_MO), fmtSheetCsat('ytd'), fmtSheetCsat(PY_MO))}
       </tbody>
     </table>
     ${(data.sampledMonths ?? []).length > 0 ? `<p style="font-size:11px;color:var(--muted);margin-top:4px;">* ${data.sampledMonths.join(', ')} FRT/FCR based on sample (500-ticket cap)</p>` : ''}
