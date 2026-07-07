@@ -319,13 +319,20 @@ function buildRevenueRecovery() {
   // YTD rate: calculated from YTD saved / YTD failed
   const ytdRateStr = rrYTD?.rate != null ? rrYTD.rate.toFixed(1) + '%' : 'N/A';
 
+  // Stripe Revenue-Recovery data lags ~1 month, so the current month is always
+  // empty — omit the current-month (MTD) column entirely. The most recent real
+  // month (previous month) gets the emphasized "cur" styling instead.
+  const rrRow = (label, prev, ytdVal, py) => {
+    const pyCell = py === NA ? `<td class="na">N/A</td>` : `<td>${py}</td>`;
+    return `<tr><td class="label">${label}</td><td class="cur">${prev}</td><td>${ytdVal}</td>${pyCell}</tr>`;
+  };
   const tableRows = [
-    metricRow('Recovery Rate %',
-      fmtRate(rrCur), fmtRate(rrPrev), ytdRateStr, fmtRate(rrPY)),
-    metricRow('Total Saved',
-      fmtSaved(rrCur), fmtSaved(rrPrev), fmtRRYTD(m => fmtDollar(m.saved)), fmtSaved(rrPY)),
-    metricRow('Total Failed',
-      fmtFailed(rrCur), fmtFailed(rrPrev), fmtRRYTD(m => fmtDollar(m.failed)), fmtFailed(rrPY)),
+    rrRow('Recovery Rate %',
+      fmtRate(rrPrev), ytdRateStr, fmtRate(rrPY)),
+    rrRow('Total Saved',
+      fmtSaved(rrPrev), fmtRRYTD(m => fmtDollar(m.saved)), fmtSaved(rrPY)),
+    rrRow('Total Failed',
+      fmtFailed(rrPrev), fmtRRYTD(m => fmtDollar(m.failed)), fmtFailed(rrPY)),
   ].join('');
 
   const unrecov     = rr?.unrecoveredRevenue;
@@ -361,7 +368,7 @@ function buildRevenueRecovery() {
   <div class="table-wrap">
     <table class="metrics-table">
       <thead>
-        <tr><th>Metric</th><th>${curMoLabel} (MTD)</th><th>${prevMoLabel}</th><th>YTD</th><th>${pyMoLabel}</th></tr>
+        <tr><th>Metric</th><th>${prevMoLabel}</th><th>YTD</th><th>${pyMoLabel}</th></tr>
       </thead>
       <tbody>${tableRows}</tbody>
     </table>
