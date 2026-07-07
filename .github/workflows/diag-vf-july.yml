@@ -1,0 +1,18 @@
+name: Diag VF July
+on:
+  workflow_dispatch:
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run VF July diagnostic
+        env:
+          VOICEFLOW_KEY: ${{ secrets.VOICEFLOW_KEY }}
+        run: node diag-vf-july.js
