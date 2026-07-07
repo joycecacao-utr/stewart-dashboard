@@ -1,97 +1,88 @@
-// TEMP DIAGNOSTIC — validate a programmatic AI-resolution signal on full months.
-// Uses the SAME weekly-window fetch as fetch-css-data.js to avoid VF's per-request
-// cap, so counts match the real pipeline. Buckets by transcript createdAt month.
+// TEMP DIAGNOSTIC — inspect HOW 'freshdesk_create_ticket' appears in logs, to tell
+// an executed handoff from mere flow scaffolding. June 2026, weekly-windowed.
 const VF_KEY       = process.env.VOICEFLOW_KEY;
 const VF_PROJECT   = '69ebd4159a532921bd258f8d';
 const VF_ANALYTICS = 'https://analytics-api.voiceflow.com';
 const vfHeaders = () => ({ authorization: VF_KEY, 'content-type': 'application/json', accept: 'application/json' });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-const ESC_KEYWORDS = ['agent', 'human', 'transfer', 'escalat', 'live chat', 'speak to', 'talk to someone'];
 const isBounce = s => !(s.logs ?? []).some(l => l.type === 'action' && l.data?.type === 'text');
-const createdTicket = s => JSON.stringify(s.logs ?? []).includes('freshdesk_create_ticket');
-const keywordEscalated = s => {
-  const userText = (s.logs ?? [])
-    .filter(l => l.type === 'action' && l.data?.type === 'text' && typeof l.data.payload === 'string')
-    .map(l => l.data.payload).join(' ').toLowerCase();
-  return ESC_KEYWORDS.some(kw => userText.includes(kw));
-};
-const deflection = s => {
-  const ev = (s.evaluations ?? []).find(e => /deflection rate \(strict\)/i.test(e?.name ?? ''));
-  if (!ev) return null;
-  const v = String(ev.value ?? '').trim().toLowerCase();
-  return (v === 'pass' || v === 'fail') ? v : (v === 'na' || v === 'n/a') ? 'na' : null;
-};
 
-// Weekly windows spanning [start, end); mirrors vfGetAll's approach.
 async function fetchWindowed(start, end) {
-  const byId = new Map();
-  let cur = end.getTime();
-  const startMs = start.getTime();
-  let maxWin = 0;
+  const byId = new Map(); let cur = end.getTime(); const startMs = start.getTime();
   while (cur > startMs) {
-    const winEnd = new Date(cur);
     const winStart = new Date(Math.max(cur - 7 * 86400000 + 1, startMs));
     const r = await fetch(`${VF_ANALYTICS}/v1/transcript/project/${VF_PROJECT}`, {
       method: 'POST', headers: vfHeaders(),
-      body: JSON.stringify({ startDate: winStart.toISOString(), endDate: winEnd.toISOString() }),
+      body: JSON.stringify({ startDate: winStart.toISOString(), endDate: new Date(cur).toISOString() }),
     });
     const list = r.ok ? ((await r.json())?.transcripts ?? []) : [];
-    maxWin = Math.max(maxWin, list.length);
     for (const t of list) if (t?.id) byId.set(t.id, t);
-    cur = winStart.getTime() - 1;
-    await sleep(200);
+    cur = winStart.getTime() - 1; await sleep(200);
   }
-  console.log(`  windows done: ${byId.size} unique transcripts (max ${maxWin}/window)`);
   return [...byId.values()];
 }
-
 async function hydrate(all) {
   for (let i = 0; i < all.length; i += 10) {
-    const chunk = all.slice(i, i + 10);
-    await Promise.all(chunk.map(async t => {
-      try {
-        const r = await fetch(`${VF_ANALYTICS}/v1/transcript/${t.id}`, { headers: vfHeaders() });
+    await Promise.all(all.slice(i, i + 10).map(async t => {
+      try { const r = await fetch(`${VF_ANALYTICS}/v1/transcript/${t.id}`, { headers: vfHeaders() });
         if (r.ok) { const b = await r.json();
           t.logs = b.logs ?? b.transcript?.logs ?? [];
-          t.evaluations = b.evaluations ?? b.transcript?.evaluations ?? [];
-          t.createdAt = t.createdAt ?? b.createdAt ?? b.transcript?.createdAt;
-        } else t.logs = [];
+          t.createdAt = t.createdAt ?? b.createdAt ?? b.transcript?.createdAt; } else t.logs = [];
       } catch { t.logs = []; }
-    }));
-    await sleep(150);
+    })); await sleep(150);
   }
-}
-
-function report(month, list) {
-  const inMonth = list.filter(t => (t.createdAt ?? '').slice(0, 7) === month);
-  const engaged = inMonth.filter(s => !isBounce(s));
-  const nTicket = engaged.filter(createdTicket).length;
-  const nKw = engaged.filter(keywordEscalated).length;
-  const nKwOnly = engaged.filter(s => keywordEscalated(s) && !createdTicket(s)).length;
-  const nEither = engaged.filter(s => createdTicket(s) || keywordEscalated(s)).length;
-  const dist = { pass: 0, fail: 0, na: 0, none: 0 };
-  for (const s of engaged) dist[deflection(s) ?? 'none']++;
-  const pct = (n, d) => d ? (100 * n / d).toFixed(1) + '%' : 'n/a';
-  const vfDen = dist.pass + dist.fail;
-  console.log(`\n================ ${month} ================`);
-  console.log(`transcripts in month: ${inMonth.length}   engaged (non-bounce): ${engaged.length}`);
-  console.log(`Created Freshdesk ticket : ${nTicket} (${pct(nTicket, engaged.length)} of engaged)`);
-  console.log(`Keyword escalated        : ${nKw}   (keyword-but-no-ticket: ${nKwOnly})`);
-  console.log(`Either ticket|keyword    : ${nEither} (${pct(nEither, engaged.length)})`);
-  console.log(`--> AI Resolution %, ticket-only  : ${pct(engaged.length - nTicket, engaged.length)}`);
-  console.log(`--> AI Resolution %, ticket|keyword: ${pct(engaged.length - nEither, engaged.length)}`);
-  console.log(`VF deflection: pass=${dist.pass} fail=${dist.fail} na=${dist.na} unscored=${dist.none} -> rate ${pct(dist.pass, vfDen)} (den ${vfDen})`);
 }
 
 (async () => {
   if (!VF_KEY) throw new Error('VOICEFLOW_KEY not set');
-  const start = new Date('2026-05-01T00:00:00Z');
-  const end   = new Date('2026-07-01T00:00:00Z');
-  console.log('Fetching May 1 → July 1 in weekly windows...');
-  const all = await fetchWindowed(start, end);
-  console.log(`Hydrating ${all.length} transcript details...`);
+  const all = await fetchWindowed(new Date('2026-06-01T00:00:00Z'), new Date('2026-07-01T00:00:00Z'));
   await hydrate(all);
-  report('2026-05', all);
-  report('2026-06', all);
+  const june = all.filter(t => (t.createdAt ?? '').slice(0, 7) === '2026-06');
+  const engaged = june.filter(s => !isBounce(s));
+  console.log(`June engaged: ${engaged.length}`);
+
+  // For each engaged transcript, find log entries mentioning freshdesk_create_ticket
+  // and record the (type / data.type) of the matching entry.
+  const entryKinds = {};        // "type|data.type" -> count of transcripts with a match of that kind
+  let anyMatch = 0;
+  const samples = [];
+  for (const s of engaged) {
+    const matches = (s.logs ?? []).filter(l => JSON.stringify(l).includes('freshdesk_create_ticket'));
+    if (matches.length) anyMatch++;
+    const kinds = new Set(matches.map(l => `${l.type}|${l.data?.type ?? ''}`));
+    for (const k of kinds) entryKinds[k] = (entryKinds[k] || 0) + 1;
+    if (samples.length < 3 && matches.length) {
+      samples.push(matches.map(l => {
+        const j = JSON.stringify(l);
+        return `${l.type}|${l.data?.type ?? ''}  ::  ${j.slice(0, 240)}`;
+      }));
+    }
+  }
+  console.log(`Engaged transcripts containing 'freshdesk_create_ticket' anywhere: ${anyMatch}/${engaged.length}`);
+  console.log(`\n=== matching entry kinds (type|data.type -> # transcripts) ===`);
+  console.log(JSON.stringify(entryKinds, null, 1));
+
+  // Also: does EVERY transcript (even bounces / clearly-resolved) contain the string?
+  // If the string is in flow scaffolding it'll appear in ~all transcripts regardless.
+  const allMention = all.filter(t => JSON.stringify(t.logs ?? []).includes('freshdesk_create_ticket')).length;
+  console.log(`\nALL transcripts (incl. bounces) mentioning the string: ${allMention}/${all.length}`);
+
+  // Look for an executed-action / trace signal specifically (Voiceflow marks executed
+  // integration steps differently from flow definitions). Dump distinct debug messages
+  // that reference tickets, to find a reliable "ticket was actually created" marker.
+  const debugMsgs = {};
+  for (const s of engaged) for (const l of (s.logs ?? [])) {
+    if (l.type === 'trace' || l.data?.type === 'debug' || l.type === 'debug') {
+      const msg = (l.data?.payload?.message ?? l.payload?.message ?? '').toString();
+      if (/ticket|freshdesk|escalat|agent|handoff|transfer/i.test(msg)) {
+        const key = msg.slice(0, 80);
+        debugMsgs[key] = (debugMsgs[key] || 0) + 1;
+      }
+    }
+  }
+  console.log(`\n=== ticket/handoff-related debug messages (first 80 chars -> count) ===`);
+  console.log(JSON.stringify(debugMsgs, null, 1));
+
+  console.log(`\n=== sample matching entries (up to 3 transcripts) ===`);
+  samples.forEach((arr, i) => { console.log(`--- transcript ${i + 1} ---`); arr.forEach(x => console.log('   ' + x)); });
 })();
