@@ -4,6 +4,8 @@ on:
   schedule:
     - cron: '0 14 * * 1'   # Every Monday at 14:00 UTC = 6:00am PST / 7:00am PDT
   workflow_dispatch:         # Manual trigger from GitHub Actions tab
+  push:
+    branches: [refresh-now]   # TEMP: manual on-demand refresh trigger
 
 jobs:
   refresh:
