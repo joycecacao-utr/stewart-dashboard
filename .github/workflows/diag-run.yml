@@ -1,0 +1,27 @@
+name: Diag Run
+on:
+  push:
+    branches: [diag-run]
+permissions:
+  contents: write
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run diagnostic
+        env:
+          VOICEFLOW_KEY: ${{ secrets.VOICEFLOW_KEY }}
+        run: node diag-vf-resolution.js 2>&1 | tee diag-output.txt
+      - name: Publish results to diag-results branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan diag-results
+          git reset
+          git add -f diag-output.txt
+          git commit -m "diag results $(date -u '+%Y-%m-%d %H:%M UTC')"
+          git push -f origin diag-results
