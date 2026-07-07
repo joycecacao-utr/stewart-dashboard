@@ -1,0 +1,20 @@
+
+============ 2026-05 ============
+engaged (non-bounce): 73
+  string anywhere        : 70  (crude)
+  tool "succeeded" trace : 0
+  user-facing "submitted": 37
+  => ticket ACTUALLY submitted (succeeded OR user-confirmed): 37 (50.7% of engaged)
+  ================================================
+  AI Resolution % (crude string)     : 4.1%
+  AI Resolution % (real ticket)      : 49.3%   <-- proposed
+
+============ 2026-06 ============
+engaged (non-bounce): 102
+  string anywhere        : 98  (crude)
+  tool "succeeded" trace : 0
+  user-facing "submitted": 59
+  => ticket ACTUALLY submitted (succeeded OR user-confirmed): 59 (57.8% of engaged)
+  ================================================
+  AI Resolution % (crude string)     : 3.9%
+  AI Resolution % (real ticket)      : 42.2%   <-- proposed
