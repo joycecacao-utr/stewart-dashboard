@@ -293,11 +293,12 @@ function buildAiResolution() {
       </thead>
       <tbody>
         ${metricRowNoPy('AI Resolution %',  aiResM(curMo),  aiResM(prevMo),  ytdAiRes)}
-        ${metricRowNoPy('Sessions',         sessM(curMo),   sessM(prevMo),   ytdSess)}
+        ${metricRowNoPy('Engaged Sessions <span class="rr-tooltip" title="Conversations with real interaction — total Voiceflow sessions minus bounces">ⓘ</span>', sessM(curMo), sessM(prevMo), ytdSess)}
         ${metricRowNoPy('AI Cost',          aiCostM(curMo), aiCostM(prevMo), ytdAiCost)}
       </tbody>
     </table>
   </div>
+  <p style="font-size:11px;color:var(--muted);margin-top:8px;">Abandoned chats — where the user left before a clear resolution or handoff — are excluded from the AI Resolution % calculation.</p>
 </section>`;
 }
 
