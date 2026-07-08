@@ -473,28 +473,54 @@ function buildHappyThoughts() {
 // transcripts (reviewed for authenticity; not auto-generated each run).
 const PERSONA_VOICE = {
   'Club customers': {
-    quote: "We host through UTR, so when a live event we're running doesn't show up in the Events tab — twice this week now — it's our players messaging us about it. And the billing side is its own headache: I'll get a payment-failure email for the second time on a charge that already went through, or I need the Stripe fee breakdown for our club to reconcile what we were actually paid out, and I can't find it. As the provider, all of that lands on me to sort out.",
-    themes: 'Running tournaments · events not appearing · provider payouts & Stripe fees · missing imported matches',
+    voice: "We host through UTR, so when our events or payouts don't work, it's on us to chase it down.",
+    bullets: [
+      'Live events we’re running don’t show up in the Events tab',
+      'Payment-failure emails on charges that already went through',
+      'Can’t find the Stripe fee breakdown to reconcile club payouts',
+      'Players’ matches from outside tournaments not importing',
+    ],
   },
   'Power subscribers': {
-    quote: "I pay $11.99 a month and still can't pull up the full ratings and stats — which is basically why I subscribed. Then an auto-renewal I never approved hits my card, and my rating lurches from a 3 to zero and back to a 2.64 with nothing explaining it. For a paid plan, that's a lot left to guesswork.",
-    themes: 'Paying but limited feature access · surprise auto-renewal & App Store charges · unexplained rating swings',
+    voice: "I’m paying for this — the ratings, the stats, and the billing should just work.",
+    bullets: [
+      'Can’t see the full ratings and stats the subscription is for',
+      'Auto-renewal charged without approval; surprise App Store fees',
+      'Rating swung from 3 to 0 to 2.64 with no explanation',
+      'Flex-league points not showing up',
+    ],
   },
   'College': {
-    quote: "For the level I'm playing, my rating should sit around a 5.5 to 6, and it just doesn't. Part of it is that entire tournaments never make it into UTR — not only my results, nobody from the event shows up — so I'm being judged on a picture with chunks missing.",
-    themes: 'Rating accuracy for their level · whole tournaments missing from UTR · adding players to the college page',
+    voice: "At my level my rating should be higher — and it can’t be, when whole tournaments are missing.",
+    bullets: [
+      'Rating doesn’t reflect the level they’re playing (should be ~5.5–6)',
+      'Entire tournaments missing from UTR — not just their own results',
+      'Trouble adding players to the college page',
+    ],
   },
   'High school': {
-    quote: "When my coach built our high-school team, he linked the wrong account for me — not the one I actually play under. So the profile that represents me on the team roster is basically empty, while everything I've really played sits on my own account. I just need the right one attached to the team so my record isn't split in two.",
-    themes: 'Wrong account linked to the school team · getting the right profile on the roster',
+    voice: "My coach linked the wrong account to our team, so the record that counts isn’t really mine.",
+    bullets: [
+      'Wrong account attached to the high-school team roster',
+      'Their real match history sits on a separate account, splitting the record',
+    ],
   },
   'Parents': {
-    quote: "My son's been winning his orange-ball matches for a year, two seasons straight, and his rating still won't move off O1 — I honestly just want to understand why. And it's a moving target: some results don't get counted, his birthday has him listed as 40-and-over, and a second profile I never created has his matches scattered across it.",
-    themes: "Understanding a child's rating · uncounted or missing matches · duplicate profiles · DOB corrections",
+    voice: "I just want to understand my kid’s rating — and see all their matches in one place.",
+    bullets: [
+      'Rating stuck at O1 despite a year of wins',
+      'Some results never get counted',
+      'Date of birth wrong (profile shows “40 and over”)',
+      'A duplicate profile is splitting the child’s matches',
+    ],
   },
   'Free users': {
-    quote: "I'm not paying for anything yet, so I'm mostly here to get my matches showing and to figure out what my number actually means. A lot of my results — especially from outside tournaments — never seem to land on my profile, so the rating feels half-finished, which makes it hard to tell if upgrading is even worth it.",
-    themes: 'Learning how ratings work · matches not showing · what the number means · weighing whether to upgrade',
+    voice: "I just want my matches to show and to understand what my number means before I pay for more.",
+    bullets: [
+      'Results from outside tournaments don’t land on the profile',
+      'Unclear what the rating actually means',
+      'Weighing whether Power is worth upgrading to',
+    ],
   },
 };
 
@@ -551,15 +577,15 @@ function buildPersonaSentiment() {
     return `
     <div class="persona-card">
       <div class="persona-top"><span class="persona-name">${name}</span>${personaMeta(name)}</div>
-      <blockquote class="persona-summary">&ldquo;${v.quote}&rdquo;</blockquote>
-      <div class="persona-themes">${escHtml(v.themes)}</div>
+      <p class="persona-voice">&ldquo;${escHtml(v.voice)}&rdquo;</p>
+      <ul class="persona-points">${(v.bullets ?? []).map(b => `<li>${escHtml(b)}</li>`).join('')}</ul>
     </div>`;
   }).join('');
 
   return `
 <section id="s7">
   ${sectionHeader('07', 'Persona Sentiment')}
-  <p class="section-note">The collective voice of each customer segment — what they appreciate and what they want improved.</p>
+  <p class="section-note">The collective voice of each customer segment — what they're trying to do and what gets in their way.</p>
   <div class="persona-grid">
     ${cards}
   </div>
@@ -1028,8 +1054,9 @@ const css = `
   .persona-trend.pt-up   { color: #3b82c4; }   /* soft blue */
   .persona-trend.pt-down { color: #b08035; }   /* soft amber */
   .persona-trend.pt-flat { color: #94a3b8; }   /* muted gray */
-  .persona-summary { font-size: 19px; color: var(--ink); font-style: italic; line-height: 1.6; margin: 0; }
-  .persona-themes { font-size: 12.5px; color: var(--muted); }
+  .persona-voice { font-size: 16px; color: var(--ink); font-style: italic; line-height: 1.55; margin: 0; }
+  .persona-points { margin: 2px 0 0; padding-left: 20px; }
+  .persona-points li { font-size: 14px; color: var(--ink); line-height: 1.7; }
 
   /* Interaction Examples — shared shell */
   .tag { font-size: 12px; font-weight: 600; border-radius: 20px; padding: 2px 10px; }
