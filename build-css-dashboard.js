@@ -473,24 +473,28 @@ function buildHappyThoughts() {
 // transcripts (reviewed for authenticity; not auto-generated each run).
 const PERSONA_VOICE = {
   'Club customers': {
-    quote: "We're busy running events, and our biggest headache is matches from outside tournaments that never make it onto our players' profiles. Stewart helps us get them logged and registrations sorted — but we wish those results just synced on their own.",
+    quote: "Running an event is nonstop — draws, courts, registrations, a dozen little fires at once. The thing that actually eats my time is tracking down results from outside tournaments that never make it onto our players' profiles. When a match is missing, the parents come to me about it — not the tournament that dropped the ball.",
     themes: 'Running tournaments · missing matches from outside sources · registration · email opt-out',
   },
   'Power subscribers': {
-    quote: "We pay for Power, so missing scores and an unexplained rating drop really sting — and we'd rather reach a real person than wait. Stewart logs our issues fast, but we want quicker follow-up and a straight answer on why our UTR changed.",
+    quote: "I pay for this, so it stings when a match doesn't count or my rating slides for no reason I can see. My UTR is how I know whether I'm improving — if I can't trust the number, what am I even paying for?",
     themes: 'Missing scores despite paying · sudden rating drops · wanting a human · ticket follow-up',
   },
   'College': {
-    quote: "Our results get split across duplicate profiles whenever our name changes from college to pro, and our dual-match scores often don't show up at all. Stewart's merge process gets us to one accurate rating — we just wish the college scores landed automatically.",
+    quote: "Most of my season is dual matches, and those are exactly the results that decide where I sit against everyone else. When they don't post, my rating undersells how I'm actually playing — and at this level, coaches and opponents notice that gap.",
     themes: 'Profile merges from name variants · missing college dual-match scores',
   },
   'High school': {
-    quote: "We're usually setting up a tournament that starts within hours, so when courts won't assign or a match goes unreported, we need help right now. Stewart comes through quickly — but the event tools should hold up under a deadline.",
+    quote: "Matches start this afternoon and I'm still wrestling the bracket. Courts won't assign, the draw won't lock, and there's no 'we'll sort it tomorrow' — the kids are already warming up. When the clock's running, I just need it to hold together.",
     themes: 'Time-pressured event setup · court & draw issues · missing HS matches · claiming a school',
   },
   'Parents': {
-    quote: "We're just trying to keep our kids' profiles straight, and duplicate accounts keep splitting their matches and ratings. Stewart merges them quickly and patiently — but we'd love for the duplicates to stop happening in the first place.",
+    quote: "I've got two playing, so I'm the one keeping the whole picture straight — their matches, who they've beaten, what's coming up next weekend. What throws me is when a result shows up under some second profile I never made, and suddenly their record looks half as full as it really is. I just want everything they've worked for in one place.",
     themes: "Kids' duplicate-profile merges · DOB corrections · multiple children",
+  },
+  'Free users': {
+    quote: "Honestly, I'm still figuring out how all of this works — mostly I just want my matches to show up and to understand what my number actually means. When results I know I played aren't there, it makes me second-guess the whole thing before I'd ever think about paying for more.",
+    themes: 'Learning how ratings work · matches not showing · what the number means · weighing whether to upgrade',
   },
 };
 
@@ -531,7 +535,7 @@ function personaMeta(name) {
 }
 
 function buildPersonaSentiment() {
-  const personas = ['Club customers', 'Power subscribers', 'College', 'High school', 'Parents'];
+  const personas = ['Club customers', 'Power subscribers', 'College', 'High school', 'Parents', 'Free users'];
   const cards = personas.map(name => {
     const v = PERSONA_VOICE[name];
     if (!v) return '';

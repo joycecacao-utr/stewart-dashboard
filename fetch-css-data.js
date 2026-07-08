@@ -38,6 +38,7 @@ const PERSONAS = [
   { name: 'College',           kw: ['college', 'university', 'ncaa', 'collegiate', 'recruit', 'division', 'varsity'] },
   { name: 'High school',       kw: ['high school', 'hs ', 'junior tennis', 'jtr', 'prep school', 'grade', 'school team'] },
   { name: 'Parents',           kw: ['my son', 'my daughter', 'my child', 'my kid', 'as a parent', 'my player', 'our son', 'our daughter'] },
+  { name: 'Free users',        kw: ['free account', 'free version', 'free tier', 'free membership', 'basic account', 'free user', 'not a subscriber', "don't want to pay", 'without paying', "don't want to subscribe", 'do i have to pay', 'do i need to pay', 'is it free'] },
 ];
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────
