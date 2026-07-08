@@ -38,7 +38,10 @@ const PERSONAS = [
   { name: 'College',           kw: ['college', 'university', 'ncaa', 'collegiate', 'recruit', 'division', 'varsity'] },
   { name: 'High school',       kw: ['high school', 'hs ', 'junior tennis', 'jtr', 'prep school', 'grade', 'school team'] },
   { name: 'Parents',           kw: ['my son', 'my daughter', 'my child', 'my kid', 'as a parent', 'my player', 'our son', 'our daughter'] },
-  { name: 'Free users',        kw: ['free account', 'free version', 'free tier', 'free membership', 'basic account', 'free user', 'not a subscriber', "don't want to pay", 'without paying', "don't want to subscribe", 'do i have to pay', 'do i need to pay', 'is it free'] },
+  // 'Free users' is not keyword-detected — it's computed in the dashboard as the
+  // residual (engaged chats matching no segment above), since free-tier users
+  // rarely self-identify in chat. Subscription status (cf_subscription_status in
+  // Freshdesk) confirms Free is the dominant tier but is too sparsely set to drive this.
 ];
 
 // ─── HELPERS ────────────────────────────────────────────────────────────────

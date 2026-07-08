@@ -473,27 +473,27 @@ function buildHappyThoughts() {
 // transcripts (reviewed for authenticity; not auto-generated each run).
 const PERSONA_VOICE = {
   'Club customers': {
-    quote: "Running an event is nonstop — draws, courts, registrations, a dozen little fires at once. The thing that actually eats my time is tracking down results from outside tournaments that never make it onto our players' profiles. When a match is missing, the parents come to me about it — not the tournament that dropped the ball.",
-    themes: 'Running tournaments · missing matches from outside sources · registration · email opt-out',
+    quote: "We host through UTR, so when a live event we're running doesn't show up in the Events tab — twice this week now — it's our players messaging us about it. And the billing side is its own headache: I'll get a payment-failure email for the second time on a charge that already went through, or I need the Stripe fee breakdown for our club to reconcile what we were actually paid out, and I can't find it. As the provider, all of that lands on me to sort out.",
+    themes: 'Running tournaments · events not appearing · provider payouts & Stripe fees · missing imported matches',
   },
   'Power subscribers': {
-    quote: "I pay for this, so it stings when a match doesn't count or my rating slides for no reason I can see. My UTR is how I know whether I'm improving — if I can't trust the number, what am I even paying for?",
-    themes: 'Missing scores despite paying · sudden rating drops · wanting a human · ticket follow-up',
+    quote: "I pay $11.99 a month and still can't pull up the full ratings and stats — which is basically why I subscribed. Then an auto-renewal I never approved hits my card, and my rating lurches from a 3 to zero and back to a 2.64 with nothing explaining it. For a paid plan, that's a lot left to guesswork.",
+    themes: 'Paying but limited feature access · surprise auto-renewal & App Store charges · unexplained rating swings',
   },
   'College': {
-    quote: "Most of my season is dual matches, and those are exactly the results that decide where I sit against everyone else. When they don't post, my rating undersells how I'm actually playing — and at this level, coaches and opponents notice that gap.",
-    themes: 'Profile merges from name variants · missing college dual-match scores',
+    quote: "For the level I'm playing, my rating should sit around a 5.5 to 6, and it just doesn't. Part of it is that entire tournaments never make it into UTR — not only my results, nobody from the event shows up — so I'm being judged on a picture with chunks missing.",
+    themes: 'Rating accuracy for their level · whole tournaments missing from UTR · adding players to the college page',
   },
   'High school': {
-    quote: "Matches start this afternoon and I'm still wrestling the bracket. Courts won't assign, the draw won't lock, and there's no 'we'll sort it tomorrow' — the kids are already warming up. When the clock's running, I just need it to hold together.",
-    themes: 'Time-pressured event setup · court & draw issues · missing HS matches · claiming a school',
+    quote: "When my coach built our high-school team, he linked the wrong account for me — not the one I actually play under. So the profile that represents me on the team roster is basically empty, while everything I've really played sits on my own account. I just need the right one attached to the team so my record isn't split in two.",
+    themes: 'Wrong account linked to the school team · getting the right profile on the roster',
   },
   'Parents': {
-    quote: "I've got two playing, so I'm the one keeping the whole picture straight — their matches, who they've beaten, what's coming up next weekend. What throws me is when a result shows up under some second profile I never made, and suddenly their record looks half as full as it really is. I just want everything they've worked for in one place.",
-    themes: "Kids' duplicate-profile merges · DOB corrections · multiple children",
+    quote: "My son's been winning his orange-ball matches for a year, two seasons straight, and his rating still won't move off O1 — I honestly just want to understand why. And it's a moving target: some results don't get counted, his birthday has him listed as 40-and-over, and a second profile I never created has his matches scattered across it.",
+    themes: "Understanding a child's rating · uncounted or missing matches · duplicate profiles · DOB corrections",
   },
   'Free users': {
-    quote: "Honestly, I'm still figuring out how all of this works — mostly I just want my matches to show up and to understand what my number actually means. When results I know I played aren't there, it makes me second-guess the whole thing before I'd ever think about paying for more.",
+    quote: "I'm not paying for anything yet, so I'm mostly here to get my matches showing and to figure out what my number actually means. A lot of my results — especially from outside tournaments — never seem to land on my profile, so the rating feels half-finished, which makes it hard to tell if upgrading is even worth it.",
     themes: 'Learning how ratings work · matches not showing · what the number means · weighing whether to upgrade',
   },
 };
@@ -502,11 +502,20 @@ const PERSONA_VOICE = {
 function personaStat(name) {
   const pw = data.personaWindow;
   const cur = pw?.cur;
-  if (!cur || cur[name] == null) return null;             // no counts available
-  const count = cur[name] || 0;
+  if (!cur) return null;
+  let count, prevCount;
+  if (name === 'Free users') {
+    // Residual: engaged chats not matching any keyword-classified segment.
+    // Free-tier users rarely self-identify, so we infer them as the remainder.
+    count     = (cur._total || 0) - (cur._classified || 0);
+    prevCount = pw.prev ? (pw.prev._total || 0) - (pw.prev._classified || 0) : null;
+  } else {
+    if (cur[name] == null) return null;                   // no counts available
+    count     = cur[name] || 0;
+    prevCount = pw.prev?.[name];
+  }
   const total = cur._total || 0;
   const share = total > 0 ? Math.round((count / total) * 100) : null;
-  const prevCount = pw.prev?.[name];
   let trend;
   if (count === 0) trend = null;                          // shown as "no chats this period"
   else if (prevCount == null || prevCount === 0) trend = { glyph: '↑', text: 'new', dir: 'up' };
@@ -558,7 +567,7 @@ function buildPersonaSentiment() {
     <b>% of contacts (n)</b> — this segment's share of engaged chats over the last 30 days, with the raw count.
     <b>Trend arrow</b> — change in chat volume vs the prior 30 days (↑ rising · ↓ falling · → flat); shown only for
     segments with at least ${MIN_PERSONA_TREND} chats, since smaller segments swing on a handful of contacts (marked <i>low volume</i>).
-    Segments are inferred from chat content, so not every chat maps to one and shares don't total 100%.
+    The five paid and role-based segments are inferred from chat content; <b>Free users</b> is the remainder — engaged chats that don't match any other segment — so shares total ~100%.
   </p>
 </section>`;
 }
