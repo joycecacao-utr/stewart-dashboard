@@ -1,0 +1,30 @@
+name: PV Run
+on:
+  push:
+    branches: [pv-run]
+permissions:
+  contents: write
+jobs:
+  pv:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run persona-volume classification
+        env:
+          FRESHDESK_KEY:    ${{ secrets.FRESHDESK_KEY }}
+          FRESHDESK_DOMAIN: universaltennis
+        run: node diag-persona-volume.js 2>&1 | tee pv-output.txt
+      - name: Publish results
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan pv-results
+          git reset
+          git add -f pv-output.txt
+          git commit -m "pv results $(date -u '+%H:%M UTC')"
+          git push -f origin pv-results
