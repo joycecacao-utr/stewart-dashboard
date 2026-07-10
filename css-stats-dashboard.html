@@ -218,9 +218,13 @@
   .persona-trend.pt-up   { color: #3b82c4; }   /* soft blue */
   .persona-trend.pt-down { color: #b08035; }   /* soft amber */
   .persona-trend.pt-flat { color: #94a3b8; }   /* muted gray */
-  .persona-voice { font-size: 16px; color: var(--ink); font-style: italic; line-height: 1.55; margin: 0; }
-  .persona-points { margin: 2px 0 0; padding-left: 20px; }
-  .persona-points li { font-size: 14px; color: var(--ink); line-height: 1.7; }
+  .concern-list { margin: 4px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 10px; }
+  .concern-list li { font-size: 14px; color: var(--ink); line-height: 1.5; }
+  .c-impact { color: var(--muted); }
+  .recency { display: inline-block; margin-left: 6px; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; white-space: nowrap; vertical-align: 1px; }
+  .recency.r-new    { color: #b0603a; background: rgba(176,96,58,.12); }
+  .recency.r-recent { color: #3b82c4; background: rgba(59,130,196,.12); }
+  .recency.r-long   { color: #7a8699; background: rgba(122,134,153,.12); }
 
   /* Interaction Examples — shared shell */
   .tag { font-size: 12px; font-weight: 600; border-radius: 20px; padding: 2px 10px; }
@@ -483,45 +487,148 @@ Thanks</blockquote>
   
 <section id="s7">
   <div class="section-header"><span class="section-num">07</span><h2>Persona Sentiment</h2></div>
-  <p class="section-note">The collective voice of each customer segment — what they're trying to do and what gets in their way.</p>
+  <p class="section-note">What each customer segment is trying to do and what gets in their way — newest concerns first.</p>
   <div class="persona-grid">
     
     <div class="persona-card">
-      <div class="persona-top"><span class="persona-name">Club customers</span><span class="persona-meta">· 12% of contacts (13) · <span class="persona-trend pt-up">↑ 86%</span></span></div>
-      <p class="persona-voice">&ldquo;We host through UTR, so when our events or payouts don't work, it's on us to chase it down.&rdquo;</p>
-      <ul class="persona-points"><li>Live events we’re running don’t show up in the Events tab</li><li>Payment-failure emails on charges that already went through</li><li>Can’t find the Stripe fee breakdown to reconcile club payouts</li><li>Players’ matches from outside tournaments not importing</li></ul>
+      <div class="persona-top"><span class="persona-name">Club customers</span></div>
+      <ul class="concern-list">
+        <li>
+          <span class="c-text">Live events we're running don't show up in the Events tab</span>
+          <span class="c-impact">— players assume the event's cancelled and message us directly</span>
+          <span class="recency r-new">New · past 2 wks</span>
+        </li>
+        <li>
+          <span class="c-text">Payment-failure emails on charges that already went through</span>
+          <span class="c-impact">— we waste time chasing payments that were actually fine</span>
+          <span class="recency r-recent">Recent · past 3 mo</span>
+        </li>
+        <li>
+          <span class="c-text">Can't find the Stripe fee breakdown to reconcile club payouts</span>
+          <span class="c-impact">— we can't confirm we were paid the right amount</span>
+          <span class="recency r-long">Longstanding · past 12 mo</span>
+        </li>
+        <li>
+          <span class="c-text">Players' matches from outside tournaments not importing</span>
+          <span class="c-impact">— our members' ratings look incomplete and they blame the club</span>
+          <span class="recency r-long">Longstanding · past 12 mo</span>
+        </li></ul>
     </div>
     <div class="persona-card">
-      <div class="persona-top"><span class="persona-name">Power subscribers</span><span class="persona-meta">· 21% of contacts (23) · <span class="persona-trend pt-down">↓ 4%</span></span></div>
-      <p class="persona-voice">&ldquo;I’m paying for this — the ratings, the stats, and the billing should just work.&rdquo;</p>
-      <ul class="persona-points"><li>Can’t see the full ratings and stats the subscription is for</li><li>Auto-renewal charged without approval; surprise App Store fees</li><li>Rating swung from 3 to 0 to 2.64 with no explanation</li><li>Flex-league points not showing up</li></ul>
+      <div class="persona-top"><span class="persona-name">Power subscribers</span></div>
+      <ul class="concern-list">
+        <li>
+          <span class="c-text">Auto-renewal charged without approval, plus surprise App Store fees</span>
+          <span class="c-impact">— feels billed without consent; erodes trust in the subscription</span>
+          <span class="recency r-new">New · past 2 wks</span>
+        </li>
+        <li>
+          <span class="c-text">Flex-league points not showing up</span>
+          <span class="c-impact">— can't tell if league play counts, so the feature feels broken</span>
+          <span class="recency r-recent">Recent · past 3 mo</span>
+        </li>
+        <li>
+          <span class="c-text">Paying for Power but can't see the full ratings and stats</span>
+          <span class="c-impact">— not getting the core benefit they pay for</span>
+          <span class="recency r-long">Longstanding · past 12 mo</span>
+        </li>
+        <li>
+          <span class="c-text">Rating drops sharply with no explanation</span>
+          <span class="c-impact">— undermines confidence in the number they rely on</span>
+          <span class="recency r-long">Longstanding · past 12 mo</span>
+        </li></ul>
     </div>
     <div class="persona-card">
-      <div class="persona-top"><span class="persona-name">College</span><span class="persona-meta">· 6% of contacts (7) · <span class="persona-trend pt-flat">trend n/a · low volume</span></span></div>
-      <p class="persona-voice">&ldquo;At my level my rating should be higher — and it can’t be, when whole tournaments are missing.&rdquo;</p>
-      <ul class="persona-points"><li>Rating doesn’t reflect the level they’re playing (should be ~5.5–6)</li><li>Entire tournaments missing from UTR — not just their own results</li><li>Trouble adding players to the college page</li></ul>
+      <div class="persona-top"><span class="persona-name">College</span></div>
+      <ul class="concern-list">
+        <li>
+          <span class="c-text">Entire tournaments missing from UTR, not just their own results</span>
+          <span class="c-impact">— recruiting and seeding decisions get made on an incomplete record</span>
+          <span class="recency r-recent">Recent · past 3 mo</span>
+        </li>
+        <li>
+          <span class="c-text">Rating doesn't reflect the level they actually play</span>
+          <span class="c-impact">— they get seeded or judged below their true ability</span>
+          <span class="recency r-long">Longstanding · past 12 mo</span>
+        </li>
+        <li>
+          <span class="c-text">Trouble adding players to the college page</span>
+          <span class="c-impact">— coaches can't build an accurate roster</span>
+          <span class="recency r-long">Longstanding · past 12 mo</span>
+        </li></ul>
     </div>
     <div class="persona-card">
-      <div class="persona-top"><span class="persona-name">High school</span><span class="persona-meta">· 2% of contacts (2) · <span class="persona-trend pt-flat">trend n/a · low volume</span></span></div>
-      <p class="persona-voice">&ldquo;My coach linked the wrong account to our team, so the record that counts isn’t really mine.&rdquo;</p>
-      <ul class="persona-points"><li>Wrong account attached to the high-school team roster</li><li>Their real match history sits on a separate account, splitting the record</li></ul>
+      <div class="persona-top"><span class="persona-name">High school</span></div>
+      <ul class="concern-list">
+        <li>
+          <span class="c-text">Coach linked the wrong account to the team roster</span>
+          <span class="c-impact">— the player's real results don't show for the school team</span>
+          <span class="recency r-new">New · past 2 wks</span>
+        </li>
+        <li>
+          <span class="c-text">USTA match results not importing to UTR</span>
+          <span class="c-impact">— matches they've played simply don't count</span>
+          <span class="recency r-recent">Recent · past 3 mo</span>
+        </li>
+        <li>
+          <span class="c-text">Rating doesn't match who they've beaten on court</span>
+          <span class="c-impact">— the number feels inconsistent with real results</span>
+          <span class="recency r-long">Longstanding · past 12 mo</span>
+        </li></ul>
     </div>
     <div class="persona-card">
-      <div class="persona-top"><span class="persona-name">Parents</span><span class="persona-meta">· 15% of contacts (17) · <span class="persona-trend pt-up">↑ 89%</span></span></div>
-      <p class="persona-voice">&ldquo;I just want to understand my kid’s rating — and see all their matches in one place.&rdquo;</p>
-      <ul class="persona-points"><li>Rating stuck at O1 despite a year of wins</li><li>Some results never get counted</li><li>Date of birth wrong (profile shows “40 and over”)</li><li>A duplicate profile is splitting the child’s matches</li></ul>
+      <div class="persona-top"><span class="persona-name">Parents</span></div>
+      <ul class="concern-list">
+        <li>
+          <span class="c-text">A result posted but still isn't counting toward the rating</span>
+          <span class="c-impact">— the child's progress stalls despite winning</span>
+          <span class="recency r-new">New · past 2 wks</span>
+        </li>
+        <li>
+          <span class="c-text">Can't understand why a child's rating won't move (e.g. stuck at O1)</span>
+          <span class="c-impact">— no way to tell if the child is improving</span>
+          <span class="recency r-recent">Recent · past 3 mo</span>
+        </li>
+        <li>
+          <span class="c-text">Missing matches from events the child played</span>
+          <span class="c-impact">— the record understates what they've actually done</span>
+          <span class="recency r-long">Longstanding · past 12 mo</span>
+        </li>
+        <li>
+          <span class="c-text">A duplicate profile is splitting a child's matches</span>
+          <span class="c-impact">— results scattered across accounts, rating looks wrong</span>
+          <span class="recency r-long">Longstanding · past 12 mo</span>
+        </li>
+        <li>
+          <span class="c-text">Date of birth wrong on the profile</span>
+          <span class="c-impact">— child placed in the wrong age group</span>
+          <span class="recency r-long">Longstanding · past 12 mo</span>
+        </li></ul>
     </div>
     <div class="persona-card">
-      <div class="persona-top"><span class="persona-name">Free users</span><span class="persona-meta">· 44% of contacts (49) · <span class="persona-trend pt-up">↑ 29%</span></span></div>
-      <p class="persona-voice">&ldquo;I just want my matches to show and to understand what my number means before I pay for more.&rdquo;</p>
-      <ul class="persona-points"><li>Results from outside tournaments don’t land on the profile</li><li>Unclear what the rating actually means</li><li>Weighing whether Power is worth upgrading to</li></ul>
+      <div class="persona-top"><span class="persona-name">Free users</span></div>
+      <ul class="concern-list">
+        <li>
+          <span class="c-text">Results from outside tournaments don't land on the profile</span>
+          <span class="c-impact">— the rating looks half-built, so it feels untrustworthy</span>
+          <span class="recency r-recent">Recent · past 3 mo</span>
+        </li>
+        <li>
+          <span class="c-text">Unclear what the rating actually means</span>
+          <span class="c-impact">— hard to know if it's worth engaging with</span>
+          <span class="recency r-long">Longstanding · past 12 mo</span>
+        </li>
+        <li>
+          <span class="c-text">Weighing whether Power is worth upgrading to</span>
+          <span class="c-impact">— on the fence about paying</span>
+          <span class="recency r-long">Longstanding · past 12 mo</span>
+        </li></ul>
     </div>
   </div>
   <p class="metric-defs">
-    <b>% of contacts (n)</b> — this segment's share of engaged chats over the last 30 days, with the raw count.
-    <b>Trend arrow</b> — change in chat volume vs the prior 30 days (↑ rising · ↓ falling · → flat); shown only for
-    segments with at least 10 chats, since smaller segments swing on a handful of contacts (marked <i>low volume</i>).
-    The five paid and role-based segments are inferred from chat content; <b>Free users</b> is the remainder — engaged chats that don't match any other segment — so shares total ~100%.
+    Each concern is tagged by how long the theme has been recurring in support conversations —
+    <b>New</b> (past 2 weeks), <b>Recent</b> (past 3 months), <b>Longstanding</b> (past 12 months), listed newest first.
+    Recency is a qualitative read for now; per-segment contact volumes are being finalized and will be added.
   </p>
 </section>
   

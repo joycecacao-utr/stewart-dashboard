@@ -471,57 +471,51 @@ function buildHappyThoughts() {
 
 // Curated first-person "collective voice" per persona — synthesized from real
 // transcripts (reviewed for authenticity; not auto-generated each run).
-const PERSONA_VOICE = {
-  'Club customers': {
-    voice: "We host through UTR, so when our events or payouts don't work, it's on us to chase it down.",
-    bullets: [
-      'Live events we’re running don’t show up in the Events tab',
-      'Payment-failure emails on charges that already went through',
-      'Can’t find the Stripe fee breakdown to reconcile club payouts',
-      'Players’ matches from outside tournaments not importing',
-    ],
-  },
-  'Power subscribers': {
-    voice: "I’m paying for this — the ratings, the stats, and the billing should just work.",
-    bullets: [
-      'Can’t see the full ratings and stats the subscription is for',
-      'Auto-renewal charged without approval; surprise App Store fees',
-      'Rating swung from 3 to 0 to 2.64 with no explanation',
-      'Flex-league points not showing up',
-    ],
-  },
-  'College': {
-    voice: "At my level my rating should be higher — and it can’t be, when whole tournaments are missing.",
-    bullets: [
-      'Rating doesn’t reflect the level they’re playing (should be ~5.5–6)',
-      'Entire tournaments missing from UTR — not just their own results',
-      'Trouble adding players to the college page',
-    ],
-  },
-  'High school': {
-    voice: "My coach linked the wrong account to our team, so the record that counts isn’t really mine.",
-    bullets: [
-      'Wrong account attached to the high-school team roster',
-      'Their real match history sits on a separate account, splitting the record',
-    ],
-  },
-  'Parents': {
-    voice: "I just want to understand my kid’s rating — and see all their matches in one place.",
-    bullets: [
-      'Rating stuck at O1 despite a year of wins',
-      'Some results never get counted',
-      'Date of birth wrong (profile shows “40 and over”)',
-      'A duplicate profile is splitting the child’s matches',
-    ],
-  },
-  'Free users': {
-    voice: "I just want my matches to show and to understand what my number means before I pay for more.",
-    bullets: [
-      'Results from outside tournaments don’t land on the profile',
-      'Unclear what the rating actually means',
-      'Weighing whether Power is worth upgrading to',
-    ],
-  },
+// Recency tags mark how long a theme has been recurring in support conversations.
+// (Qualitative read for now — to be firmed up with historical ticket data.)
+const RECENCY = {
+  new:    'New · past 2 wks',
+  recent: 'Recent · past 3 mo',
+  long:   'Longstanding · past 12 mo',
+};
+
+// Each persona = a list of concrete concerns (customer framing) + an impact clause
+// + a recency tag. Ordered newest-first.
+const PERSONA_CONCERNS = {
+  'Club customers': [
+    { text: "Live events we're running don't show up in the Events tab", impact: "players assume the event's cancelled and message us directly", recency: 'new' },
+    { text: "Payment-failure emails on charges that already went through", impact: "we waste time chasing payments that were actually fine", recency: 'recent' },
+    { text: "Can't find the Stripe fee breakdown to reconcile club payouts", impact: "we can't confirm we were paid the right amount", recency: 'long' },
+    { text: "Players' matches from outside tournaments not importing", impact: "our members' ratings look incomplete and they blame the club", recency: 'long' },
+  ],
+  'Power subscribers': [
+    { text: "Auto-renewal charged without approval, plus surprise App Store fees", impact: "feels billed without consent; erodes trust in the subscription", recency: 'new' },
+    { text: "Flex-league points not showing up", impact: "can't tell if league play counts, so the feature feels broken", recency: 'recent' },
+    { text: "Paying for Power but can't see the full ratings and stats", impact: "not getting the core benefit they pay for", recency: 'long' },
+    { text: "Rating drops sharply with no explanation", impact: "undermines confidence in the number they rely on", recency: 'long' },
+  ],
+  'College': [
+    { text: "Entire tournaments missing from UTR, not just their own results", impact: "recruiting and seeding decisions get made on an incomplete record", recency: 'recent' },
+    { text: "Rating doesn't reflect the level they actually play", impact: "they get seeded or judged below their true ability", recency: 'long' },
+    { text: "Trouble adding players to the college page", impact: "coaches can't build an accurate roster", recency: 'long' },
+  ],
+  'High school': [
+    { text: "Coach linked the wrong account to the team roster", impact: "the player's real results don't show for the school team", recency: 'new' },
+    { text: "USTA match results not importing to UTR", impact: "matches they've played simply don't count", recency: 'recent' },
+    { text: "Rating doesn't match who they've beaten on court", impact: "the number feels inconsistent with real results", recency: 'long' },
+  ],
+  'Parents': [
+    { text: "A result posted but still isn't counting toward the rating", impact: "the child's progress stalls despite winning", recency: 'new' },
+    { text: "Can't understand why a child's rating won't move (e.g. stuck at O1)", impact: "no way to tell if the child is improving", recency: 'recent' },
+    { text: "Missing matches from events the child played", impact: "the record understates what they've actually done", recency: 'long' },
+    { text: "A duplicate profile is splitting a child's matches", impact: "results scattered across accounts, rating looks wrong", recency: 'long' },
+    { text: "Date of birth wrong on the profile", impact: "child placed in the wrong age group", recency: 'long' },
+  ],
+  'Free users': [
+    { text: "Results from outside tournaments don't land on the profile", impact: "the rating looks half-built, so it feels untrustworthy", recency: 'recent' },
+    { text: "Unclear what the rating actually means", impact: "hard to know if it's worth engaging with", recency: 'long' },
+    { text: "Weighing whether Power is worth upgrading to", impact: "on the fence about paying", recency: 'long' },
+  ],
 };
 
 // Volume share + trend from rolling windows (last 30d vs prior 30d).
@@ -572,28 +566,32 @@ function personaMeta(name) {
 function buildPersonaSentiment() {
   const personas = ['Club customers', 'Power subscribers', 'College', 'High school', 'Parents', 'Free users'];
   const cards = personas.map(name => {
-    const v = PERSONA_VOICE[name];
-    if (!v) return '';
+    const concerns = PERSONA_CONCERNS[name];
+    if (!concerns) return '';
+    const items = concerns.map(c => `
+        <li>
+          <span class="c-text">${escHtml(c.text)}</span>
+          <span class="c-impact">— ${escHtml(c.impact)}</span>
+          <span class="recency r-${c.recency}">${RECENCY[c.recency]}</span>
+        </li>`).join('');
     return `
     <div class="persona-card">
-      <div class="persona-top"><span class="persona-name">${name}</span>${personaMeta(name)}</div>
-      <p class="persona-voice">&ldquo;${escHtml(v.voice)}&rdquo;</p>
-      <ul class="persona-points">${(v.bullets ?? []).map(b => `<li>${escHtml(b)}</li>`).join('')}</ul>
+      <div class="persona-top"><span class="persona-name">${name}</span></div>
+      <ul class="concern-list">${items}</ul>
     </div>`;
   }).join('');
 
   return `
 <section id="s7">
   ${sectionHeader('07', 'Persona Sentiment')}
-  <p class="section-note">The collective voice of each customer segment — what they're trying to do and what gets in their way.</p>
+  <p class="section-note">What each customer segment is trying to do and what gets in their way — newest concerns first.</p>
   <div class="persona-grid">
     ${cards}
   </div>
   <p class="metric-defs">
-    <b>% of contacts (n)</b> — this segment's share of engaged chats over the last 30 days, with the raw count.
-    <b>Trend arrow</b> — change in chat volume vs the prior 30 days (↑ rising · ↓ falling · → flat); shown only for
-    segments with at least ${MIN_PERSONA_TREND} chats, since smaller segments swing on a handful of contacts (marked <i>low volume</i>).
-    The five paid and role-based segments are inferred from chat content; <b>Free users</b> is the remainder — engaged chats that don't match any other segment — so shares total ~100%.
+    Each concern is tagged by how long the theme has been recurring in support conversations —
+    <b>New</b> (past 2 weeks), <b>Recent</b> (past 3 months), <b>Longstanding</b> (past 12 months), listed newest first.
+    Recency is a qualitative read for now; per-segment contact volumes are being finalized and will be added.
   </p>
 </section>`;
 }
@@ -1054,9 +1052,13 @@ const css = `
   .persona-trend.pt-up   { color: #3b82c4; }   /* soft blue */
   .persona-trend.pt-down { color: #b08035; }   /* soft amber */
   .persona-trend.pt-flat { color: #94a3b8; }   /* muted gray */
-  .persona-voice { font-size: 16px; color: var(--ink); font-style: italic; line-height: 1.55; margin: 0; }
-  .persona-points { margin: 2px 0 0; padding-left: 20px; }
-  .persona-points li { font-size: 14px; color: var(--ink); line-height: 1.7; }
+  .concern-list { margin: 4px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 10px; }
+  .concern-list li { font-size: 14px; color: var(--ink); line-height: 1.5; }
+  .c-impact { color: var(--muted); }
+  .recency { display: inline-block; margin-left: 6px; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; white-space: nowrap; vertical-align: 1px; }
+  .recency.r-new    { color: #b0603a; background: rgba(176,96,58,.12); }
+  .recency.r-recent { color: #3b82c4; background: rgba(59,130,196,.12); }
+  .recency.r-long   { color: #7a8699; background: rgba(122,134,153,.12); }
 
   /* Interaction Examples — shared shell */
   .tag { font-size: 12px; font-weight: 600; border-radius: 20px; padding: 2px 10px; }
