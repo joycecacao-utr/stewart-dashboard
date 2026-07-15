@@ -222,7 +222,7 @@
   .concern-list { margin: 4px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 10px; }
   .concern-list li { font-size: 14px; color: var(--ink); line-height: 1.5; }
   .c-impact { color: var(--muted); }
-  .recency { display: inline-block; margin-left: 6px; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; white-space: nowrap; vertical-align: 1px; }
+  .recency { display: inline-block; margin-right: 8px; font-size: 10.5px; font-weight: 700; padding: 1px 8px; border-radius: 999px; white-space: nowrap; vertical-align: 1px; text-transform: uppercase; letter-spacing: .03em; }
   .recency.r-new    { color: #b0603a; background: rgba(176,96,58,.12); }
   .recency.r-recent { color: #3b82c4; background: rgba(59,130,196,.12); }
   .recency.r-long   { color: #7a8699; background: rgba(122,134,153,.12); }
@@ -493,52 +493,53 @@
     <div class="persona-card">
       <div class="persona-top"><span class="persona-name">Club customers</span><span class="persona-vol">~6,600 contacts · past 12 mo</span></div>
       <ul class="concern-list">
-        <li><span class="c-text">Live events we're running don't show up in the Events tab</span> <span class="c-impact">— players assume the event's cancelled and message us directly</span></li>
-        <li><span class="c-text">Payment-failure emails on charges that already went through</span> <span class="c-impact">— we waste time chasing payments that were actually fine</span></li>
-        <li><span class="c-text">Can't find the Stripe fee breakdown to reconcile club payouts</span> <span class="c-impact">— we can't confirm we were paid the right amount</span></li>
-        <li><span class="c-text">Players' matches from outside tournaments not importing</span> <span class="c-impact">— our members' ratings look incomplete and they blame the club</span></li></ul>
+        <li><span class="recency r-new">New</span> <span class="c-text">Live events we're running don't show up in the Events tab</span> <span class="c-impact">— players assume the event's cancelled and message us directly</span></li>
+        <li><span class="recency r-recent">Recent</span> <span class="c-text">Payment-failure emails on charges that already went through</span> <span class="c-impact">— we waste time chasing payments that were actually fine</span></li>
+        <li><span class="recency r-long">Longstanding</span> <span class="c-text">Can't find the Stripe fee breakdown to reconcile club payouts</span> <span class="c-impact">— we can't confirm we were paid the right amount</span></li>
+        <li><span class="recency r-long">Longstanding</span> <span class="c-text">Players' matches from outside tournaments not importing</span> <span class="c-impact">— our members' ratings look incomplete and they blame the club</span></li></ul>
     </div>
     <div class="persona-card">
       <div class="persona-top"><span class="persona-name">Power subscribers</span><span class="persona-vol">~640 contacts · June 2026</span></div>
       <ul class="concern-list">
-        <li><span class="c-text">Auto-renewal charged without approval, plus surprise App Store fees</span> <span class="c-impact">— feels billed without consent; erodes trust in the subscription</span></li>
-        <li><span class="c-text">Flex-league points not showing up</span> <span class="c-impact">— can't tell if league play counts, so the feature feels broken</span></li>
-        <li><span class="c-text">Paying for Power but can't see the full ratings and stats</span> <span class="c-impact">— not getting the core benefit they pay for</span></li>
-        <li><span class="c-text">Rating drops sharply with no explanation</span> <span class="c-impact">— undermines confidence in the number they rely on</span></li></ul>
+        <li><span class="recency r-new">New</span> <span class="c-text">Auto-renewal charged without approval, plus surprise App Store fees</span> <span class="c-impact">— feels billed without consent; erodes trust in the subscription</span></li>
+        <li><span class="recency r-recent">Recent</span> <span class="c-text">Flex-league points not showing up</span> <span class="c-impact">— can't tell if league play counts, so the feature feels broken</span></li>
+        <li><span class="recency r-long">Longstanding</span> <span class="c-text">Paying for Power but can't see the full ratings and stats</span> <span class="c-impact">— not getting the core benefit they pay for</span></li>
+        <li><span class="recency r-long">Longstanding</span> <span class="c-text">Rating drops sharply with no explanation</span> <span class="c-impact">— undermines confidence in the number they rely on</span></li></ul>
     </div>
     <div class="persona-card">
       <div class="persona-top"><span class="persona-name">College</span><span class="persona-vol">~2,000 contacts · past 12 mo</span></div>
       <ul class="concern-list">
-        <li><span class="c-text">Entire tournaments missing from UTR, not just their own results</span> <span class="c-impact">— recruiting and seeding decisions get made on an incomplete record</span></li>
-        <li><span class="c-text">Rating doesn't reflect the level they actually play</span> <span class="c-impact">— they get seeded or judged below their true ability</span></li>
-        <li><span class="c-text">Trouble adding players to the college page</span> <span class="c-impact">— coaches can't build an accurate roster</span></li></ul>
+        <li><span class="recency r-recent">Recent</span> <span class="c-text">Entire tournaments missing from UTR, not just their own results</span> <span class="c-impact">— recruiting and seeding decisions get made on an incomplete record</span></li>
+        <li><span class="recency r-long">Longstanding</span> <span class="c-text">Rating doesn't reflect the level they actually play</span> <span class="c-impact">— they get seeded or judged below their true ability</span></li>
+        <li><span class="recency r-long">Longstanding</span> <span class="c-text">Trouble adding players to the college page</span> <span class="c-impact">— coaches can't build an accurate roster</span></li></ul>
     </div>
     <div class="persona-card">
       <div class="persona-top"><span class="persona-name">High school</span><span class="persona-vol">~1,800 contacts · past 12 mo</span></div>
       <ul class="concern-list">
-        <li><span class="c-text">Coach linked the wrong account to the team roster</span> <span class="c-impact">— the player's real results don't show for the school team</span></li>
-        <li><span class="c-text">USTA match results not importing to UTR</span> <span class="c-impact">— matches they've played simply don't count</span></li>
-        <li><span class="c-text">Rating doesn't match who they've beaten on court</span> <span class="c-impact">— the number feels inconsistent with real results</span></li></ul>
+        <li><span class="recency r-new">New</span> <span class="c-text">Coach linked the wrong account to the team roster</span> <span class="c-impact">— the player's real results don't show for the school team</span></li>
+        <li><span class="recency r-recent">Recent</span> <span class="c-text">USTA match results not importing to UTR</span> <span class="c-impact">— matches they've played simply don't count</span></li>
+        <li><span class="recency r-long">Longstanding</span> <span class="c-text">Rating doesn't match who they've beaten on court</span> <span class="c-impact">— the number feels inconsistent with real results</span></li></ul>
     </div>
     <div class="persona-card">
       <div class="persona-top"><span class="persona-name">Parents</span><span class="persona-vol">~5,900 contacts · past 12 mo</span></div>
       <ul class="concern-list">
-        <li><span class="c-text">A result posted but still isn't counting toward the rating</span> <span class="c-impact">— the child's progress stalls despite winning</span></li>
-        <li><span class="c-text">Can't understand why a child's rating won't move (e.g. stuck at O1)</span> <span class="c-impact">— no way to tell if the child is improving</span></li>
-        <li><span class="c-text">Missing matches from events the child played</span> <span class="c-impact">— the record understates what they've actually done</span></li>
-        <li><span class="c-text">A duplicate profile is splitting a child's matches</span> <span class="c-impact">— results scattered across accounts, rating looks wrong</span></li>
-        <li><span class="c-text">Date of birth wrong on the profile</span> <span class="c-impact">— child placed in the wrong age group</span></li></ul>
+        <li><span class="recency r-new">New</span> <span class="c-text">A result posted but still isn't counting toward the rating</span> <span class="c-impact">— the child's progress stalls despite winning</span></li>
+        <li><span class="recency r-recent">Recent</span> <span class="c-text">Can't understand why a child's rating won't move (e.g. stuck at O1)</span> <span class="c-impact">— no way to tell if the child is improving</span></li>
+        <li><span class="recency r-long">Longstanding</span> <span class="c-text">Missing matches from events the child played</span> <span class="c-impact">— the record understates what they've actually done</span></li>
+        <li><span class="recency r-long">Longstanding</span> <span class="c-text">A duplicate profile is splitting a child's matches</span> <span class="c-impact">— results scattered across accounts, rating looks wrong</span></li>
+        <li><span class="recency r-long">Longstanding</span> <span class="c-text">Date of birth wrong on the profile</span> <span class="c-impact">— child placed in the wrong age group</span></li></ul>
     </div>
     <div class="persona-card">
       <div class="persona-top"><span class="persona-name">Free users</span><span class="persona-vol">~1,930 contacts · June 2026</span></div>
       <ul class="concern-list">
-        <li><span class="c-text">Results from outside tournaments don't land on the profile</span> <span class="c-impact">— the rating looks half-built, so it feels untrustworthy</span></li>
-        <li><span class="c-text">Unclear what the rating actually means</span> <span class="c-impact">— hard to know if it's worth engaging with</span></li>
-        <li><span class="c-text">Weighing whether Power is worth upgrading to</span> <span class="c-impact">— on the fence about paying</span></li></ul>
+        <li><span class="recency r-recent">Recent</span> <span class="c-text">Results from outside tournaments don't land on the profile</span> <span class="c-impact">— the rating looks half-built, so it feels untrustworthy</span></li>
+        <li><span class="recency r-long">Longstanding</span> <span class="c-text">Unclear what the rating actually means</span> <span class="c-impact">— hard to know if it's worth engaging with</span></li>
+        <li><span class="recency r-long">Longstanding</span> <span class="c-text">Weighing whether Power is worth upgrading to</span> <span class="c-impact">— on the fence about paying</span></li></ul>
     </div>
   </div>
   <p class="metric-defs">
-    Volume = CSS support tickets classified by segment. Club, College, HS and Parents cover the past 12 months; Free and Power cover June 2026, when subscription tracking began.
+    <b>Volume</b> = CSS support tickets classified by segment. Club, College, HS and Parents cover the past 12 months; Free and Power cover June 2026, when subscription tracking began.<br>
+    <b>Recency</b> = roughly how long the issue has been raised — <b>New</b> (this month), <b>Recent</b> (this quarter), <b>Longstanding</b> (all year) — estimated from ticket trends, independent of the volume window above.
   </p>
 </section>
   

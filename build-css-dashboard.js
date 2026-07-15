@@ -473,11 +473,7 @@ function buildHappyThoughts() {
 // transcripts (reviewed for authenticity; not auto-generated each run).
 // Recency tags mark how long a theme has been recurring in support conversations.
 // (Qualitative read for now — to be firmed up with historical ticket data.)
-const RECENCY = {
-  new:    'New · past 2 wks',
-  recent: 'Recent · past 3 mo',
-  long:   'Longstanding · past 12 mo',
-};
+const RECENCY = { new: 'New', recent: 'Recent', long: 'Longstanding' };
 
 // Each persona = a list of concrete concerns (customer framing) + an impact clause
 // + a recency tag. Ordered newest-first.
@@ -584,7 +580,7 @@ function buildPersonaSentiment() {
     const vol = PERSONA_VOLUME[name];
     const volLine = vol ? `<span class="persona-vol">${vol.n} contacts · ${vol.period}</span>` : '';
     const items = concerns.map(c => `
-        <li><span class="c-text">${escHtml(c.text)}</span> <span class="c-impact">— ${escHtml(c.impact)}</span></li>`).join('');
+        <li><span class="recency r-${c.recency}">${RECENCY[c.recency]}</span> <span class="c-text">${escHtml(c.text)}</span> <span class="c-impact">— ${escHtml(c.impact)}</span></li>`).join('');
     return `
     <div class="persona-card">
       <div class="persona-top"><span class="persona-name">${name}</span>${volLine}</div>
@@ -600,7 +596,8 @@ function buildPersonaSentiment() {
     ${cards}
   </div>
   <p class="metric-defs">
-    Volume = CSS support tickets classified by segment. Club, College, HS and Parents cover the past 12 months; Free and Power cover June 2026, when subscription tracking began.
+    <b>Volume</b> = CSS support tickets classified by segment. Club, College, HS and Parents cover the past 12 months; Free and Power cover June 2026, when subscription tracking began.<br>
+    <b>Recency</b> = roughly how long the issue has been raised — <b>New</b> (this month), <b>Recent</b> (this quarter), <b>Longstanding</b> (all year) — estimated from ticket trends, independent of the volume window above.
   </p>
 </section>`;
 }
@@ -1065,7 +1062,7 @@ const css = `
   .concern-list { margin: 4px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 10px; }
   .concern-list li { font-size: 14px; color: var(--ink); line-height: 1.5; }
   .c-impact { color: var(--muted); }
-  .recency { display: inline-block; margin-left: 6px; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; white-space: nowrap; vertical-align: 1px; }
+  .recency { display: inline-block; margin-right: 8px; font-size: 10.5px; font-weight: 700; padding: 1px 8px; border-radius: 999px; white-space: nowrap; vertical-align: 1px; text-transform: uppercase; letter-spacing: .03em; }
   .recency.r-new    { color: #b0603a; background: rgba(176,96,58,.12); }
   .recency.r-recent { color: #3b82c4; background: rgba(59,130,196,.12); }
   .recency.r-long   { color: #7a8699; background: rgba(122,134,153,.12); }
