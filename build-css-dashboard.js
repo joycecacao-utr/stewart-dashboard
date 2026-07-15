@@ -563,11 +563,26 @@ function personaMeta(name) {
   return `<span class="persona-meta">${base}${trend}</span>`;
 }
 
+// Contact volume from CSS support tickets, classified by the segment cascade
+// (sampled & scaled). Role segments span the past 12 months; Free/Power reflect
+// June 2026, when subscription tracking began — so they aren't directly
+// comparable to the 12-month figures.
+const PERSONA_VOLUME = {
+  'Club customers':    { n: '~6,600', period: 'past 12 mo' },
+  'Power subscribers': { n: '~640',   period: 'June 2026' },
+  'College':           { n: '~2,000', period: 'past 12 mo' },
+  'High school':       { n: '~1,800', period: 'past 12 mo' },
+  'Parents':           { n: '~5,900', period: 'past 12 mo' },
+  'Free users':        { n: '~1,930', period: 'June 2026' },
+};
+
 function buildPersonaSentiment() {
   const personas = ['Club customers', 'Power subscribers', 'College', 'High school', 'Parents', 'Free users'];
   const cards = personas.map(name => {
     const concerns = PERSONA_CONCERNS[name];
     if (!concerns) return '';
+    const vol = PERSONA_VOLUME[name];
+    const volLine = vol ? `<span class="persona-vol">${vol.n} contacts · ${vol.period}</span>` : '';
     const items = concerns.map(c => `
         <li>
           <span class="c-text">${escHtml(c.text)}</span>
@@ -576,7 +591,7 @@ function buildPersonaSentiment() {
         </li>`).join('');
     return `
     <div class="persona-card">
-      <div class="persona-top"><span class="persona-name">${name}</span></div>
+      <div class="persona-top"><span class="persona-name">${name}</span>${volLine}</div>
       <ul class="concern-list">${items}</ul>
     </div>`;
   }).join('');
@@ -589,9 +604,9 @@ function buildPersonaSentiment() {
     ${cards}
   </div>
   <p class="metric-defs">
-    Each concern is tagged by how long the theme has been recurring in support conversations —
-    <b>New</b> (past 2 weeks), <b>Recent</b> (past 3 months), <b>Longstanding</b> (past 12 months), listed newest first.
-    Recency is a qualitative read for now; per-segment contact volumes are being finalized and will be added.
+    <b>Volume</b> — CSS support tickets classified by segment (sampled &amp; scaled). Club/College/HS/Parents span the <b>past 12 months</b>;
+    <b>Free/Power</b> reflect <b>June 2026</b>, when subscription tracking began, so they aren't directly comparable to the 12-month figures.
+    <b>Recency tags</b> — New (past 2 wks) · Recent (past 3 mo) · Longstanding (past 12 mo) — flag how current each theme is, newest first.
   </p>
 </section>`;
 }
@@ -1052,6 +1067,7 @@ const css = `
   .persona-trend.pt-up   { color: #3b82c4; }   /* soft blue */
   .persona-trend.pt-down { color: #b08035; }   /* soft amber */
   .persona-trend.pt-flat { color: #94a3b8; }   /* muted gray */
+  .persona-vol { font-size: 13px; color: var(--muted); font-weight: 600; }
   .concern-list { margin: 4px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 10px; }
   .concern-list li { font-size: 14px; color: var(--ink); line-height: 1.5; }
   .c-impact { color: var(--muted); }
