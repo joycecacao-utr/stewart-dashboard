@@ -1,0 +1,16 @@
+name: VFJul
+on:
+  workflow_dispatch:
+jobs:
+  d:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run VF July check
+        env:
+          VOICEFLOW_KEY: ${{ secrets.VOICEFLOW_KEY }}
+        run: node diag-vf-jul.js
