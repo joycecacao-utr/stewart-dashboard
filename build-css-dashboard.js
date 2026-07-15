@@ -584,11 +584,7 @@ function buildPersonaSentiment() {
     const vol = PERSONA_VOLUME[name];
     const volLine = vol ? `<span class="persona-vol">${vol.n} contacts · ${vol.period}</span>` : '';
     const items = concerns.map(c => `
-        <li>
-          <span class="c-text">${escHtml(c.text)}</span>
-          <span class="c-impact">— ${escHtml(c.impact)}</span>
-          <span class="recency r-${c.recency}">${RECENCY[c.recency]}</span>
-        </li>`).join('');
+        <li><span class="c-text">${escHtml(c.text)}</span> <span class="c-impact">— ${escHtml(c.impact)}</span></li>`).join('');
     return `
     <div class="persona-card">
       <div class="persona-top"><span class="persona-name">${name}</span>${volLine}</div>
@@ -599,14 +595,12 @@ function buildPersonaSentiment() {
   return `
 <section id="s7">
   ${sectionHeader('07', 'Persona Sentiment')}
-  <p class="section-note">What each customer segment is trying to do and what gets in their way — newest concerns first.</p>
+  <p class="section-note">What each customer segment is trying to do and what gets in their way.</p>
   <div class="persona-grid">
     ${cards}
   </div>
   <p class="metric-defs">
-    <b>Volume</b> — CSS support tickets classified by segment (sampled &amp; scaled). Club/College/HS/Parents span the <b>past 12 months</b>;
-    <b>Free/Power</b> reflect <b>June 2026</b>, when subscription tracking began, so they aren't directly comparable to the 12-month figures.
-    <b>Recency tags</b> — New (past 2 wks) · Recent (past 3 mo) · Longstanding (past 12 mo) — flag how current each theme is, newest first.
+    Volume = CSS support tickets classified by segment. Club, College, HS and Parents cover the past 12 months; Free and Power cover June 2026, when subscription tracking began.
   </p>
 </section>`;
 }
