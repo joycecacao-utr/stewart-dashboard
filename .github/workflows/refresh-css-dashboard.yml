@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: '0 14 * * 1'   # Every Monday at 14:00 UTC = 6:00am PST / 7:00am PDT
   workflow_dispatch:         # Manual trigger from GitHub Actions tab
+    inputs:
+      fast:
+        description: 'Fast Voiceflow-only refresh (skip slow Freshdesk paging; reuse cached ticket/CSAT data)'
+        type: boolean
+        default: false
 
 jobs:
   refresh:
@@ -30,6 +35,7 @@ jobs:
           VOICEFLOW_KEY:           ${{ secrets.VOICEFLOW_KEY }}
           GOOGLE_SHEETS_API_KEY:   ${{ secrets.GOOGLE_SHEETS_API_KEY }}
           FRESHDESK_DOMAIN:        universaltennis
+          FAST_VF_ONLY:            ${{ inputs.fast && '1' || '0' }}
         run: node fetch-css-data.js
 
       - name: Build dashboard HTML

@@ -27,6 +27,11 @@ const DATA_END        = new Date('2024-08-09T23:59:59Z'); // last date with CSS 
 const VF_LOOKBACK_DAYS = parseInt(process.env.VF_LOOKBACK_DAYS || '90', 10); // AI/Voiceflow launched April 2026; 90d covers it
 const MIN_SLEEP_MS     = 3000;  // 3s between calls — 20% capacity cap (≈20 req/min) to avoid conflicting with Stewart bot
 const VF_SLEEP_MS      = 80;    // Voiceflow rate limits are much more lenient
+// Fast Voiceflow-only refresh: skip the slow Freshdesk ticket/CSAT paging (3s/call
+// over ~185 days) and reuse the cached Freshdesk-derived data, refreshing only the
+// Voiceflow-driven sections (AI Resolution, Chat Interaction, persona window) plus the
+// fast Google-Sheets metrics. Lets us update AI Resolution reliably in minutes.
+const FAST_VF_ONLY     = process.env.FAST_VF_ONLY === '1';
 
 // Priority labels (Freshdesk: 1=Low 2=Medium 3=High 4=Urgent)
 const PRIORITY_NAMES  = { 1: 'Low', 2: 'Medium', 3: 'High', 4: 'Urgent' };
@@ -295,6 +300,36 @@ async function vfGetAll(days) {
     await sleep(VF_SLEEP_MS);
   }
   console.log(`  → ${all.length} transcripts (${fetched} with log entries)`);
+
+  // Retry pass for evaluations. Under a large pull, Voiceflow occasionally returns a
+  // transcript's logs before its "Deflection rate (strict)" evaluation is attached, so
+  // a real (non-bounce) chat can come back with an empty evaluations array. Re-fetch
+  // those detail records — spaced out, after the main pass — up to 2 more times. This
+  // recovers scores that were merely late in the response, without inventing scores for
+  // chats Voiceflow genuinely hasn't evaluated yet.
+  const needsEval = t => (t.logs?.length > 0) &&
+    !(t.evaluations ?? []).some(e => /deflection rate \(strict\)/i.test(e?.name ?? ''));
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const pending = all.filter(needsEval);
+    if (pending.length === 0) break;
+    console.log(`  → evaluations retry ${attempt}: re-fetching ${pending.length} transcript(s) missing a deflection score`);
+    for (let i = 0; i < pending.length; i += LOG_BATCH) {
+      await Promise.all(pending.slice(i, i + LOG_BATCH).map(async t => {
+        try {
+          const r = await fetch(`${VF_ANALYTICS}/v1/transcript/${t.id}`, { headers: vfHeaders() });
+          if (r.ok) {
+            const body = await r.json();
+            const ev = body.evaluations ?? body.transcript?.evaluations ?? [];
+            if (ev.length) t.evaluations = ev;
+          }
+        } catch { /* keep prior value */ }
+      }));
+      await sleep(VF_SLEEP_MS * 3); // space retries out more than the main pass
+    }
+  }
+  const stillUnscored = all.filter(needsEval).length;
+  if (stillUnscored) console.log(`  → ${stillUnscored} transcript(s) still unscored (Voiceflow has not evaluated them yet)`);
+
   return all;
 }
 
@@ -912,15 +947,19 @@ async function main() {
 
   // Read cache up front to know which historical months we already have.
   const cachedPath = join(__dirname, 'css-data.json');
+  let cachedData = null;
   let cachedMonthly = {};
   let cachedRevenueRecovery = null;
   if (existsSync(cachedPath)) {
     try {
-      const cached = JSON.parse(readFileSync(cachedPath, 'utf8'));
-      cachedMonthly = cached.monthly ?? {};
-      cachedRevenueRecovery = cached.revenueRecovery ?? null;
+      cachedData = JSON.parse(readFileSync(cachedPath, 'utf8'));
+      cachedMonthly = cachedData.monthly ?? {};
+      cachedRevenueRecovery = cachedData.revenueRecovery ?? null;
     }
     catch { /* corrupt/missing cache — treat as empty */ }
+  }
+  if (FAST_VF_ONLY && !cachedData) {
+    throw new Error('FAST_VF_ONLY requires an existing css-data.json cache to reuse Freshdesk data');
   }
 
   // Prior-year month (e.g. June 2025) — the PY comparison column. Fetched ONCE when
@@ -974,24 +1013,33 @@ async function main() {
     });
   }
 
-  console.log(`Fetching Freshdesk tickets (${targetMonths.length} targeted months, CSS groups)…`);
-  const tickets = await fdFetchTickets(targetMonths, cssGroupIds);
-  const tCreated = tickets.map(t => t.created_at).filter(Boolean).sort();
-  console.log(`  → ${tickets.length} tickets, created ${tCreated[0]?.slice(0,10) ?? 'n/a'} – ${tCreated[tCreated.length-1]?.slice(0,10) ?? 'n/a'}`);
+  let tickets = [];
+  if (FAST_VF_ONLY) {
+    console.log('FAST_VF_ONLY: skipping Freshdesk ticket fetch — reusing cached ticket-derived stats');
+  } else {
+    console.log(`Fetching Freshdesk tickets (${targetMonths.length} targeted months, CSS groups)…`);
+    tickets = await fdFetchTickets(targetMonths, cssGroupIds);
+    const tCreated = tickets.map(t => t.created_at).filter(Boolean).sort();
+    console.log(`  → ${tickets.length} tickets, created ${tCreated[0]?.slice(0,10) ?? 'n/a'} – ${tCreated[tCreated.length-1]?.slice(0,10) ?? 'n/a'}`);
+  }
 
   // Only fetch CSAT within the bucketed window — a full year of ratings is paginated
   // at 3s/page and isn't aggregated outside the window anyway. PY CSAT comes from the sheet.
   const csatSince = new Date(Date.now() - (LOOKBACK_DAYS + 2) * 86400000).toISOString();
-  console.log('Fetching Freshdesk CSAT…');
   let csat = [];
-  try {
-    csat = await fdGetAll('surveys/satisfaction_ratings', { created_since: csatSince });
-    console.log(`  → ${csat.length} ratings`);
-  } catch {
+  if (FAST_VF_ONLY) {
+    console.log('FAST_VF_ONLY: skipping Freshdesk CSAT fetch — reusing cached CSAT-derived stats');
+  } else {
+    console.log('Fetching Freshdesk CSAT…');
     try {
-      csat = await fdGetAll('satisfaction_ratings', { created_since: csatSince });
+      csat = await fdGetAll('surveys/satisfaction_ratings', { created_since: csatSince });
       console.log(`  → ${csat.length} ratings`);
-    } catch (e) { console.warn('  CSAT unavailable:', e.message); }
+    } catch {
+      try {
+        csat = await fdGetAll('satisfaction_ratings', { created_since: csatSince });
+        console.log(`  → ${csat.length} ratings`);
+      } catch (e) { console.warn('  CSAT unavailable:', e.message); }
+    }
   }
 
   // Keep only CSAT for CSS-group tickets — a rating qualifies if its group_id is
@@ -1045,7 +1093,7 @@ async function main() {
   }
 
   console.log('Building daily rollups…');
-  const daily   = buildDailyRollups(tickets, sessions, csat, LOOKBACK_DAYS, generalGroupId, [{ start: pyStart, end: pyEnd }]);
+  let daily     = buildDailyRollups(tickets, sessions, csat, LOOKBACK_DAYS, generalGroupId, [{ start: pyStart, end: pyEnd }]);
   const monthly = buildMonthlyRollups(daily);
 
   // Merge stable historical months from cache for any month we did NOT fetch this run.
@@ -1074,6 +1122,25 @@ async function main() {
     }
   }
 
+  // FAST_VF_ONLY: the daily series drives the ticket-volume and CSAT charts, so we
+  // can't ship the VF-only `daily` (it would zero those out). Take the cached daily
+  // as the base and overlay just this run's fresh Voiceflow per-day fields.
+  if (FAST_VF_ONLY && Array.isArray(cachedData?.daily)) {
+    const freshByDate = new Map(daily.map(d => [d.date, d]));
+    const mergedDaily = cachedData.daily.map(cd => {
+      const fd = freshByDate.get(cd.date);
+      if (!fd) return cd;
+      freshByDate.delete(cd.date);
+      const o = { ...cd };
+      for (const f of VF_FIELDS) o[f] = fd[f];
+      return o;
+    });
+    for (const fd of freshByDate.values()) mergedDaily.push(fd); // brand-new days (VF only)
+    mergedDaily.sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+    daily = mergedDaily;
+    console.log(`  FAST_VF_ONLY: overlaid fresh VF fields onto ${cachedData.daily.length} cached daily rows`);
+  }
+
   // Diagnostic: print ticket counts per month so we can verify against Freshdesk Analytics
   const curMoKey = new Date().toISOString().slice(0, 7);
   console.log('  Monthly ticket counts (last 6 months):');
@@ -1098,9 +1165,15 @@ async function main() {
   }
   console.log(`    YTD: transcripts=${ytdSess}, engaged=${ytdEng}, aiResolved=${ytdAi}, cost=$${(ytdEng * VF_COST).toFixed(2)} @ $${VF_COST}/engaged session`);
 
-  console.log('Extracting Happy Thoughts from CSAT…');
-  const happyThoughts = findHappyThoughts(csat);
-  console.log(`  → ${happyThoughts.length} quotes`);
+  let happyThoughts;
+  if (FAST_VF_ONLY) {
+    happyThoughts = cachedData?.happyThoughts ?? [];
+    console.log(`Reusing ${happyThoughts.length} cached Happy Thoughts (FAST_VF_ONLY)`);
+  } else {
+    console.log('Extracting Happy Thoughts from CSAT…');
+    happyThoughts = findHappyThoughts(csat);
+    console.log(`  → ${happyThoughts.length} quotes`);
+  }
 
   console.log('Analyzing Persona Sentiment…');
   const personaSentiment = analyzePersonaSentiment(sessions);
