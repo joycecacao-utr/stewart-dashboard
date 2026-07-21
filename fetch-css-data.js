@@ -1061,6 +1061,13 @@ async function main() {
   } catch (e) {
     console.warn('  CSS metrics fetch failed:', e.message);
   }
+  // Safety net: the sheet drives the ticket-volume table + chart. If the fetch fails
+  // or comes back empty (e.g. a transient Google Sheets 403), fall back to the last
+  // known values from cache so those never blank out — mirrors revenueRecovery below.
+  if ((!cssSheetMetrics || !Object.keys(cssSheetMetrics.monthly ?? {}).length) && cachedData?.cssSheetMetrics) {
+    cssSheetMetrics = cachedData.cssSheetMetrics;
+    console.log(`  Restored CSS metrics from cache (${Object.keys(cssSheetMetrics.monthly ?? {}).length} months)`);
+  }
 
   console.log('Fetching Revenue Recovery from Google Sheets…');
   let revenueRecovery = null;
