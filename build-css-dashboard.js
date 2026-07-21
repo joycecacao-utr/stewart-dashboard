@@ -480,38 +480,39 @@ const RECENCY = { new: 'New', recent: 'Recent', long: 'Longstanding' };
 // + a recency tag. Ordered newest-first.
 const PERSONA_CONCERNS = {
   'Club customers': [
-    { text: "Live events we're running don't show up in the Events tab", impact: "players assume the event's cancelled and message us directly", recency: 'new' },
-    { text: "Payment-failure emails on charges that already went through", impact: "we waste time chasing payments that were actually fine", recency: 'recent' },
-    { text: "Can't find the Stripe fee breakdown to reconcile club payouts", impact: "we can't confirm we were paid the right amount", recency: 'long' },
-    { text: "Players' matches from outside tournaments not importing", impact: "our members' ratings look incomplete and they blame the club", recency: 'long' },
+    { text: "Events they're running don't show on the home page or in event search", impact: "players can't find or enter them and message the club thinking it's cancelled", recency: 'new' },
+    { text: "Adding a player to an event or roster attaches the wrong person", impact: "rosters list the wrong player and need manual cleanup", recency: 'recent' },
+    { text: "Members' results from outside tournaments don't import", impact: "ratings look incomplete and members blame the club", recency: 'long' },
+    { text: "Wrong info on a player they manage (profile details, matches)", impact: "the club looks careless and has to chase a fix", recency: 'long' },
   ],
   'Power subscribers': [
-    { text: "Auto-renewal charged without approval, plus surprise App Store fees", impact: "feels billed without consent; erodes trust in the subscription", recency: 'new' },
-    { text: "Flex-league points not showing up", impact: "can't tell if league play counts, so the feature feels broken", recency: 'recent' },
-    { text: "Paying for Power but can't see the full ratings and stats", impact: "not getting the core benefit they pay for", recency: 'long' },
-    { text: "Rating drops sharply with no explanation", impact: "undermines confidence in the number they rely on", recency: 'long' },
+    { text: "No way to cancel — the app shows only “Renew,” so auto-renewal charges hit anyway", impact: "surprise renewals (e.g. a $120 charge) and angry refund requests", recency: 'new' },
+    { text: "The Fabletics VIP perk won't activate — or quietly starts its own monthly charge", impact: "a paid benefit turns into an extra cost and erodes trust", recency: 'recent' },
+    { text: "Promo credits and Power Perks they were promised never get applied", impact: "they don't receive what they paid for", recency: 'recent' },
+    { text: "Rating sits unchanged for months despite strong recent results", impact: "undermines confidence in the number they subscribe for", recency: 'long' },
+    { text: "Imported ITF / USTA scores are missing from the profile", impact: "the record they pay to showcase is incomplete", recency: 'long' },
   ],
   'College': [
-    { text: "Entire tournaments missing from UTR, not just their own results", impact: "recruiting and seeding decisions get made on an incomplete record", recency: 'recent' },
-    { text: "Rating doesn't reflect the level they actually play", impact: "they get seeded or judged below their true ability", recency: 'long' },
-    { text: "Trouble adding players to the college page", impact: "coaches can't build an accurate roster", recency: 'long' },
+    { text: "Can't add players to the roster, or added players don't appear", impact: "coaches can't build an accurate roster for recruiting", recency: 'recent' },
+    { text: "College and NCAA results — including national rounds — missing from UTR", impact: "recruiting and seeding run on an incomplete record", recency: 'recent' },
+    { text: "Players locked out of their college account", impact: "roster and profile updates stall", recency: 'long' },
   ],
   'High school': [
-    { text: "Coach linked the wrong account to the team roster", impact: "the player's real results don't show for the school team", recency: 'new' },
-    { text: "USTA match results not importing to UTR", impact: "matches they've played simply don't count", recency: 'recent' },
+    { text: "Team-page admin access needs to move when the coach changes", impact: "the new coach is locked out of managing the team", recency: 'new' },
+    { text: "High-school match results aren't importing", impact: "matches played for the school don't count", recency: 'recent' },
     { text: "Rating doesn't match who they've beaten on court", impact: "the number feels inconsistent with real results", recency: 'long' },
   ],
   'Parents': [
-    { text: "A result posted but still isn't counting toward the rating", impact: "the child's progress stalls despite winning", recency: 'new' },
-    { text: "Can't understand why a child's rating won't move (e.g. stuck at O1)", impact: "no way to tell if the child is improving", recency: 'recent' },
-    { text: "Missing matches from events the child played", impact: "the record understates what they've actually done", recency: 'long' },
-    { text: "A duplicate profile is splitting a child's matches", impact: "results scattered across accounts, rating looks wrong", recency: 'long' },
-    { text: "Date of birth wrong on the profile", impact: "child placed in the wrong age group", recency: 'long' },
+    { text: "Matches the child never played show up on their profile", impact: "the rating reflects games that aren't theirs", recency: 'recent' },
+    { text: "A duplicate profile splits the child's matches across accounts", impact: "the single most common reason parents reach out — rating looks wrong and stuck", recency: 'long' },
+    { text: "Wrong name or date of birth, needing transfer to the child's real profile", impact: "the child is placed in the wrong age group", recency: 'long' },
+    { text: "Results from events the child played are missing", impact: "the record understates what they've actually done", recency: 'long' },
   ],
   'Free users': [
-    { text: "Results from outside tournaments don't land on the profile", impact: "the rating looks half-built, so it feels untrustworthy", recency: 'recent' },
-    { text: "Unclear what the rating actually means", impact: "hard to know if it's worth engaging with", recency: 'long' },
-    { text: "Weighing whether Power is worth upgrading to", impact: "on the fence about paying", recency: 'long' },
+    { text: "Matches they never played appear on their profile", impact: "the rating is built on the wrong data", recency: 'new' },
+    { text: "Duplicate profiles split their match history", impact: "the top reason free users contact us — rating looks incomplete and untrustworthy", recency: 'long' },
+    { text: "Results from outside events (USTA / ITF) don't appear", impact: "the profile looks half-built", recency: 'long' },
+    { text: "They don't show up in event search", impact: "they can't be found or entered into events", recency: 'recent' },
   ],
 };
 
@@ -561,16 +562,16 @@ function personaMeta(name) {
 }
 
 // Contact volume from CSS support tickets, classified by the segment cascade
-// (sampled & scaled). Role segments span the past 12 months; Free/Power reflect
-// June 2026, when subscription tracking began — so they aren't directly
-// comparable to the 12-month figures.
+// (sampled & scaled, refreshed 2026-07). Role segments span the trailing 12 months;
+// Free/Power reflect June–July 2026, when subscription tracking began — so they
+// aren't directly comparable to the 12-month figures.
 const PERSONA_VOLUME = {
-  'Club customers':    { n: '~6,600', period: 'past 12 mo' },
-  'Power subscribers': { n: '~640',   period: 'June 2026' },
-  'College':           { n: '~2,000', period: 'past 12 mo' },
-  'High school':       { n: '~1,800', period: 'past 12 mo' },
-  'Parents':           { n: '~5,900', period: 'past 12 mo' },
-  'Free users':        { n: '~1,930', period: 'June 2026' },
+  'Club customers':    { n: '~6,250', period: 'past 12 mo' },
+  'Power subscribers': { n: '~975',   period: 'Jun–Jul 2026' },
+  'College':           { n: '~1,965', period: 'past 12 mo' },
+  'High school':       { n: '~1,720', period: 'past 12 mo' },
+  'Parents':           { n: '~5,430', period: 'past 12 mo' },
+  'Free users':        { n: '~3,160', period: 'Jun–Jul 2026' },
 };
 
 function buildPersonaSentiment() {
@@ -597,7 +598,7 @@ function buildPersonaSentiment() {
     ${cards}
   </div>
   <p class="metric-defs">
-    <b>Volume</b> = CSS support tickets classified by segment. Club, College, HS and Parents cover the past 12 months; Free and Power cover June 2026, when subscription tracking began.<br>
+    <b>Volume</b> = CSS support tickets classified by segment (based on the ~45% of tickets carrying an identifiable segment). Club, College, HS and Parents cover the trailing 12 months; Free and Power cover Jun–Jul 2026, when subscription tracking began.<br>
     <b>Recency</b> = roughly how long the issue has been raised — <b>New</b> (this month), <b>Recent</b> (this quarter), <b>Longstanding</b> (all year) — estimated from ticket trends, independent of the volume window above.
   </p>
 </section>`;
