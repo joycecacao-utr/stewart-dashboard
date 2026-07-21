@@ -150,8 +150,9 @@ function avg(sum, count) { return (count && count > 0) ? (sum / count).toFixed(1
 function dollar(n)       { return n != null ? '$' + n.toFixed(2) : NA; }
 function num(n)          { return n != null ? n.toLocaleString() : NA; }
 
-// AI resolution = Voiceflow "Deflection rate (strict)": Pass / (Pass + Fail), N/A excluded.
-function aiResM(m)  { return m ? pct(m.aiDeflectPass, m.aiDeflectPass + m.aiDeflectFail) : NA; }
+// AI resolution = Voiceflow "Deflection rate (strict)" — Pass share of ALL scored
+// logs (Pass + Fail + N/A), exactly as Voiceflow's Evaluations dashboard reports it.
+function aiResM(m)  { return m ? pct(m.aiDeflectPass, m.aiDeflectPass + m.aiDeflectFail + m.aiDeflectNA) : NA; }
 // Sessions and cost count engaged sessions only (exclude bounces).
 function aiCostM(m) { return m ? dollar(m.engaged * data.vfCostPerSession) : NA; }
 function sessM(m)   { return m ? num(m.engaged)                    : NA; }
@@ -164,7 +165,7 @@ function csatM(m)   { return m ? pct(m.csatHappy, m.csatTotal)      : NA; }
 function durM(m)    { return m ? avg(m.durSum, m.durCount) + (m.durCount ? ' min' : '') : NA; }
 
 // YTD derived
-const ytdAiRes  = pct(ytd.aiDeflectPass, ytd.aiDeflectPass + ytd.aiDeflectFail);
+const ytdAiRes  = pct(ytd.aiDeflectPass, ytd.aiDeflectPass + ytd.aiDeflectFail + ytd.aiDeflectNA);
 const ytdAiCost = dollar(ytd.engaged * data.vfCostPerSession);
 const ytdSess   = num(ytd.engaged);
 const ytdTick   = num(ytd.ticketsCreated);
@@ -298,7 +299,7 @@ function buildAiResolution() {
       </tbody>
     </table>
   </div>
-  <p style="font-size:11px;color:var(--muted);margin-top:8px;">Abandoned chats — where the user left before a clear resolution or handoff — are excluded from the AI Resolution % calculation.</p>
+  <p style="font-size:11px;color:var(--muted);margin-top:8px;">AI Resolution % = Voiceflow's <b>Deflection rate (strict)</b> — Pass ÷ all scored chats (Pass + Fail + N/A) — matching the Voiceflow Evaluations dashboard. July reflects Voiceflow's evaluation results (the deflection evaluation is currently paused, so July is not yet re-scored per-chat).</p>
 </section>`;
 }
 
