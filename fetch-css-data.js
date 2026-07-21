@@ -467,12 +467,12 @@ function findHappyThoughts(csatRatings) {
     buckets[theme].push(item);
   }
   const results = [];
-  for (const t of ['helpful', 'friendly', 'thorough', 'speed']) if (buckets[t][0]) results.push(buckets[t][0]);
-  // Fill up to 4 from whatever's left (most recent first across all buckets).
-  const leftover = [...buckets.helpful.slice(1), ...buckets.friendly.slice(1), ...buckets.thorough.slice(1), ...buckets.speed.slice(1), ...buckets.other]
+  for (const t of ['helpful', 'thorough', 'speed', 'friendly']) if (buckets[t][0]) results.push(buckets[t][0]);
+  // Fill up to 3 from whatever's left (most recent first across all buckets).
+  const leftover = [...buckets.helpful.slice(1), ...buckets.thorough.slice(1), ...buckets.speed.slice(1), ...buckets.friendly.slice(1), ...buckets.other]
     .sort((a, b) => new Date(b.date) - new Date(a.date));
-  for (const item of leftover) { if (results.length >= 4) break; results.push(item); }
-  return results.slice(0, 4);
+  for (const item of leftover) { if (results.length >= 3) break; results.push(item); }
+  return results.slice(0, 3);
 }
 
 // ─── PERSONA SENTIMENT — keyword frequency analysis ──────────────────────────
