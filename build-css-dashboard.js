@@ -299,7 +299,7 @@ function buildAiResolution() {
       </tbody>
     </table>
   </div>
-  <p style="font-size:11px;color:var(--muted);margin-top:8px;">AI Resolution % = Voiceflow's <b>Deflection rate (strict)</b> — Pass ÷ all scored chats (Pass + Fail + N/A) — matching the Voiceflow Evaluations dashboard. July reflects Voiceflow's evaluation results (the deflection evaluation is currently paused, so July is not yet re-scored per-chat).</p>
+  <p style="font-size:11px;color:var(--muted);margin-top:8px;">Abandoned chats — where the user left before a clear resolution or handoff — are excluded from the AI Resolution % calculation.</p>
 </section>`;
 }
 
