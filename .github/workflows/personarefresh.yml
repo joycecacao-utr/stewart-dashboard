@@ -1,0 +1,17 @@
+name: Persona Refresh Diagnostic
+on:
+  workflow_dispatch:
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Run persona refresh
+        env:
+          FRESHDESK_KEY: ${{ secrets.FRESHDESK_KEY }}
+          FRESHDESK_DOMAIN: universaltennis
+        run: node diag-persona-refresh.js
