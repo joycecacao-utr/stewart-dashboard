@@ -445,19 +445,34 @@ function findHappyThoughts(csatRatings) {
     return isTop && typeof comment === 'string' && comment.trim().length > 15;
   });
 
-  // Sort by recency, deduplicate near-identical comments, pick up to 3
+  // Diversify by theme so the quotes don't all cluster on one trait (e.g. "fast
+  // response"). Bucket each recent positive comment by the first theme it matches,
+  // then pick one per theme in priority order before filling any remaining slots.
+  const THEME_RE = [
+    ['helpful',  /\b(helpful|guidance|guided|walked me|explained|clear|directions|instructions|easy)\b/i],
+    ['friendly', /\b(kind|friendly|polite|nice|patient|courteous|thoughtful|pleasant)\b/i],
+    ['thorough', /\b(thorough|detailed|professional|knowledge|knowledgeable|efficient|resolved|fixed|sorted)\b/i],
+    ['speed',    /\b(fast|quick|prompt|speedy|immediate|timely|responsive)\b/i],
+  ];
+  const sorted = positive.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   const seen = new Set();
-  const results = [];
-  for (const r of positive.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))) {
+  const buckets = { helpful: [], friendly: [], thorough: [], speed: [], other: [] };
+  for (const r of sorted) {
     const raw = (r.feedback ?? r.remarks ?? '').trim();
     const key = raw.slice(0, 40).toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
-    const quote = stripPII(raw);
-    results.push({ quote, context: detectTopic(quote), date: r.created_at });
-    if (results.length >= 3) break;
+    const item = { quote: stripPII(raw), context: detectTopic(stripPII(raw)), date: r.created_at };
+    const theme = (THEME_RE.find(([, re]) => re.test(raw)) || [])[0] || 'other';
+    buckets[theme].push(item);
   }
-  return results;
+  const results = [];
+  for (const t of ['helpful', 'friendly', 'thorough', 'speed']) if (buckets[t][0]) results.push(buckets[t][0]);
+  // Fill up to 4 from whatever's left (most recent first across all buckets).
+  const leftover = [...buckets.helpful.slice(1), ...buckets.friendly.slice(1), ...buckets.thorough.slice(1), ...buckets.speed.slice(1), ...buckets.other]
+    .sort((a, b) => new Date(b.date) - new Date(a.date));
+  for (const item of leftover) { if (results.length >= 4) break; results.push(item); }
+  return results.slice(0, 4);
 }
 
 // ─── PERSONA SENTIMENT — keyword frequency analysis ──────────────────────────
