@@ -1144,6 +1144,24 @@ async function main() {
     }
   }
 
+  // Preserve AI Resolution when a fresh Voiceflow pull returns no deflection scores
+  // for a month that previously had them. Voiceflow's "Deflection rate (strict)"
+  // evaluation can be toggled off (as it is for July 2026), so recent months come
+  // back unscored — don't let that wipe a known AI Resolution value back to N/A.
+  for (const [k, fresh] of Object.entries(monthly)) {
+    const cached = cachedMonthly[k];
+    if (!cached) continue;
+    const freshScored  = (fresh.aiDeflectPass  ?? 0) + (fresh.aiDeflectFail  ?? 0);
+    const cachedScored = (cached.aiDeflectPass ?? 0) + (cached.aiDeflectFail ?? 0);
+    if (freshScored === 0 && cachedScored > 0) {
+      fresh.aiDeflectPass = cached.aiDeflectPass;
+      fresh.aiDeflectFail = cached.aiDeflectFail;
+      fresh.aiDeflectNA   = cached.aiDeflectNA;
+      fresh.aiEvaluated   = cached.aiEvaluated;
+      console.log(`  Preserved cached AI deflection for ${k} (fresh Voiceflow pull unscored — evaluation paused)`);
+    }
+  }
+
   // FAST_VF_ONLY: the daily series drives the ticket-volume and CSAT charts, so we
   // can't ship the VF-only `daily` (it would zero those out). Take the cached daily
   // as the base and overlay just this run's fresh Voiceflow per-day fields.
