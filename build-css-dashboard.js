@@ -89,7 +89,7 @@ function getSheet(key) { return cssSheet[key] ?? null; }
 
 // YTD: sum ticket volumes / average CSAT across completed months in current year
 function cssSheetYTD() {
-  const keys = ytdKeys().filter(k => k !== CUR_MO); // exclude current month — not in sheet yet
+  const keys = ytdKeys().filter(k => k !== CUR_MO); // completed months come from the sheet
   let totalTickets = 0, csatSum = 0, csatCount = 0;
   for (const k of keys) {
     const m = cssSheet[k];
@@ -97,6 +97,11 @@ function cssSheetYTD() {
     if (m.ticketVolume != null) totalTickets += m.ticketVolume;
     if (m.csat        != null) { csatSum += m.csat; csatCount++; }
   }
+  // The sheet lags ~1 month, so the current month isn't in it. Add its live Freshdesk
+  // ticket count so YTD ticket volume keeps climbing through the month (matching how
+  // FCR/FRT YTD already include the current month).
+  const curTix = monthly[CUR_MO]?.ticketsCreated;
+  if (curTix != null) totalTickets += curTix;
   return { ticketVolume: totalTickets || null, csat: csatCount ? csatSum / csatCount : null };
 }
 const cssYTD = cssSheetYTD();
