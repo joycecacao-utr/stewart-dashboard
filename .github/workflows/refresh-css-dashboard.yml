@@ -9,6 +9,10 @@ on:
         description: 'Fast Voiceflow-only refresh (skip slow Freshdesk paging; reuse cached ticket/CSAT data)'
         type: boolean
         default: false
+      current_month_only:
+        description: 'Weekly refresh: pull fresh Freshdesk data for the current month only; freeze past months'
+        type: boolean
+        default: false
 
 jobs:
   refresh:
@@ -36,6 +40,7 @@ jobs:
           GOOGLE_SHEETS_API_KEY:   ${{ secrets.GOOGLE_SHEETS_API_KEY }}
           FRESHDESK_DOMAIN:        universaltennis
           FAST_VF_ONLY:            ${{ inputs.fast && '1' || '0' }}
+          CURRENT_MONTH_ONLY:      ${{ inputs.current_month_only && '1' || '0' }}
         run: node fetch-css-data.js
 
       - name: Build dashboard HTML

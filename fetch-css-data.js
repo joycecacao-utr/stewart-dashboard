@@ -32,6 +32,11 @@ const VF_SLEEP_MS      = 80;    // Voiceflow rate limits are much more lenient
 // Voiceflow-driven sections (AI Resolution, Chat Interaction, persona window) plus the
 // fast Google-Sheets metrics. Lets us update AI Resolution reliably in minutes.
 const FAST_VF_ONLY     = process.env.FAST_VF_ONLY === '1';
+// Current-month-only refresh: pull fresh Freshdesk data for the CURRENT month only
+// (fast + reliable — no slow historical heal), reuse cache for every past/prior-year
+// month, and freeze completed months. This is the weekly refresh: July 2026 (ticket
+// volume, FCR, FRT, chat volume, CSAT) updates; June 2026 / July 2025 hold steady.
+const CURRENT_MONTH_ONLY = process.env.CURRENT_MONTH_ONLY === '1';
 
 // Priority labels (Freshdesk: 1=Low 2=Medium 3=High 4=Urgent)
 const PRIORITY_NAMES  = { 1: 'Low', 2: 'Medium', 3: 'High', 4: 'Urgent' };
@@ -984,48 +989,52 @@ async function main() {
   const pyMonthKey = pyStart.toISOString().slice(0, 7);
 
   const targetMonths = [];
-  if (curMonth > 0) {
-    targetMonths.push({
-      start: new Date(Date.UTC(curYear, curMonth - 1, 1)),
-      end:   new Date(Date.UTC(curYear, curMonth,     1)),
-    });
-  }
+  // Current month is always fetched.
   targetMonths.push({
     start: new Date(Date.UTC(curYear, curMonth,     1)),
     end:   new Date(Date.UTC(curYear, curMonth + 1, 1)),
   });
 
-  // Heal as many historical months as needed in one run. The workflow timeout was
-  // raised (330 min) to accommodate a full rate-limited backfill, so we no longer cap
-  // to one per run. Prior-year backfill takes priority, then poisoned YTD months
-  // (oldest first). Once healed, steady-state runs only touch current + previous month.
-  let extraBudget = 12;
-  const pyCached = cachedMonthly[pyMonthKey];
-  const pyPoisoned = pyCached && (pyCached.ticketsCreated ?? 0) > 0 &&
-                     (pyCached.frtCount ?? 0) === 0 && (pyCached.fcrEligible ?? 0) === 0;
-  if ((!pyCached || pyPoisoned) && extraBudget > 0) {
-    extraBudget--;
-    console.log(`  ${pyCached ? 'Re-fetching poisoned' : 'Backfilling'} prior-year month: ${pyMonthKey}`);
-    targetMonths.push({ start: pyStart, end: pyEnd });
-  }
-  for (let m = 0; m < curMonth - 1; m++) {
-    const key = `${curYear}-${String(m + 1).padStart(2, '0')}`;
-    const cm = cachedMonthly[key];
-    const poisoned = cm && (cm.ticketsCreated ?? 0) > 0 &&
-                     (cm.frtCount ?? 0) === 0 && (cm.fcrEligible ?? 0) === 0;
-    if (!cm) {
-      console.log(`  Backfilling missing historical month: ${key}`);
-    } else if (poisoned && extraBudget > 0) {
-      extraBudget--;
-      console.log(`  Healing poisoned historical month: ${key} (1 heavy fetch per run)`);
-    } else {
-      if (poisoned) console.log(`  Deferring poisoned month ${key} to a later run`);
-      continue;
+  if (CURRENT_MONTH_ONLY) {
+    // Weekly refresh: only the current month is pulled; every past/prior-year month
+    // is served from cache (frozen). No previous-month re-fetch, no historical heal.
+    console.log('CURRENT_MONTH_ONLY: fetching only the current month; all past months served from cache');
+  } else {
+    // Full mode: also re-fetch previous month, and heal prior-year + poisoned YTD months.
+    if (curMonth > 0) {
+      targetMonths.unshift({
+        start: new Date(Date.UTC(curYear, curMonth - 1, 1)),
+        end:   new Date(Date.UTC(curYear, curMonth,     1)),
+      });
     }
-    targetMonths.push({
-      start: new Date(Date.UTC(curYear, m,     1)),
-      end:   new Date(Date.UTC(curYear, m + 1, 1)),
-    });
+    let extraBudget = 12;
+    const pyCached = cachedMonthly[pyMonthKey];
+    const pyPoisoned = pyCached && (pyCached.ticketsCreated ?? 0) > 0 &&
+                       (pyCached.frtCount ?? 0) === 0 && (pyCached.fcrEligible ?? 0) === 0;
+    if ((!pyCached || pyPoisoned) && extraBudget > 0) {
+      extraBudget--;
+      console.log(`  ${pyCached ? 'Re-fetching poisoned' : 'Backfilling'} prior-year month: ${pyMonthKey}`);
+      targetMonths.push({ start: pyStart, end: pyEnd });
+    }
+    for (let m = 0; m < curMonth - 1; m++) {
+      const key = `${curYear}-${String(m + 1).padStart(2, '0')}`;
+      const cm = cachedMonthly[key];
+      const poisoned = cm && (cm.ticketsCreated ?? 0) > 0 &&
+                       (cm.frtCount ?? 0) === 0 && (cm.fcrEligible ?? 0) === 0;
+      if (!cm) {
+        console.log(`  Backfilling missing historical month: ${key}`);
+      } else if (poisoned && extraBudget > 0) {
+        extraBudget--;
+        console.log(`  Healing poisoned historical month: ${key} (1 heavy fetch per run)`);
+      } else {
+        if (poisoned) console.log(`  Deferring poisoned month ${key} to a later run`);
+        continue;
+      }
+      targetMonths.push({
+        start: new Date(Date.UTC(curYear, m,     1)),
+        end:   new Date(Date.UTC(curYear, m + 1, 1)),
+      });
+    }
   }
 
   let tickets = [];
@@ -1040,7 +1049,10 @@ async function main() {
 
   // Only fetch CSAT within the bucketed window — a full year of ratings is paginated
   // at 3s/page and isn't aggregated outside the window anyway. PY CSAT comes from the sheet.
-  const csatSince = new Date(Date.now() - (LOOKBACK_DAYS + 2) * 86400000).toISOString();
+  // Current-month-only needs just recent CSAT (current month + a buffer for Happy
+  // Thoughts); past-month CSAT is served from cache. Keeps the pull fast.
+  const csatLookback = CURRENT_MONTH_ONLY ? 45 : (LOOKBACK_DAYS + 2);
+  const csatSince = new Date(Date.now() - csatLookback * 86400000).toISOString();
   let csat = [];
   if (FAST_VF_ONLY) {
     console.log('FAST_VF_ONLY: skipping Freshdesk CSAT fetch — reusing cached CSAT-derived stats');
@@ -1144,21 +1156,25 @@ async function main() {
     }
   }
 
-  // Preserve AI Resolution when a fresh Voiceflow pull returns no deflection scores
-  // for a month that previously had them. Voiceflow's "Deflection rate (strict)"
-  // evaluation can be toggled off (as it is for July 2026), so recent months come
-  // back unscored — don't let that wipe a known AI Resolution value back to N/A.
+  // Stabilize AI Resolution. Two cases keep the cached deflection counts:
+  //  1. Completed (past) months — Voiceflow keeps re-scoring finished months, which
+  //     makes a settled number wobble week to week; a completed month shouldn't change.
+  //  2. Any month a fresh pull returns unscored (0 pass+fail) — e.g. the "Deflection
+  //     rate (strict)" evaluation is toggled off (July 2026), so it comes back empty;
+  //     don't let that wipe a known AI Resolution back to N/A.
+  // Only the current, in-progress month with a live (scored) pull updates freely.
   for (const [k, fresh] of Object.entries(monthly)) {
     const cached = cachedMonthly[k];
     if (!cached) continue;
+    const isPast = k < curMonthKey;
     const freshScored  = (fresh.aiDeflectPass  ?? 0) + (fresh.aiDeflectFail  ?? 0);
     const cachedScored = (cached.aiDeflectPass ?? 0) + (cached.aiDeflectFail ?? 0);
-    if (freshScored === 0 && cachedScored > 0) {
+    if (cachedScored > 0 && (isPast || freshScored === 0)) {
       fresh.aiDeflectPass = cached.aiDeflectPass;
       fresh.aiDeflectFail = cached.aiDeflectFail;
       fresh.aiDeflectNA   = cached.aiDeflectNA;
       fresh.aiEvaluated   = cached.aiEvaluated;
-      console.log(`  Preserved cached AI deflection for ${k} (fresh Voiceflow pull unscored — evaluation paused)`);
+      console.log(`  Froze AI deflection for ${k} (${isPast ? 'completed month' : 'fresh pull unscored'})`);
     }
   }
 
