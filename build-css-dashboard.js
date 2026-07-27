@@ -571,12 +571,12 @@ function personaMeta(name) {
 // Free/Power reflect June–July 2026, when subscription tracking began — so they
 // aren't directly comparable to the 12-month figures.
 const PERSONA_VOLUME = {
-  'Club customers':    { n: '~6,250', period: 'past 12 mo' },
-  'Power subscribers': { n: '~975',   period: 'Jun–Jul 2026' },
+  'Club customers':    { n: '~6,450', period: 'past 12 mo' },
+  'Power subscribers': { n: '~990',   period: 'Jun–Jul 2026' },
   'College':           { n: '~1,965', period: 'past 12 mo' },
-  'High school':       { n: '~1,720', period: 'past 12 mo' },
-  'Parents':           { n: '~5,430', period: 'past 12 mo' },
-  'Free users':        { n: '~3,160', period: 'Jun–Jul 2026' },
+  'High school':       { n: '~1,785', period: 'past 12 mo' },
+  'Parents':           { n: '~5,560', period: 'past 12 mo' },
+  'Free users':        { n: '~3,420', period: 'Jun–Jul 2026' },
 };
 
 function buildPersonaSentiment() {
