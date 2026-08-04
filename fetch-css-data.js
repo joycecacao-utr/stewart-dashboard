@@ -622,35 +622,31 @@ async function pickInteractionExamples(sessions) {
     ? withTurns
     : engaged.map(s => ({ s, turns: extractTurns(s), resolved: !isEscalated(s) }));
 
-  const byLen = arr => arr.slice().sort((a, b) => a.turns.length - b.turns.length);
-  // Pick k representative items spread across the length distribution.
-  const spread = (arr, k) => {
-    const a = byLen(arr);
-    if (a.length === 0) return [];
-    if (k === 1) return [a[Math.floor(a.length / 2)]];
-    if (k === 2) return [a[Math.floor(a.length * 0.33)], a[Math.floor(a.length * 0.66)]];
-    return [a[Math.floor(a.length * 0.25)], a[Math.floor(a.length * 0.50)], a[Math.floor(a.length * 0.75)]];
-  };
+  // Prefer the most recent conversations so the examples refresh each run instead of
+  // resurfacing the same old ones.
+  const dateOf = x => new Date(x.s.createdAt ?? x.s.updatedAt ?? 0).getTime();
+  const byRecent = arr => arr.slice().sort((a, b) => dateOf(b) - dateOf(a));
 
-  const resolved  = pool.filter(x => x.resolved);
-  const escalated = pool.filter(x => !x.resolved);
+  const resolved  = byRecent(pool.filter(x => x.resolved));
+  const escalated = byRecent(pool.filter(x => !x.resolved));
 
-  // Aim for a resolved/escalated mix when both exist (2 of the larger pool + 1 of the other).
+  // Aim for a resolved/escalated mix when both exist (2 most-recent of the larger
+  // pool + the most-recent of the other).
   let picks;
   if (resolved.length && escalated.length) {
     picks = resolved.length >= escalated.length
-      ? [...spread(resolved, 2), ...spread(escalated, 1)]
-      : [...spread(escalated, 2), ...spread(resolved, 1)];
+      ? [...resolved.slice(0, 2), ...escalated.slice(0, 1)]
+      : [...escalated.slice(0, 2), ...resolved.slice(0, 1)];
   } else {
-    picks = spread(pool, 3);
+    picks = byRecent(pool).slice(0, 3);
   }
 
-  // Dedup, cap at 3, backfill from the rest if needed.
+  // Dedup, cap at 3, backfill from the most recent remaining if needed.
   const seen = new Set();
   const final = [];
   const add = x => { if (x && !seen.has(x.s.id) && final.length < 3) { seen.add(x.s.id); final.push(x); } };
   picks.forEach(add);
-  byLen(pool).forEach(add);
+  byRecent(pool).forEach(add);
 
   return final.map(x => ({
     transcriptId: x.s.id,

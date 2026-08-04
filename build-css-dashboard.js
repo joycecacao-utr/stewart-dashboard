@@ -89,19 +89,16 @@ function getSheet(key) { return cssSheet[key] ?? null; }
 
 // YTD: sum ticket volumes / average CSAT across completed months in current year
 function cssSheetYTD() {
-  const keys = ytdKeys().filter(k => k !== CUR_MO); // completed months come from the sheet
   let totalTickets = 0, csatSum = 0, csatCount = 0;
-  for (const k of keys) {
+  for (const k of ytdKeys()) {
     const m = cssSheet[k];
-    if (!m) continue;
-    if (m.ticketVolume != null) totalTickets += m.ticketVolume;
-    if (m.csat        != null) { csatSum += m.csat; csatCount++; }
+    // Prefer the sheet's curated volume; the sheet lags ~1–2 months, so months it
+    // doesn't have yet (recent + current) fall back to the live Freshdesk count. This
+    // keeps every YTD month counted, and YTD climbs through the current month.
+    if (m?.ticketVolume != null) totalTickets += m.ticketVolume;
+    else if (monthly[k]?.ticketsCreated != null) totalTickets += monthly[k].ticketsCreated;
+    if (m?.csat != null) { csatSum += m.csat; csatCount++; }
   }
-  // The sheet lags ~1 month, so the current month isn't in it. Add its live Freshdesk
-  // ticket count so YTD ticket volume keeps climbing through the month (matching how
-  // FCR/FRT YTD already include the current month).
-  const curTix = monthly[CUR_MO]?.ticketsCreated;
-  if (curTix != null) totalTickets += curTix;
   return { ticketVolume: totalTickets || null, csat: csatCount ? csatSum / csatCount : null };
 }
 const cssYTD = cssSheetYTD();
@@ -109,7 +106,11 @@ const cssYTD = cssSheetYTD();
 function fmtSheetTick(key) {
   if (key === 'ytd') return cssYTD.ticketVolume != null ? cssYTD.ticketVolume.toLocaleString() : 'N/A';
   const m = getSheet(key);
-  return m?.ticketVolume != null ? m.ticketVolume.toLocaleString() : 'N/A';
+  if (m?.ticketVolume != null) return m.ticketVolume.toLocaleString();
+  // Sheet lags ~1–2 months — fall back to the Freshdesk ticket count for that month
+  // (covers the current month and any recent completed month not yet in the sheet).
+  const fd = monthly[key]?.ticketsCreated;
+  return fd != null ? fd.toLocaleString() : 'N/A';
 }
 function fmtSheetCsat(key) {
   if (key === 'ytd') return cssYTD.csat != null ? cssYTD.csat.toFixed(1) + '%' : 'N/A';
@@ -445,7 +446,7 @@ function buildVolumeResponse() {
         <tr><th>Metric</th><th>${curMoLabel} (MTD)</th><th>${prevMoLabel}</th><th>YTD</th><th>${pyMoLabel}</th></tr>
       </thead>
       <tbody>
-        ${metricRow('Ticket Volume',            fmtSheetTick(CUR_MO) !== 'N/A' ? fmtSheetTick(CUR_MO) : (curMo ? tickM(curMo) : '0'), fmtSheetTick(PREV_MO), fmtSheetTick('ytd'), fmtSheetTick(PY_MO))}
+        ${metricRow('Ticket Volume',            fmtSheetTick(CUR_MO), fmtSheetTick(PREV_MO), fmtSheetTick('ytd'), fmtSheetTick(PY_MO))}
         ${frtPriRows}
         ${metricRow('First Contact Resolution', fcrM(curMo),   fcrM(prevMo),   ytdFcr,  fcrM(pyMo))}
         ${metricRow('FCR — Medium Priority',    fcrM2(curMo),  fcrM2(prevMo),  ytdFcr2, fcrM2(pyMo))}
