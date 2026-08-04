@@ -1152,12 +1152,14 @@ async function main() {
     }
   }
 
-  // Stabilize AI Resolution. Two cases keep the cached deflection counts:
-  //  1. Completed (past) months — Voiceflow keeps re-scoring finished months, which
-  //     makes a settled number wobble week to week; a completed month shouldn't change.
-  //  2. Any month a fresh pull returns unscored (0 pass+fail) — e.g. the "Deflection
-  //     rate (strict)" evaluation is toggled off (July 2026), so it comes back empty;
-  //     don't let that wipe a known AI Resolution back to N/A.
+  // Stabilize the Voiceflow-derived metrics:
+  //  1. Completed (past) months — freeze ALL VF fields (engaged, cost basis, AI
+  //     deflection). A finished month shouldn't move, and Voiceflow both re-scores
+  //     deflection and keeps trickling in late sessions, which would otherwise make a
+  //     settled month wobble (or overwrite a hand-corrected value) week to week.
+  //  2. The current month, when a fresh pull returns unscored deflection (0 pass+fail)
+  //     — e.g. the "Deflection rate (strict)" evaluation is toggled off — keep the
+  //     cached deflection so a known AI Resolution isn't wiped back to N/A.
   // Only the current, in-progress month with a live (scored) pull updates freely.
   for (const [k, fresh] of Object.entries(monthly)) {
     const cached = cachedMonthly[k];
@@ -1165,12 +1167,15 @@ async function main() {
     const isPast = k < curMonthKey;
     const freshScored  = (fresh.aiDeflectPass  ?? 0) + (fresh.aiDeflectFail  ?? 0);
     const cachedScored = (cached.aiDeflectPass ?? 0) + (cached.aiDeflectFail ?? 0);
-    if (cachedScored > 0 && (isPast || freshScored === 0)) {
+    if (isPast) {
+      for (const f of VF_FIELDS) if (cached[f] != null) fresh[f] = cached[f];
+      console.log(`  Froze Voiceflow metrics for completed month ${k}`);
+    } else if (freshScored === 0 && cachedScored > 0) {
       fresh.aiDeflectPass = cached.aiDeflectPass;
       fresh.aiDeflectFail = cached.aiDeflectFail;
       fresh.aiDeflectNA   = cached.aiDeflectNA;
       fresh.aiEvaluated   = cached.aiEvaluated;
-      console.log(`  Froze AI deflection for ${k} (${isPast ? 'completed month' : 'fresh pull unscored'})`);
+      console.log(`  Preserved AI deflection for ${k} (fresh pull unscored — evaluation paused)`);
     }
   }
 
