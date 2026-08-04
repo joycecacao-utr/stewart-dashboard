@@ -326,20 +326,29 @@ function buildRevenueRecovery() {
   // YTD rate: calculated from YTD saved / YTD failed
   const ytdRateStr = rrYTD?.rate != null ? rrYTD.rate.toFixed(1) + '%' : 'N/A';
 
-  // Stripe Revenue-Recovery data lags ~1 month, so the current month is always
-  // empty — omit the current-month (MTD) column entirely. The most recent real
-  // month (previous month) gets the emphasized "cur" styling instead.
+  // Stripe Revenue-Recovery data lags 1–2 months, so the latest available month is
+  // often older than "previous month". Show the most recent month that actually has
+  // data (and its year-ago comparison), rather than a fixed previous-month slot that
+  // goes N/A as the calendar rolls forward.
+  const rrLatestKey = Object.keys(rr?.monthly ?? {})
+    .filter(k => k <= CUR_MO && rr.monthly[k]?.rate != null).sort().pop() ?? PREV_MO;
+  const rrLatest    = getRR(rrLatestKey);
+  const rrLatestLbl = new Date(rrLatestKey + '-01T00:00:00Z').toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+  const pyKey       = (Number(rrLatestKey.slice(0, 4)) - 1) + rrLatestKey.slice(4);
+  const rrLatestPY  = getRR(pyKey);
+  const rrPyLbl     = new Date(pyKey + '-01T00:00:00Z').toLocaleString('default', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+
   const rrRow = (label, prev, ytdVal, py) => {
     const pyCell = py === NA ? `<td class="na">N/A</td>` : `<td>${py}</td>`;
     return `<tr><td class="label">${label}</td><td class="cur">${prev}</td><td>${ytdVal}</td>${pyCell}</tr>`;
   };
   const tableRows = [
     rrRow('Recovery Rate %',
-      fmtRate(rrPrev), ytdRateStr, fmtRate(rrPY)),
+      fmtRate(rrLatest), ytdRateStr, fmtRate(rrLatestPY)),
     rrRow('Total Saved',
-      fmtSaved(rrPrev), fmtRRYTD(m => fmtDollar(m.saved)), fmtSaved(rrPY)),
+      fmtSaved(rrLatest), fmtRRYTD(m => fmtDollar(m.saved)), fmtSaved(rrLatestPY)),
     rrRow('Total Failed',
-      fmtFailed(rrPrev), fmtRRYTD(m => fmtDollar(m.failed)), fmtFailed(rrPY)),
+      fmtFailed(rrLatest), fmtRRYTD(m => fmtDollar(m.failed)), fmtFailed(rrLatestPY)),
   ].join('');
 
   const unrecov     = rr?.unrecoveredRevenue;
@@ -375,7 +384,7 @@ function buildRevenueRecovery() {
   <div class="table-wrap">
     <table class="metrics-table">
       <thead>
-        <tr><th>Metric</th><th>${prevMoLabel}</th><th>YTD</th><th>${pyMoLabel}</th></tr>
+        <tr><th>Metric</th><th>${rrLatestLbl}</th><th>YTD</th><th>${rrPyLbl}</th></tr>
       </thead>
       <tbody>${tableRows}</tbody>
     </table>
