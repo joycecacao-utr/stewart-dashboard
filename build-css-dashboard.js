@@ -578,16 +578,16 @@ function personaMeta(name) {
 }
 
 // Contact volume from CSS support tickets, classified by the segment cascade
-// (sampled & scaled, refreshed 2026-07). Role segments span the trailing 12 months;
+// (sampled & scaled, refreshed 2026-08). Role segments span the trailing 12 months;
 // Free/Power reflect June–July 2026, when subscription tracking began — so they
 // aren't directly comparable to the 12-month figures.
 const PERSONA_VOLUME = {
-  'Club customers':    { n: '~6,450', period: 'past 12 mo' },
-  'Power subscribers': { n: '~990',   period: 'Jun–Jul 2026' },
-  'College':           { n: '~1,965', period: 'past 12 mo' },
-  'High school':       { n: '~1,785', period: 'past 12 mo' },
-  'Parents':           { n: '~5,560', period: 'past 12 mo' },
-  'Free users':        { n: '~3,420', period: 'Jun–Jul 2026' },
+  'Club customers':    { n: '~6,600', period: 'past 12 mo' },
+  'Power subscribers': { n: '~1,050', period: 'Jun–Jul 2026' },
+  'College':           { n: '~1,985', period: 'past 12 mo' },
+  'High school':       { n: '~1,825', period: 'past 12 mo' },
+  'Parents':           { n: '~5,735', period: 'past 12 mo' },
+  'Free users':        { n: '~3,655', period: 'Jun–Jul 2026' },
 };
 
 function buildPersonaSentiment() {
