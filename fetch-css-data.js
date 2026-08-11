@@ -630,34 +630,50 @@ function isOpenQuestion(text = '') {
   return /(just to confirm|which (one|of these)|could you|can you (tell|share|provide|confirm)|would you like|what('| i)s your|please (share|provide|confirm)|do you want|let me know)/.test(t);
 }
 
+// A short, friendly Stewart sign-off (not an answer that punts action back to
+// the user) — the kind of message that follows a user's thank-you.
+function isSignoff(text = '') {
+  return /(you'?re welcome|glad (to|i could) help|happy to help|my pleasure|anytime|good luck|have a (great|good|nice)|take care|reach out (again|any ?time)|let us know if)/i.test(String(text));
+}
+
 // Classify a non-bounce chat as 'escalated' | 'resolved' | 'abandoned'.
 //  • escalated — handed off to a human / a ticket was created.
-//  • resolved  — the user got their answer AND stayed to acknowledge it: the
-//                user has the last word (thank-you / affirmative), or Stewart
-//                signs off with a non-question after the user acknowledged.
+//  • resolved  — the user closed the loop AFTER getting an answer: they have the
+//                last word (thank-you / clear affirmative), or Stewart signs off
+//                with a pleasantry right after the user thanked.
 //  • abandoned — the user left before closing the loop: the chat trails off on
-//                Stewart's message, or on Stewart asking an unanswered question.
+//                Stewart's message, or on Stewart asking an unanswered question,
+//                or the only "thanks" is a polite opener before any answer.
 function chatOutcome(s, turns) {
   if (isEscalated(s)) return 'escalated';
   const t = (turns ?? []).filter(x => (x.text ?? '').trim());
   if (t.length === 0) return 'abandoned';
   const last = t[t.length - 1];
+  const lastIdx = t.length - 1;
+  const firstAiIdx = t.findIndex(x => x.role === 'ai');
+  // A user acknowledgment only counts once Stewart has actually answered — a
+  // "thanks in advance" opener doesn't mean the request was resolved.
+  const afterAnswer = i => firstAiIdx !== -1 && i > firstAiIdx;
   const bareNeg = /^(no|nope|nah|cancel|stop|never ?mind|nvm)\b/i;
 
   if (last.role === 'user') {
-    // The user has the final word.
+    if (!afterAnswer(lastIdx)) return 'abandoned';
     if (hasClosure(last.text)) return 'resolved';
     if (last.text.trim().length > 3 && !bareNeg.test(last.text.trim())) return 'resolved';
     return 'abandoned';
   }
 
-  // The chat ends on Stewart. If Stewart's parting message is an open question,
-  // the user left without answering → abandoned.
-  if (isOpenQuestion(last.text)) return 'abandoned';
-  // Stewart signed off with a statement — resolved only if the user had already
-  // acknowledged (a thank-you) before that sign-off.
-  const lastUser = [...t].reverse().find(x => x.role === 'user');
-  if (lastUser && hasClosure(lastUser.text)) return 'resolved';
+  // Chat ends on Stewart. Resolved only when Stewart signs off with a pleasantry
+  // immediately after the user acknowledged — otherwise the user left mid-flow.
+  const prevUserIdx = [...t.keys()].slice(0, lastIdx).reverse().find(i => t[i].role === 'user');
+  if (
+    isSignoff(last.text) &&
+    prevUserIdx != null &&
+    afterAnswer(prevUserIdx) &&
+    hasClosure(t[prevUserIdx].text)
+  ) {
+    return 'resolved';
+  }
   return 'abandoned';
 }
 
