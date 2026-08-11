@@ -626,8 +626,8 @@ function hasClosure(text = '') {
 // confirmation? If the chat stops here, the user walked away mid-flow.
 function isOpenQuestion(text = '') {
   const t = String(text).trim().toLowerCase();
-  if (t.endsWith('?')) return true;
-  return /(just to (confirm|make sure)|to confirm[, ]|so you'?d? ?(want|like) to|which (one|of these)|could you|can you (tell|share|provide|confirm)|would you like|what('| i)s your|please (share|provide|confirm)|do you want|let me know)/.test(t);
+  if (t.endsWith('?') || t.includes('¿')) return true;
+  return /(just to (confirm|make sure)|to confirm[, ]|so you'?d? ?(want|like) to|which (one|of these)|could you|can you (tell|share|provide|confirm)|would you like|what('| i)s your|please (share|provide|confirm)|do you want|let me know|antes de enviar|me confirmas|te gustaría)/.test(t);
 }
 
 // Does Stewart's closing message hand the work back to the user (go verify /
@@ -681,6 +681,10 @@ function chatOutcome(s, turns) {
   }
   // An open question or a hand-off back to the user means the loop wasn't closed.
   if (isOpenQuestion(last.text) || puntsAction(last.text)) return 'abandoned';
+  // The "complete answer" heuristics are English-only; if we can't actually vet
+  // the closing message (mostly non-Latin script), don't assume it's resolved.
+  const ascii = (String(last.text).match(/[\x00-\x7F]/g) ?? []).length;
+  if (String(last.text).length === 0 || ascii / String(last.text).length < 0.8) return 'abandoned';
   // Otherwise Stewart delivered a complete, self-contained answer → resolved.
   return 'resolved';
 }
