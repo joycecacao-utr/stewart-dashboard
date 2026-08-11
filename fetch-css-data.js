@@ -622,24 +622,42 @@ function hasClosure(text = '') {
   return CLOSURE_KW.some(kw => t.includes(kw));
 }
 
+// Does Stewart's message end by asking the user for something? If the chat
+// stops here, the user walked away mid-flow — that's abandoned, not resolved.
+function isOpenQuestion(text = '') {
+  const t = String(text).trim().toLowerCase();
+  if (t.endsWith('?')) return true;
+  return /(just to confirm|which (one|of these)|could you|can you (tell|share|provide|confirm)|would you like|what('| i)s your|please (share|provide|confirm)|do you want|let me know)/.test(t);
+}
+
 // Classify a non-bounce chat as 'escalated' | 'resolved' | 'abandoned'.
 //  • escalated — handed off to a human / a ticket was created.
-//  • resolved  — the user got their answer AND stayed to acknowledge it (the
-//                conversation ends with the user, ideally with a thank-you).
-//  • abandoned — the AI answered but the user left without confirming (the
-//                conversation trails off on Stewart's message).
+//  • resolved  — the user got their answer AND stayed to acknowledge it: the
+//                user has the last word (thank-you / affirmative), or Stewart
+//                signs off with a non-question after the user acknowledged.
+//  • abandoned — the user left before closing the loop: the chat trails off on
+//                Stewart's message, or on Stewart asking an unanswered question.
 function chatOutcome(s, turns) {
   if (isEscalated(s)) return 'escalated';
   const t = (turns ?? []).filter(x => (x.text ?? '').trim());
   if (t.length === 0) return 'abandoned';
   const last = t[t.length - 1];
+  const bareNeg = /^(no|nope|nah|cancel|stop|never ?mind|nvm)\b/i;
+
+  if (last.role === 'user') {
+    // The user has the final word.
+    if (hasClosure(last.text)) return 'resolved';
+    if (last.text.trim().length > 3 && !bareNeg.test(last.text.trim())) return 'resolved';
+    return 'abandoned';
+  }
+
+  // The chat ends on Stewart. If Stewart's parting message is an open question,
+  // the user left without answering → abandoned.
+  if (isOpenQuestion(last.text)) return 'abandoned';
+  // Stewart signed off with a statement — resolved only if the user had already
+  // acknowledged (a thank-you) before that sign-off.
   const lastUser = [...t].reverse().find(x => x.role === 'user');
   if (lastUser && hasClosure(lastUser.text)) return 'resolved';
-  // Ended on a substantive, non-negative user reply after the AI answered.
-  const bareNeg = /^(no|nope|nah|cancel|stop|never ?mind|nvm)\b/i;
-  if (last.role === 'user' && last.text.trim().length > 3 && !bareNeg.test(last.text.trim())) {
-    return 'resolved';
-  }
   return 'abandoned';
 }
 
