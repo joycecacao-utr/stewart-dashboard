@@ -622,12 +622,19 @@ function hasClosure(text = '') {
   return CLOSURE_KW.some(kw => t.includes(kw));
 }
 
-// Does Stewart's message end by asking the user for something? If the chat
-// stops here, the user walked away mid-flow — that's abandoned, not resolved.
+// Does Stewart's message end by asking the user for something / seeking
+// confirmation? If the chat stops here, the user walked away mid-flow.
 function isOpenQuestion(text = '') {
   const t = String(text).trim().toLowerCase();
   if (t.endsWith('?')) return true;
-  return /(just to confirm|which (one|of these)|could you|can you (tell|share|provide|confirm)|would you like|what('| i)s your|please (share|provide|confirm)|do you want|let me know)/.test(t);
+  return /(just to (confirm|make sure)|to confirm[, ]|so you'?d? ?(want|like) to|which (one|of these)|could you|can you (tell|share|provide|confirm)|would you like|what('| i)s your|please (share|provide|confirm)|do you want|let me know)/.test(t);
+}
+
+// Does Stewart's closing message hand the work back to the user (go verify /
+// contact / follow steps) or defer to a submission? Then the request wasn't
+// resolved in-chat — if the user then leaves, it's abandoned, not resolved.
+function puntsAction(text = '') {
+  return /(here'?s what you need to do|you'?ll need to|you will need to|you need to|requires? (verification|you)|please (contact|reach out|go to|visit|submit|email)|you can (do this|update this|change this|get this done) by|follow these steps|head (to|over)|navigate to|log ?in to|before i submit|to submit this|i'?ll (submit|pass this|escalate|forward)|our team will|reach out to)/i.test(String(text));
 }
 
 // A short, friendly Stewart sign-off (not an answer that punts action back to
@@ -638,12 +645,14 @@ function isSignoff(text = '') {
 
 // Classify a non-bounce chat as 'escalated' | 'resolved' | 'abandoned'.
 //  • escalated — handed off to a human / a ticket was created.
-//  • resolved  — the user closed the loop AFTER getting an answer: they have the
-//                last word (thank-you / clear affirmative), or Stewart signs off
-//                with a pleasantry right after the user thanked.
-//  • abandoned — the user left before closing the loop: the chat trails off on
-//                Stewart's message, or on Stewart asking an unanswered question,
-//                or the only "thanks" is a polite opener before any answer.
+//  • resolved  — the request was actually answered in-chat: the user closed the
+//                loop after the answer (thank-you / affirmative), Stewart signed
+//                off with a pleasantry after a thank-you, or Stewart delivered a
+//                complete answer that neither asks a follow-up question nor punts
+//                the work back to the user.
+//  • abandoned — the user left mid-flow: the chat ends on Stewart's unanswered
+//                question, on a "here's what you need to do" hand-off, or the
+//                only "thanks" is a polite opener before any answer.
 function chatOutcome(s, turns) {
   if (isEscalated(s)) return 'escalated';
   const t = (turns ?? []).filter(x => (x.text ?? '').trim());
@@ -651,7 +660,7 @@ function chatOutcome(s, turns) {
   const last = t[t.length - 1];
   const lastIdx = t.length - 1;
   const firstAiIdx = t.findIndex(x => x.role === 'ai');
-  // A user acknowledgment only counts once Stewart has actually answered — a
+  // Nothing counts as resolved until Stewart has actually answered — a
   // "thanks in advance" opener doesn't mean the request was resolved.
   const afterAnswer = i => firstAiIdx !== -1 && i > firstAiIdx;
   const bareNeg = /^(no|nope|nah|cancel|stop|never ?mind|nvm)\b/i;
@@ -663,18 +672,17 @@ function chatOutcome(s, turns) {
     return 'abandoned';
   }
 
-  // Chat ends on Stewart. Resolved only when Stewart signs off with a pleasantry
-  // immediately after the user acknowledged — otherwise the user left mid-flow.
+  // Chat ends on Stewart.
+  if (firstAiIdx === -1) return 'abandoned';
+  // Pleasantry sign-off right after the user acknowledged → clearly resolved.
   const prevUserIdx = [...t.keys()].slice(0, lastIdx).reverse().find(i => t[i].role === 'user');
-  if (
-    isSignoff(last.text) &&
-    prevUserIdx != null &&
-    afterAnswer(prevUserIdx) &&
-    hasClosure(t[prevUserIdx].text)
-  ) {
+  if (isSignoff(last.text) && prevUserIdx != null && afterAnswer(prevUserIdx) && hasClosure(t[prevUserIdx].text)) {
     return 'resolved';
   }
-  return 'abandoned';
+  // An open question or a hand-off back to the user means the loop wasn't closed.
+  if (isOpenQuestion(last.text) || puntsAction(last.text)) return 'abandoned';
+  // Otherwise Stewart delivered a complete, self-contained answer → resolved.
+  return 'resolved';
 }
 
 async function pickInteractionExamples(sessions) {
