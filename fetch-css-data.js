@@ -1259,12 +1259,21 @@ async function main() {
     if (isPast) {
       for (const f of VF_FIELDS) if (cached[f] != null) fresh[f] = cached[f];
       console.log(`  Froze Voiceflow metrics for completed month ${k}`);
-    } else if (freshScored === 0 && cachedScored > 0) {
-      fresh.aiDeflectPass = cached.aiDeflectPass;
-      fresh.aiDeflectFail = cached.aiDeflectFail;
-      fresh.aiDeflectNA   = cached.aiDeflectNA;
-      fresh.aiEvaluated   = cached.aiEvaluated;
-      console.log(`  Preserved AI deflection for ${k} (fresh pull unscored — evaluation paused)`);
+    } else {
+      // Current, in-progress month. Voiceflow's Environment-scoped API can return
+      // FEWER scored / engaged sessions than the authoritative dashboard (or the
+      // deflection eval is toggled off entirely). Only let a fresh pull update the
+      // VF metrics when it is at least as complete as the cache; otherwise keep the
+      // cached values so a hand-set (dashboard-sourced) AI Resolution / engaged
+      // count isn't wiped back down. Once the eval is fully on and the pull scores
+      // more than the cache, it updates freely.
+      const freshEngaged = fresh.engaged ?? 0, cachedEngaged = cached.engaged ?? 0;
+      const underCount = (cachedScored > 0 && freshScored < cachedScored) ||
+                         (cachedEngaged > 0 && freshEngaged < cachedEngaged);
+      if (underCount) {
+        for (const f of VF_FIELDS) if (cached[f] != null) fresh[f] = cached[f];
+        console.log(`  Kept cached Voiceflow metrics for current month ${k} (fresh pull under-counted: scored ${freshScored} vs ${cachedScored}, engaged ${freshEngaged} vs ${cachedEngaged})`);
+      }
     }
   }
 
