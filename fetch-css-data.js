@@ -655,6 +655,12 @@ function isSignoff(text = '') {
 //                only "thanks" is a polite opener before any answer.
 function chatOutcome(s, turns) {
   if (isEscalated(s)) return 'escalated';
+  // Voiceflow's own strict deflection verdict is the authoritative signal when
+  // present (it IS the AI Resolution definition): pass = resolved, fail = not.
+  const dr = deflectionResult(s);
+  if (dr === 'pass') return 'resolved';
+  if (dr === 'fail') return 'abandoned';
+  // 'na' / null (e.g. the current month, where the eval is off) → heuristics.
   const t = (turns ?? []).filter(x => (x.text ?? '').trim());
   if (t.length === 0) return 'abandoned';
   const last = t[t.length - 1];
@@ -696,8 +702,10 @@ async function pickInteractionExamples(sessions) {
   const annotate = s => {
     const turns = extractTurns(s);
     const outcome = chatOutcome(s, turns);
-    // Strong resolutions carry an explicit thank-you / closure from the user.
-    const strong = outcome === 'resolved' && turns.some(x => x.role === 'user' && hasClosure(x.text));
+    // Prefer resolutions Voiceflow itself verified as deflected, then those with
+    // an explicit user thank-you.
+    const strong = outcome === 'resolved' &&
+      (deflectionResult(s) === 'pass' || turns.some(x => x.role === 'user' && hasClosure(x.text)));
     return { s, turns, outcome, strong };
   };
 
