@@ -649,10 +649,15 @@ function buildInteractionExamples() {
     return 'General Support';
   }
 
-  // Show 2 interactions, preferring a resolved + escalated mix.
-  const firstEsc = examples.find(e => !e.resolved);
-  const firstRes = examples.find(e => e.resolved);
-  const chosen = (firstEsc && firstRes) ? [firstEsc, firstRes] : examples.slice(0, 2);
+  // Outcome accessor (older data only carried a boolean `resolved`).
+  const outcomeOf = e => e.outcome ?? (e.resolved ? 'resolved' : 'escalated');
+
+  // Show 2 interactions, preferring a genuinely resolved + escalated mix.
+  const firstRes = examples.find(e => outcomeOf(e) === 'resolved');
+  const firstEsc = examples.find(e => outcomeOf(e) === 'escalated');
+  const chosen = (firstEsc && firstRes)
+    ? [firstRes, firstEsc]
+    : examples.filter(e => outcomeOf(e) !== 'abandoned').slice(0, 2);
   const vms = chosen.map((ex, i) => {
     const turns = (ex.turns ?? []).filter(t => (t.text ?? '').trim());
     const userTurns = turns.filter(t => t.role === 'user');
@@ -661,9 +666,12 @@ function buildInteractionExamples() {
     const lastAi    = (aiTurns[aiTurns.length - 1]?.text ?? '').trim();
     const date = ex.date ? new Date(ex.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
     const vfUrl = ex.transcriptId ? `https://creator.voiceflow.com/project/${VF_PROJECT_ID}/transcripts/${ex.transcriptId}` : null;
-    const outcome = ex.resolved
-      ? { icon: '✅', label: 'Resolved',  cls: 'resolved' }
-      : { icon: '⚡', label: 'Escalated', cls: 'escalated' };
+    const outcomeMap = {
+      resolved:  { icon: '✅', label: 'Resolved',  cls: 'resolved' },
+      escalated: { icon: '⚡', label: 'Escalated', cls: 'escalated' },
+      abandoned: { icon: '⚪', label: 'Abandoned', cls: 'abandoned' },
+    };
+    const outcome = outcomeMap[outcomeOf(ex)] ?? outcomeMap.escalated;
     return { i, turns, userTurns, aiTurns, question, lastAi, date, vfUrl, outcome, topic: topicTag(question) };
   });
 
@@ -1102,6 +1110,7 @@ const css = `
   .ie-badge { font-size: 12px; font-weight: 700; border-radius: 999px; padding: 3px 12px; white-space: nowrap; }
   .ie-badge.resolved { background: rgba(22,163,74,.12); color: var(--green); }
   .ie-badge.escalated { background: rgba(220,38,38,.12); color: var(--red); }
+  .ie-badge.abandoned { background: rgba(148,163,184,.16); color: var(--muted); }
   .ie-card-foot { padding: 12px 18px; border-top: 1px solid var(--border); }
 
   /* Mini transcript */

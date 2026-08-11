@@ -610,36 +610,70 @@ function analyzePersonaSentiment(sessions) {
   return results;
 }
 
+// Words that signal the user acknowledged/closed out the conversation happily —
+// the strongest signal that Stewart actually resolved the request.
+const CLOSURE_KW = [
+  'thank', 'thanks', 'thx', 'ty', 'got it', 'perfect', 'great', 'appreciate',
+  'awesome', 'that works', 'that helps', 'makes sense', 'will do', 'cheers',
+  'helpful', 'all set', 'sorted', 'no worries', 'amazing', 'much appreciated',
+];
+function hasClosure(text = '') {
+  const t = ' ' + String(text).toLowerCase() + ' ';
+  return CLOSURE_KW.some(kw => t.includes(kw));
+}
+
+// Classify a non-bounce chat as 'escalated' | 'resolved' | 'abandoned'.
+//  • escalated — handed off to a human / a ticket was created.
+//  • resolved  — the user got their answer AND stayed to acknowledge it (the
+//                conversation ends with the user, ideally with a thank-you).
+//  • abandoned — the AI answered but the user left without confirming (the
+//                conversation trails off on Stewart's message).
+function chatOutcome(s, turns) {
+  if (isEscalated(s)) return 'escalated';
+  const t = (turns ?? []).filter(x => (x.text ?? '').trim());
+  if (t.length === 0) return 'abandoned';
+  const last = t[t.length - 1];
+  const lastUser = [...t].reverse().find(x => x.role === 'user');
+  if (lastUser && hasClosure(lastUser.text)) return 'resolved';
+  // Ended on a substantive, non-negative user reply after the AI answered.
+  const bareNeg = /^(no|nope|nah|cancel|stop|never ?mind|nvm)\b/i;
+  if (last.role === 'user' && last.text.trim().length > 3 && !bareNeg.test(last.text.trim())) {
+    return 'resolved';
+  }
+  return 'abandoned';
+}
+
 async function pickInteractionExamples(sessions) {
   const engaged = sessions.filter(s => !isBounce(s));
   if (engaged.length === 0) return [];
 
-  const withTurns = engaged
-    .map(s => ({ s, turns: extractTurns(s), resolved: !isEscalated(s) }))
-    .filter(x => x.turns.length >= 3 && x.turns.length <= 14);
+  const annotate = s => {
+    const turns = extractTurns(s);
+    const outcome = chatOutcome(s, turns);
+    // Strong resolutions carry an explicit thank-you / closure from the user.
+    const strong = outcome === 'resolved' && turns.some(x => x.role === 'user' && hasClosure(x.text));
+    return { s, turns, outcome, strong };
+  };
 
-  const pool = withTurns.length
-    ? withTurns
-    : engaged.map(s => ({ s, turns: extractTurns(s), resolved: !isEscalated(s) }));
+  const withTurns = engaged.map(annotate).filter(x => x.turns.length >= 3 && x.turns.length <= 14);
+  const pool = withTurns.length ? withTurns : engaged.map(annotate);
 
   // Prefer the most recent conversations so the examples refresh each run instead of
   // resurfacing the same old ones.
   const dateOf = x => new Date(x.s.createdAt ?? x.s.updatedAt ?? 0).getTime();
   const byRecent = arr => arr.slice().sort((a, b) => dateOf(b) - dateOf(a));
 
-  const resolved  = byRecent(pool.filter(x => x.resolved));
-  const escalated = byRecent(pool.filter(x => !x.resolved));
+  // Genuine resolutions first (thank-you closures ahead of soft ones), then recency.
+  const resolved  = pool.filter(x => x.outcome === 'resolved')
+    .sort((a, b) => (b.strong - a.strong) || (dateOf(b) - dateOf(a)));
+  const escalated = byRecent(pool.filter(x => x.outcome === 'escalated'));
+  const abandoned = byRecent(pool.filter(x => x.outcome === 'abandoned'));
 
-  // Aim for a resolved/escalated mix when both exist (2 most-recent of the larger
-  // pool + the most-recent of the other).
-  let picks;
-  if (resolved.length && escalated.length) {
-    picks = resolved.length >= escalated.length
-      ? [...resolved.slice(0, 2), ...escalated.slice(0, 1)]
-      : [...escalated.slice(0, 2), ...resolved.slice(0, 1)];
-  } else {
-    picks = byRecent(pool).slice(0, 3);
-  }
+  // Aim for a resolved + escalated pair, plus a third for variety.
+  const picks = [];
+  if (resolved.length)  picks.push(resolved[0]);
+  if (escalated.length) picks.push(escalated[0]);
+  if (abandoned.length) picks.push(abandoned[0]);
 
   // Dedup, cap at 3, backfill from the most recent remaining if needed.
   const seen = new Set();
@@ -652,7 +686,8 @@ async function pickInteractionExamples(sessions) {
     transcriptId: x.s.id,
     turns: x.turns,
     date: x.s.createdAt ?? x.s.updatedAt,
-    resolved: x.resolved,
+    resolved: x.outcome === 'resolved',
+    outcome: x.outcome,
   }));
 }
 
