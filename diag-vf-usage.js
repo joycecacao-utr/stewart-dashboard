@@ -13,10 +13,17 @@ const MONTHS = [
 ];
 // Candidate metric names to probe — we'll see which the API accepts + which
 // matches the ~1,400 August figure from the dashboard.
-const METRICS = ['sessions', 'interactions', 'unique_users', 'understood_messages', 'token_usage', 'transcripts'];
+const METRICS = ['transcripts', 'sessions', 'interactions', 'unique_users', 'token_usage'];
 
 async function queryUsage(metric, startTime, endTime) {
-  const body = { query: [{ name: metric, filter: { projectID: VF_PROJECT, startTime, endTime } }] };
+  // The API error revealed each query item needs a `resources` array (the project).
+  const body = {
+    query: [{
+      name: metric,
+      resources: [{ id: VF_PROJECT, type: 'project' }],
+      filter: { startTime, endTime },
+    }],
+  };
   const r = await fetch(`${VF_ANALYTICS}/v1/query/usage`, { method: 'POST', headers: headers(), body: JSON.stringify(body) });
   const text = await r.text();
   return { status: r.status, text };
