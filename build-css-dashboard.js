@@ -495,40 +495,40 @@ const RECENCY = { new: 'New', recent: 'Recent', long: 'Longstanding' };
 // + a recency tag. Ordered newest-first.
 const PERSONA_CONCERNS = {
   'Club customers': [
-    { text: "A live event they've set up never appears on the home page or in search", impact: "players can't register and ping the club assuming it was called off", recency: 'new' },
+    { text: "Someone else disputes the club's claim to its team or academy page", impact: "a surge this month — the rightful club can't manage its roster until ownership is settled", recency: 'new' },
+    { text: "Ownership of an academy or head-coach page has to be transferred when staff change", impact: "the new lead is locked out of the club until the handover clears", recency: 'new' },
     { text: "Using Add Player pulls in the wrong person onto an event or roster", impact: "the club has to spot and unwind the mix-up by hand", recency: 'recent' },
     { text: "Results their members earned at outside tournaments never sync in", impact: "member ratings read as incomplete and the club catches the complaint", recency: 'long' },
-    { text: "Details on a player the club manages come through wrong", impact: "they lose time chasing a correction instead of running events", recency: 'long' },
   ],
   'Power subscribers': [
-    { text: "There's no cancel option — only “Renew” — so the next auto-charge lands anyway", impact: "unexpected renewals (a $120 hit in one case) and refund demands", recency: 'new' },
-    { text: "The Fabletics VIP benefit either fails to switch on or starts billing on its own", impact: "a perk they were owed turns into a charge they didn't expect", recency: 'recent' },
-    { text: "Credits and Power Perks they were promised never land on the account", impact: "they've paid but aren't getting the upgrade they signed up for", recency: 'recent' },
+    { text: "There's no cancel option — only “Renew” — so the next auto-charge lands anyway", impact: "the top Power complaint — unexpected renewals (a $120 hit in one case) and a wave of refund demands", recency: 'new' },
+    { text: "They pay for Power but the features never switch on — iOS perks, College Coach View, the event-registration discount", impact: "they've paid and still can't use what they bought", recency: 'new' },
     { text: "Months of strong results and the rating still won't budge", impact: "they stop trusting the number they pay to rely on", recency: 'long' },
     { text: "ITF and USTA scores they've imported go missing from the profile", impact: "the record they subscribe to showcase is patchy", recency: 'long' },
   ],
   'College': [
+    { text: "“Not eligible to access the College Prospect Portal” errors block the recruiting tools", impact: "prospects and coaches can't reach the CPP features they came for", recency: 'new' },
     { text: "Players won't add to the team roster — or drop off after being added", impact: "coaches can't keep a complete roster for recruiting", recency: 'recent' },
     { text: "College results, right up to NCAA national rounds, are absent from UTR", impact: "recruiting and seeding decisions rest on a partial record", recency: 'recent' },
     { text: "A coach or player gets shut out of the college account entirely", impact: "roster and profile updates grind to a halt", recency: 'long' },
   ],
   'High school': [
+    { text: "Dual-match trouble — the opposing team's players don't show in match search, or duplicate results post for one dual", impact: "coaches can't enter the lineup or the match records double up", recency: 'new' },
     { text: "Someone else has claimed the school's team page and the real coach has to dispute it", impact: "the rightful coach can't manage the roster until ownership is sorted", recency: 'new' },
-    { text: "A high-school match was posted but never shows on the player's profile", impact: "results earned for the school don't count", recency: 'new' },
-    { text: "Coaches need a provider/coach account set up just to post event scores", impact: "team results stay unposted until the account is straightened out", recency: 'recent' },
-    { text: "Team-page admin has to be handed over when the coach changes", impact: "the incoming coach is locked out of the team in the meantime", recency: 'long' },
+    { text: "A high-school match was posted but never shows on the player's profile", impact: "results earned for the school don't count", recency: 'recent' },
+    { text: "Coaches lose or never get the provider/coach access needed to run the team page", impact: "rosters and scores stay stuck until the account is straightened out", recency: 'recent' },
   ],
   'Parents': [
+    { text: "Getting siblings onto one account, linking a child's profile, or resetting a child's login", impact: "families can't manage their kids' accounts from one place", recency: 'new' },
     { text: "Matches that aren't their child's turn up on the child's profile", impact: "the rating counts games the child never played", recency: 'recent' },
     { text: "A duplicate profile scatters the child's matches across two accounts", impact: "far and away the top reason parents write in — the rating looks wrong and won't climb", recency: 'long' },
     { text: "The name or birth date is off and has to be moved onto the child's real profile", impact: "the child ends up graded in the wrong age group", recency: 'long' },
-    { text: "Matches from events the child actually played are nowhere on the record", impact: "their history understates what they've done", recency: 'long' },
   ],
   'Free users': [
+    { text: "After creating a new account they can't claim their existing UTR rating profile", impact: "they start over from a blank rating instead of the one they've earned", recency: 'new' },
     { text: "Games they never played show up under their name", impact: "the rating is calculated off the wrong matches", recency: 'new' },
     { text: "A duplicate profile splits their results in two", impact: "the single biggest reason free users reach out — the rating looks thin and off", recency: 'long' },
     { text: "Outside results from USTA or ITF never make it onto the profile", impact: "the profile comes across as half-finished", recency: 'long' },
-    { text: "They can't be found in event search", impact: "they're stuck when they try to enter an event", recency: 'recent' },
   ],
 };
 

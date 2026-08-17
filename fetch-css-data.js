@@ -1211,57 +1211,6 @@ async function main() {
     console.warn('  Voiceflow fetch failed:', e.message);
   }
 
-  // ── DIAGNOSTIC (read-only): dump recent CSAT comments + per-persona themes so we
-  //    can refresh Happy Thoughts and persona concerns by hand. Never writes.
-  if (process.env.DIAG_SENTIMENT === '1') {
-    const daysAgo = n => new Date(Date.now() - n * 86400000);
-    const since = daysAgo(45);
-
-    console.log('\n===== DIAG: 5-STAR CSAT COMMENTS (last 45d, newest first) =====');
-    const pos = csat.filter(r => {
-      const v = r.ratings?.default_question ?? r.ratings?.overall;
-      const isTop = v === 1 || v === 5 || v === 103 || v === 3;
-      const c = r.feedback ?? r.remarks ?? '';
-      return isTop && typeof c === 'string' && c.trim().length > 8;
-    }).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    console.log(`(${pos.length} positive-with-comment)`);
-    for (const r of pos.slice(0, 80)) {
-      console.log(`${(r.created_at || '').slice(0, 10)} | ${JSON.stringify(stripPII((r.feedback ?? r.remarks ?? '').trim()).slice(0, 220))}`);
-    }
-
-    console.log('\n===== DIAG: RECENT CHAT THEMES BY PERSONA (VF transcripts, newest first) =====');
-    const pBuckets = {};
-    for (const s of sessions) {
-      const created = new Date(s.createdAt ?? s.updatedAt ?? 0);
-      if (created < since) continue;
-      const turns = extractTurns(s);
-      const firstUser = turns.find(t => t.role === 'user')?.text ?? '';
-      if (!firstUser.trim()) continue;
-      const p = getPersona(turns.map(t => t.text).join(' ')) ?? 'Free/Unclassified';
-      (pBuckets[p] ||= []).push({ d: created.toISOString().slice(0, 10), q: stripPII(firstUser).slice(0, 130), esc: isEscalated(s) });
-    }
-    for (const [p, arr] of Object.entries(pBuckets)) {
-      arr.sort((a, b) => b.d.localeCompare(a.d));
-      console.log(`\n--- ${p} (${arr.length} chats in 45d) ---`);
-      for (const x of arr.slice(0, 30)) console.log(`${x.d} ${x.esc ? '[esc]' : '     '} | ${x.q}`);
-    }
-
-    console.log('\n===== DIAG: RECENT CSS TICKET SUBJECTS BY PERSONA (current month) =====');
-    const tBuckets = {};
-    for (const t of tickets) {
-      const text = ((t.subject ?? '') + ' ' + (t.description_text ?? t.description ?? '')).slice(0, 400);
-      const p = getPersona(text) ?? 'Free/Unclassified';
-      (tBuckets[p] ||= []).push({ d: (t.created_at ?? '').slice(0, 10), s: (t.subject ?? '').slice(0, 100) });
-    }
-    for (const [p, arr] of Object.entries(tBuckets)) {
-      arr.sort((a, b) => b.d.localeCompare(a.d));
-      console.log(`\n--- ${p} (${arr.length}) ---`);
-      for (const x of arr.slice(0, 25)) console.log(`${x.d} | ${x.s}`);
-    }
-    console.log('\n===== DIAG DONE (no write) =====');
-    process.exit(0);
-  }
-
   console.log('Building daily rollups…');
   let daily     = buildDailyRollups(tickets, sessions, csat, LOOKBACK_DAYS, generalGroupId, [{ start: pyStart, end: pyEnd }]);
   const monthly = buildMonthlyRollups(daily);
