@@ -159,8 +159,9 @@ function num(n)          { return n != null ? n.toLocaleString() : NA; }
 // AI resolution = Voiceflow "Deflection rate (strict)" — Pass share of ALL scored
 // logs (Pass + Fail + N/A), exactly as Voiceflow's Evaluations dashboard reports it.
 function aiResM(m)  { return m ? pct(m.aiDeflectPass, m.aiDeflectPass + m.aiDeflectFail + m.aiDeflectNA) : NA; }
-// Sessions and cost count engaged sessions only (exclude bounces).
-function aiCostM(m) { return m ? dollar(m.engaged * data.vfCostPerSession) : NA; }
+// AI Cost is Voiceflow's own average cost per chat (real conversations only);
+// entered from the VF dashboard since the usage API doesn't expose it here.
+function aiCostM(m) { return (m && m.aiCostPerChat != null) ? dollar(m.aiCostPerChat) : NA; }
 function sessM(m)   { return m ? num(m.engaged)                    : NA; }
 function tickM(m)   { return m ? num(m.ticketsCreated)              : NA; }
 function frtM(m)    { return m ? avg(m.frtSum, m.frtCount) + (m.frtCount ? 'h' : '') : NA; }
@@ -172,7 +173,9 @@ function durM(m)    { return m ? avg(m.durSum, m.durCount) + (m.durCount ? ' min
 
 // YTD derived
 const ytdAiRes  = pct(ytd.aiDeflectPass, ytd.aiDeflectPass + ytd.aiDeflectFail + ytd.aiDeflectNA);
-const ytdAiCost = dollar(ytd.engaged * data.vfCostPerSession);
+// YTD avg cost per chat — mean of the months we have a rate for.
+const ytdCostVals = ytdKeys().map(k => monthly[k]?.aiCostPerChat).filter(v => v != null);
+const ytdAiCost = ytdCostVals.length ? dollar(ytdCostVals.reduce((a, b) => a + b, 0) / ytdCostVals.length) : NA;
 const ytdSess   = num(ytd.engaged);
 const ytdTick   = num(ytd.ticketsCreated);
 const ytdFrt    = avg(ytd.frtSum, ytd.frtCount) + (ytd.frtCount ? 'h' : '');
@@ -301,7 +304,7 @@ function buildAiResolution() {
       <tbody>
         ${metricRowNoPy('AI Resolution %',  aiResM(curMo),  aiResM(prevMo),  ytdAiRes)}
         ${metricRowNoPy('Engaged Sessions <span class="rr-tooltip" title="Conversations with real interaction — total Voiceflow sessions minus bounces">ⓘ</span>', sessM(curMo), sessM(prevMo), ytdSess)}
-        ${metricRowNoPy('AI Cost',          aiCostM(curMo), aiCostM(prevMo), ytdAiCost)}
+        ${metricRowNoPy('AI Cost / Chat <span class="rr-tooltip" title="Voiceflow average cost per real conversation, from the VF dashboard">ⓘ</span>', aiCostM(curMo), aiCostM(prevMo), ytdAiCost)}
       </tbody>
     </table>
   </div>
