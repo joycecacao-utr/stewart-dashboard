@@ -316,7 +316,7 @@ function buildAiResolution() {
       <tbody>
         ${metricRowNoPy('AI Resolution %',  aiResM(curMo),  aiResM(prevMo),  ytdAiRes)}
         ${metricRowNoPy('Engaged Sessions <span class="rr-tooltip" title="Conversations with real interaction — total Voiceflow sessions minus bounces">ⓘ</span>', sessM(curMo), sessM(prevMo), ytdSess)}
-        ${metricRowNoPy('AI Cost / Chat <span class="rr-tooltip" title="Voiceflow average cost per real conversation, from the VF dashboard">ⓘ</span>', aiCostM(curMo), aiCostM(prevMo), ytdAiCost)}
+        ${metricRowNoPy('Average Cost per Chat <span class="rr-tooltip" title="Voiceflow average cost per real conversation, from the VF dashboard">ⓘ</span>', aiCostM(curMo), aiCostM(prevMo), ytdAiCost)}
         ${metricRowNoPy('AI Spend (total) <span class="rr-tooltip" title="Engaged conversations × avg cost per chat">ⓘ</span>', aiSpendM(curMo), aiSpendM(prevMo), ytdAiSpend)}
       </tbody>
     </table>
