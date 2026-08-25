@@ -1227,7 +1227,8 @@ async function main() {
   // fetched month came back with no FRT/FCR signal but the cache had it, keep the
   // cached Freshdesk fields (preserving this run's freshly-fetched Voiceflow fields).
   const VF_FIELDS = ['sessions', 'bounces', 'engaged', 'aiResolved',
-    'aiDeflectPass', 'aiDeflectFail', 'aiDeflectNA', 'aiEvaluated', 'durSum', 'durCount'];
+    'aiDeflectPass', 'aiDeflectFail', 'aiDeflectNA', 'aiEvaluated', 'durSum', 'durCount',
+    'aiCostPerChat'];
   for (const k of fetchedKeys) {
     const fresh = monthly[k], cached = cachedMonthly[k];
     if (!fresh || !cached) continue;
